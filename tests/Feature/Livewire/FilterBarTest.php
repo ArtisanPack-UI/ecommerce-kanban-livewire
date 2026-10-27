@@ -225,4 +225,13 @@ it( 'only offers customers and products from orders on this board', function ():
     $component->set( 'customerId', $nowhere->id )->set( 'customerOptions', [] )->call( 'searchCustomers', '' );
 
     expect( array_column( $component->get( 'customerOptions' ), 'id' ) )->not->toContain( $nowhere->id );
+
+    // Nor does a product id typed into the URL.
+    $component->set( 'productIds', [ $offBoard->id ] )->set( 'productOptions', [] )->call( 'searchProducts', '' );
+
+    expect( array_column( $component->get( 'productOptions' ), 'id' ) )->not->toContain( $offBoard->id );
+
+    Livewire::withQueryParams( [ 'products' => [ $offBoard->id ] ] )
+        ->test( Board::class, [ 'board' => $board ] )
+        ->assertDontSee( 'Other mug' );
 } );

@@ -262,8 +262,7 @@ trait FiltersCards
     public function searchCustomers( mixed $value = '' ): void
     {
         $like  = self::like( $value );
-        $query = Customer::query()
-            ->whereIn( 'id', $this->boardOrders()->whereNotNull( 'customer_id' )->select( 'customer_id' ) )
+        $query = $this->boardCustomers()
             ->orderBy( 'last_name' )
             ->orderBy( 'first_name' )
             ->orderBy( 'id' )
@@ -280,7 +279,7 @@ trait FiltersCards
         $this->customerOptions = $this->withSelected(
             $query->get()->map( static fn ( Customer $customer ): array => self::customerOption( $customer ) )->all(),
             is_numeric( $this->customerId ) ? [ (int) $this->customerId ] : [],
-            fn ( array $ids ): array => Customer::query()->whereKey( $ids )->whereIn( 'id', $this->boardOrders()->whereNotNull( 'customer_id' )->select( 'customer_id' ) )->get()->map( static fn ( Customer $customer ): array => self::customerOption( $customer ) )->all(),
+            fn ( array $ids ): array => $this->boardCustomers()->whereKey( $ids )->get()->map( static fn ( Customer $customer ): array => self::customerOption( $customer ) )->all(),
         );
     }
 
@@ -296,8 +295,7 @@ trait FiltersCards
     public function searchProducts( mixed $value = '' ): void
     {
         $like  = self::like( $value );
-        $query = Product::query()
-            ->whereIn( 'id', OrderItem::query()->whereIn( 'order_id', $this->boardOrders()->select( 'id' ) )->whereNotNull( 'product_id' )->select( 'product_id' ) )
+        $query = $this->boardProducts()
             ->orderBy( 'name' )
             ->orderBy( 'id' )
             ->limit( self::SEARCH_LIMIT );
@@ -311,7 +309,7 @@ trait FiltersCards
         $this->productOptions = $this->withSelected(
             $query->get()->map( static fn ( Product $product ): array => self::productOption( $product ) )->all(),
             $this->cardFilters()->productIds,
-            static fn ( array $ids ): array => Product::query()->whereKey( $ids )->get()->map( static fn ( Product $product ): array => self::productOption( $product ) )->all(),
+            fn ( array $ids ): array => $this->boardProducts()->whereKey( $ids )->get()->map( static fn ( Product $product ): array => self::productOption( $product ) )->all(),
         );
     }
 
@@ -381,6 +379,32 @@ trait FiltersCards
     protected static function isFilterProperty( string $property ): bool
     {
         return in_array( explode( '.', $property )[0], [ 'search', 'customerId', 'tags', 'productIds', 'placedFrom', 'placedTo', 'stale', 'paymentStatus', 'fulfillmentStatus', 'extraFilters' ], true );
+    }
+
+    /**
+     * Customers with an order on this board: the only ones the customer
+     * filter offers, including for an id typed into the URL.
+     *
+     * @since 1.0.0
+     *
+     * @return Builder<Customer>
+     */
+    private function boardCustomers(): Builder
+    {
+        return Customer::query()->whereIn( 'id', $this->boardOrders()->whereNotNull( 'customer_id' )->select( 'customer_id' ) );
+    }
+
+    /**
+     * Products in this board's orders: the only ones the product filter
+     * offers, including for ids typed into the URL.
+     *
+     * @since 1.0.0
+     *
+     * @return Builder<Product>
+     */
+    private function boardProducts(): Builder
+    {
+        return Product::query()->whereIn( 'id', OrderItem::query()->whereIn( 'order_id', $this->boardOrders()->select( 'id' ) )->whereNotNull( 'product_id' )->select( 'product_id' ) );
     }
 
     /**
