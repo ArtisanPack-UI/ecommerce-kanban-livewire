@@ -24,9 +24,10 @@ use Illuminate\Contracts\Auth\Authenticatable;
  * filter.
  *
  * Each action is `key`, `label`, optional `icon` and `ability`
- * (`{resource}.{action}`, checked against the board), and either a `url` or
- * an `event`: a Livewire event dispatched with `{ orderId, columnId, boardId }`
- * for a component on the page to handle.
+ * (`{resource}.{action}`, checked against the board), and a `url`, an
+ * `event` (a Livewire event dispatched with `{ orderId, columnId, boardId }`
+ * for a component on the page to handle), or both: a plain click then
+ * dispatches the event and a modified click (new tab) follows the link.
  *
  * ```php
  * addFilter( 'ap.ecommerceKanbanLivewire.cardActions', function ( array $actions, Order $order, KanbanColumn $column, KanbanBoard $board ): array {
@@ -54,6 +55,15 @@ final class CardActions
      * @var string
      */
     public const FILTER = 'ap.ecommerceKanbanLivewire.cardActions';
+
+    /**
+     * The event "Open" dispatches (handled by the card slide-out).
+     *
+     * @since 1.0.0
+     *
+     * @var string
+     */
+    public const OPEN_EVENT = 'ec-kb-open-card';
 
     /**
      * The event "Move to…" dispatches (handled by the move dialog).
@@ -110,6 +120,7 @@ final class CardActions
                 'label' => __( 'Open' ),
                 'icon'  => 'o-arrow-top-right-on-square',
                 'url'   => BoardUrls::show( $this->board, [ 'card' => $order->id ] ),
+                'event' => self::OPEN_EVENT,
             ],
             [
                 'key'     => 'move',
@@ -173,7 +184,7 @@ final class CardActions
             'label' => $label,
             'icon'  => Icons::name( $string( $action['icon'] ?? null ) ),
             'url'   => $url,
-            'event' => null === $url ? $event : null,
+            'event' => $event,
         ];
     }
 

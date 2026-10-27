@@ -5,7 +5,14 @@
     loads no cards.
 
     `$column` is the board component's column array (`id`, `label`, `color`,
-    `icon`, `wip_limit`, `count`, `collapsed`, `cards`, `has_more`).
+    `icon`, `wip_limit`, `count` (every card), `matching` (cards the filters
+    leave, or null without filters), `exit`, `collapsed`, `cards`,
+    `has_more`).
+
+    When `$draggable`, the card list is a livewire-drag-and-drop context in
+    the `cards` group, so cards move between columns; drops and drag ends
+    go to the board's `drop()` / `end()` (see the board view), and
+    `$dragMessages` are the translated announcement templates.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceKanbanLivewire
@@ -14,7 +21,9 @@
 --}}
 @props( [
     'column',
-    'loaded' => true,
+    'loaded'       => true,
+    'draggable'    => false,
+    'dragMessages' => [],
 ] )
 @php
     $headingId = 'ec-kb-column-' . $column['id'] . '-title';
@@ -53,6 +62,9 @@
         >{{ $column['label'] }}</h2>
 
         @if ( null !== $column['count'] )
+            @if ( null !== $column['matching'] && $column['matching'] !== $column['count'] && ! $collapsed )
+                <span class="text-xs text-base-content/70 whitespace-nowrap" data-ec-kb-matching>{{ trans_choice( ':count shown|:count shown', $column['matching'], [ 'count' => $column['matching'] ] ) }}</span>
+            @endif
             <x-artisanpack-ec-kb-wip :count="$column['count']" :limit="$column['wip_limit']" />
         @endif
     </header>
@@ -64,16 +76,47 @@
                     <div class="skeleton h-20 w-full"></div>
                     <div class="skeleton h-20 w-full"></div>
                 </div>
-            @elseif ( [] === $column['cards'] )
-                <x-artisanpack-ec-kb-empty compact :title="__( 'No orders in this column' )" data-ec-kb-empty-column />
             @else
-                <ul class="flex flex-col gap-2" aria-label="{{ __( 'Orders in :column', [ 'column' => $column['label'] ] ) }}">
+                <div
+                    class="group flex min-h-16 flex-col gap-2 rounded-box focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                    aria-label="{{ __( 'Orders in :column', [ 'column' => $column['label'] ] ) }}"
+                    data-ec-kb-cards="{{ $column['id'] }}"
+                    wire:key="column-{{ $column['id'] }}-cards"
+                    @if ( $draggable )
+                        x-drag-context
+                        data-drag-group="cards"
+                        data-drag-context-id="{{ $column['id'] }}"
+                        data-drag-label="{{ $column['label'] }}"
+                        data-drag-messages="{{ json_encode( $dragMessages ) }}"
+                        data-ec-kb-total="{{ (int) $column['count'] }}"
+                        data-ec-kb-limit="{{ $column['wip_limit'] ?? '' }}"
+                        data-ec-kb-full="{{ __( ':column is at its WIP limit.', [ 'column' => $column['label'] ] ) }}"
+                        x-on:drag:drop="drop( $event, $el )"
+                        x-on:drag:end="end( $event, $el )"
+                    @endif
+                >
                     @foreach ( $column['cards'] as $card )
-                        <li wire:key="card-{{ $card['order_id'] }}">
-                            <x-artisanpack-ec-kb-card :card="$card" />
-                        </li>
+                        @if ( $draggable )
+                            <x-artisanpack-ec-kb-card
+                                :card="$card"
+                                wire:key="card-{{ $card['order_id'] }}"
+                                x-drag-item="{{ (int) $card['order_id'] }}"
+                                data-drag-label="{{ __( 'Order :number', [ 'number' => $card['number'] ] ) }}"
+                            />
+                        @else
+                            <x-artisanpack-ec-kb-card :card="$card" wire:key="card-{{ $card['order_id'] }}" />
+                        @endif
                     @endforeach
-                </ul>
+
+                    @if ( [] === $column['cards'] )
+                        <x-artisanpack-ec-kb-empty
+                            compact
+                            :title="null === $column['matching'] ? __( 'No orders in this column' ) : __( 'No matching orders in this column' )"
+                            class="group-has-[[data-ec-kb-card]]:hidden"
+                            data-ec-kb-empty-column
+                        />
+                    @endif
+                </div>
 
                 @if ( $column['has_more'] )
                     <x-artisanpack-button

@@ -213,7 +213,8 @@ it( 'adds satellite card actions, checking their abilities and dropping malforme
         ->assertSee( 'Reprint label' )
         ->assertSeeHtml( 'labels.reprint' )
         ->assertSeeHtml( 'href="https://example.test/invoice"' )
-        ->assertDontSee( 'Refund' )
+        ->assertSeeHtml( 'x-on:click.stop' )
+        ->assertDontSeeHtml( 'orders.refund' )
         ->assertDontSee( 'No target' )
         ->assertDontSee( 'Sneaky link' );
 } );
@@ -221,6 +222,8 @@ it( 'adds satellite card actions, checking their abilities and dropping malforme
 it( 'has hooks for the moving and reverting states', function (): void {
     cardBoard( [] )
         ->assertSeeHtml( 'x-on:ec-kb-card-state.window' )
+        ->assertSeeHtml( 'transition-[opacity,box-shadow]' )
+        ->assertDontSeeHtml( 'bg-base-100 transition ' )
         ->assertSee( 'Moving…' )
         ->assertSee( 'Move undone' );
 } );
