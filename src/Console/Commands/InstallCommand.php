@@ -73,7 +73,7 @@ class InstallCommand extends Command
      *
      * @var string
      */
-    public const MIN_ENGINE_VERSION = '1.1.0';
+    public const MIN_ENGINE_VERSION = '1.2.0';
 
     /**
      * The engine's Composer package.

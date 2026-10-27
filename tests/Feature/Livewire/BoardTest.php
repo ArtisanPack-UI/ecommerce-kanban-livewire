@@ -88,15 +88,15 @@ it( 'shows an empty state for a board without columns', function (): void {
         ->assertDontSeeHtml( 'data-ec-kb-columns' );
 } );
 
-it( 'orders cards by when they reached the column and leaves out removed cards', function (): void {
+it( 'orders cards by their manual position and leaves out removed cards', function (): void {
     [ $board, $columns ] = makeBoard( [ 0 ] );
-    addCard( $columns[0], [ 'order_number' => 'NEWER' ], [ 'moved_at' => now()->subDay() ] );
-    addCard( $columns[0], [ 'order_number' => 'OLDER' ], [ 'moved_at' => now()->subDays( 3 ) ] );
+    addCard( $columns[0], [ 'order_number' => 'SECOND' ], [ 'position' => 1 ] );
+    addCard( $columns[0], [ 'order_number' => 'FIRST' ], [ 'position' => 0 ] );
     addCard( $columns[0], [ 'order_number' => 'GONE' ], [ 'removed_at' => now() ] );
 
     Livewire::test( Board::class, [ 'board' => $board ] )
         ->call( 'loadBoard', [] )
-        ->assertSeeInOrder( [ 'Order OLDER', 'Order NEWER' ] )
+        ->assertSeeInOrder( [ 'Order FIRST', 'Order SECOND' ] )
         ->assertDontSee( 'Order GONE' )
         ->assertSeeHtml( '2 cards' );
 } );
@@ -201,6 +201,7 @@ it( 'lists the other boards in the header switcher and marks the current one', f
         ->assertSeeInOrder( [ 'Production', 'Shipping', 'All boards' ] )
         ->assertSeeHtml( 'href="' . route( 'artisanpack.ecommerce.kanban.boards.show', [ 'board' => $shipping->id ] ) . '"' )
         ->assertSeeHtml( 'aria-current="page"' )
+        ->assertSeeHtml( 'x-on:click.stop' )
         ->assertSeeHtml( route( 'artisanpack.ecommerce.kanban.boards.index', [ 'pick' => 1 ] ) )
         ->assertDontSee( 'Archive' );
 } );

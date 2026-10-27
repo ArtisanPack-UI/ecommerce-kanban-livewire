@@ -13,16 +13,21 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\EcommerceKanbanLivewire\Livewire;
 
+use ArtisanPack\LivewireUiComponents\Traits\Toast;
 use ArtisanPackUI\Ecommerce\Models\KanbanBoard;
 use ArtisanPackUI\Ecommerce\Models\KanbanColumn;
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Concerns\AuthorizesKanban;
+use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Concerns\FiltersCards;
+use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Concerns\MovesCards;
 use ArtisanPackUI\EcommerceKanbanLivewire\Queries\BoardsQuery;
 use ArtisanPackUI\EcommerceKanbanLivewire\Queries\ColumnCardsQuery;
+use ArtisanPackUI\EcommerceKanbanLivewire\Support\Authorization;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\BoardUrls;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\CardActions;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\CardPresenter;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\Icons;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\LastBoard;
+use ArtisanPackUI\EcommerceKanbanLivewire\Support\Statuses;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
@@ -38,6 +43,11 @@ use Livewire\Component;
  * (remembered per board in `localStorage`), so collapsed columns never load
  * their cards.
  *
+ * Cards move by drag-and-drop (columns are connected
+ * `livewire-drag-and-drop` contexts) or the "Move to…" dialog
+ * ({@see MovesCards}), and the filter bar narrows them ({@see FiltersCards}).
+ * `?card={order}` opens the card slide-out ({@see CardDetail}).
+ *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceKanbanLivewire
  *
@@ -46,6 +56,9 @@ use Livewire\Component;
 class Board extends Component
 {
     use AuthorizesKanban;
+    use FiltersCards;
+    use MovesCards;
+    use Toast;
 
     /**
      * The board's id.
@@ -171,6 +184,8 @@ class Board extends Component
     {
         $this->collapsed = $this->ownColumnIds( $collapsed );
         $this->loaded    = true;
+
+        $this->loadTagOptions();
     }
 
     /**
@@ -220,22 +235,24 @@ class Board extends Component
      */
     public function render(): View
     {
-        $board   = $this->board;
-        $columns = $this->columns;
-        $user    = auth()->user();
-        $counts  = $this->loaded ? ColumnCardsQuery::counts( $board, $columns ) : [];
-        $cards   = [];
+        $board    = $this->board;
+        $columns  = $this->columns;
+        $user     = auth()->user();
+        $filters  = $this->cardFilters();
+        $filtered = ! $filters->isEmpty();
+        $counts   = $this->loaded ? ColumnCardsQuery::counts( $board, $columns, $filters ) : [];
+        $cards    = [];
 
         if ( $this->loaded ) {
             $presenter = app( CardPresenter::class );
             $actions   = new CardActions( $board, $user );
 
             foreach ( $columns as $column ) {
-                if ( in_array( (int) $column->id, $this->collapsed, true ) || 0 === ( $counts[ $column->id ] ?? 0 ) ) {
+                if ( in_array( (int) $column->id, $this->collapsed, true ) || 0 === ( $counts[ $column->id ]['count'] ?? 0 ) ) {
                     continue;
                 }
 
-                foreach ( ColumnCardsQuery::cards( $column, $this->limitFor( (int) $column->id ) ) as $card ) {
+                foreach ( ColumnCardsQuery::cards( $column, $this->limitFor( (int) $column->id ), $filters ) as $card ) {
                     $cards[ $column->id ][] = [
                         ...$presenter->present( $card, $column ),
                         'actions' => $actions->for( $card->order, $column ),
@@ -245,11 +262,16 @@ class Board extends Component
         }
 
         return view( 'ecommerce-kanban::livewire.board', [
-            'board'      => $board,
-            'columns'    => $columns->map( fn ( KanbanColumn $column ): array => $this->presentColumn( $column, $counts, $cards ) )->all(),
-            'boards'     => BoardsQuery::visibleTo( $user ),
-            'pickerUrl'  => BoardUrls::picker(),
-            'storageKey' => 'ecommerce-kanban.collapsed.' . $board->id,
+            'board'        => $board,
+            'columns'      => $columns->map( fn ( KanbanColumn $column ): array => $this->presentColumn( $column, $counts, $cards, $filtered ) )->all(),
+            'boards'       => BoardsQuery::visibleTo( $user ),
+            'pickerUrl'    => BoardUrls::picker(),
+            'storageKey'   => 'ecommerce-kanban.collapsed.' . $board->id,
+            'canMove'      => Authorization::allows( $user, 'kanbanCard.move', $board ),
+            'dragMessages' => self::dragMessages(),
+            ...$this->filterBarData(),
+            ...$this->moveDialogData( $counts ),
+            ...$this->confirmMoveData(),
         ] );
     }
 
@@ -266,20 +288,48 @@ class Board extends Component
     }
 
     /**
+     * The drag-and-drop announcement templates, translated (spec §12). They
+     * use the library's `{item}`, `{container}`, `{position}`, and `{total}`
+     * placeholders, which it fills in on the client.
+     *
+     * @since 1.0.0
+     *
+     * @return array<string, string>
+     */
+    public static function dragMessages(): array
+    {
+        return [
+            'instructions'     => __( 'Press Space or Enter to pick up the card. While holding it, use the arrow keys to move it within a column or between columns, Home or End to jump to the top or bottom, Space or Enter to drop, and Escape to cancel.' ),
+            'grabbed'          => __( '{item} grabbed. Position {position} of {total} in {container}.' ),
+            'moved'            => __( '{item} moved to position {position} of {total} in {container}.' ),
+            'movedToContainer' => __( '{item} moved to {container}, position {position} of {total}.' ),
+            'dropped'          => __( '{item} dropped in {container}, position {position} of {total}.' ),
+            'cancelled'        => __( 'Move cancelled. {item} returned to {container}, position {position} of {total}.' ),
+            'rejected'         => __( '{item} cannot be dropped in {container}.' ),
+            'reverted'         => __( '{item} moved back to {container}, position {position} of {total}.' ),
+            'noContainer'      => __( 'There is no other column in that direction.' ),
+            'item'             => __( 'Card' ),
+            'container'        => __( 'the column' ),
+        ];
+    }
+
+    /**
      * A column's display data.
      *
      * @since 1.0.0
      *
-     * @param  KanbanColumn                                     $column  The column.
-     * @param  array<int, int>                                  $counts  Card counts by column id.
-     * @param  array<int, array<int, array<string, mixed>>>  $cards   Presented cards by column id.
+     * @param  KanbanColumn                                   $column    The column.
+     * @param  array<int, array{count: int, total: int}>      $counts    Filtered and total card counts by column id.
+     * @param  array<int, array<int, array<string, mixed>>>  $cards     Presented cards by column id.
+     * @param  bool                                           $filtered  Whether a filter is set.
      *
      * @return array<string, mixed>
      */
-    private function presentColumn( KanbanColumn $column, array $counts, array $cards ): array
+    private function presentColumn( KanbanColumn $column, array $counts, array $cards, bool $filtered ): array
     {
         $id    = (int) $column->id;
-        $count = $counts[ $id ] ?? null;
+        $count = $counts[ $id ]['count'] ?? null;
+        $total = $counts[ $id ]['total'] ?? null;
         $shown = $cards[ $id ] ?? [];
 
         return [
@@ -288,7 +338,9 @@ class Board extends Component
             'color'     => self::safeHex( $column->color_override ?? $column->substatus?->color ),
             'icon'      => Icons::name( $column->icon_override ?? $column->substatus?->icon ),
             'wip_limit' => null !== $column->wip_limit && $column->wip_limit > 0 ? (int) $column->wip_limit : null,
-            'count'     => $count,
+            'count'     => $total,
+            'matching'  => $filtered ? $count : null,
+            'exit'      => in_array( $column->substatus?->system_status, Statuses::EXIT, true ),
             'collapsed' => in_array( $id, $this->collapsed, true ),
             'cards'     => $shown,
             'has_more'  => null !== $count && $count > count( $shown ) && ! in_array( $id, $this->collapsed, true ),

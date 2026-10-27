@@ -21,6 +21,7 @@ use ArtisanPackUI\EcommerceKanbanLivewire\Console\Commands\InstallCommand;
 use ArtisanPackUI\EcommerceKanbanLivewire\Http\Middleware\ThrottleKanbanMutations;
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Board;
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\BoardPicker;
+use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\CardDetail;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\BoardUrls;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\LayoutResolver;
 use Illuminate\Contracts\View\View as ViewContract;
@@ -82,6 +83,7 @@ class EcommerceKanbanLivewireServiceProvider extends ServiceProvider
     public const LIVEWIRE_COMPONENTS = [
         'artisanpack-ecommerce-kanban-board'        => Board::class,
         'artisanpack-ecommerce-kanban-board-picker' => BoardPicker::class,
+        'artisanpack-ecommerce-kanban-card-detail'  => CardDetail::class,
     ];
 
     /**

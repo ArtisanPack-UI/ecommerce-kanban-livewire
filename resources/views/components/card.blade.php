@@ -9,7 +9,20 @@
     flags a move that was undone, in text as well as colour.
 
     `$card` is the board component's card array (see `CardPresenter`, plus
-    `actions` from `CardActions`).
+    `actions` from `CardActions`). On a board the column passes the
+    drag-and-drop attributes (`x-drag-item`, `data-drag-label`) through
+    `$attributes`; the explicit `role` keeps livewire-drag-and-drop from
+    making the card a button, since it holds the actions menu.
+
+    An action with both a URL and an event dispatches the event on a plain
+    click and follows the link on a modified click (new tab). Link clicks
+    stop at the item: the dropdown's own click handler cancels the default
+    action of every click inside it, which would otherwise block the link
+    (livewire-ui-components#134).
+
+    Only opacity and the ring transition: livewire-drag-and-drop moves its
+    floating copy of the card with `transform`, and a transform transition
+    would make that copy trail the pointer.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceKanbanLivewire
@@ -23,8 +36,9 @@
     $orderId = (int) $card['order_id'];
 @endphp
 <article
-    {{ $attributes->class( [ 'card card-compact border border-base-300 bg-base-100 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary' ] ) }}
+    {{ $attributes->class( [ 'card card-compact border border-base-300 bg-base-100 transition-[opacity,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary' ] ) }}
     tabindex="0"
+    role="group"
     aria-label="{{ $card['label'] }}"
     data-ec-kb-card="{{ $orderId }}"
     x-data="{ state: 'idle' }"
@@ -52,8 +66,17 @@
                     </x-slot:trigger>
 
                     @foreach ( $card['actions'] as $action )
-                        @if ( null !== $action['url'] )
-                            <x-artisanpack-menu-item :title="$action['label']" :icon="$action['icon']" :link="$action['url']" no-wire-navigate data-ec-kb-action="{{ $action['key'] }}" />
+                        @if ( null !== $action['url'] && null !== $action['event'] )
+                            <x-artisanpack-menu-item
+                                :title="$action['label']"
+                                :icon="$action['icon']"
+                                :link="$action['url']"
+                                no-wire-navigate
+                                x-on:click="$event.stopPropagation(); if ( ! ( $event.metaKey || $event.ctrlKey || $event.shiftKey || $event.altKey ) ) { $event.preventDefault(); $wire.dispatch( {{ \Illuminate\Support\Js::from( $action['event'] ) }}, { orderId: {{ $orderId }}, columnId: {{ (int) $card['column_id'] }}, boardId: $wire.boardId } ) }"
+                                data-ec-kb-action="{{ $action['key'] }}"
+                            />
+                        @elseif ( null !== $action['url'] )
+                            <x-artisanpack-menu-item :title="$action['label']" :icon="$action['icon']" :link="$action['url']" no-wire-navigate x-on:click.stop data-ec-kb-action="{{ $action['key'] }}" />
                         @else
                             <x-artisanpack-menu-item
                                 :title="$action['label']"
