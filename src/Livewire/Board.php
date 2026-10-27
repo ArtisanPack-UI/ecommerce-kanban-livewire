@@ -99,7 +99,13 @@ class Board extends Component
      */
     public function mount( KanbanBoard|int|string $board ): void
     {
-        $board = $board instanceof KanbanBoard ? $board : KanbanBoard::query()->findOrFail( (int) $board );
+        // Abort explicitly: an embedded or tested component isn't behind the
+        // exception handler that turns a missing model into a 404.
+        if ( ! $board instanceof KanbanBoard ) {
+            $board = is_numeric( $board ) ? KanbanBoard::query()->find( (int) $board ) : null;
+
+            abort_if( null === $board, 404 );
+        }
 
         $this->authorizeKanban( 'kanbanBoard.view', $board );
 

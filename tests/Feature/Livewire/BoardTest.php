@@ -210,6 +210,7 @@ it( 'loads a board from its id and 404s for one that does not exist', function (
 
     Livewire::test( Board::class, [ 'board' => $board->id ] )->assertSee( 'Production' );
     Livewire::test( Board::class, [ 'board' => 99999 ] )->assertNotFound();
+    Livewire::test( Board::class, [ 'board' => 'production' ] )->assertNotFound();
 } );
 
 it( 'is denied without kanbanBoard.view', function (): void {
