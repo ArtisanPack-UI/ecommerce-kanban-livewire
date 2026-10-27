@@ -35,6 +35,35 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Layout
+    |--------------------------------------------------------------------------
+    |
+    | The Blade layout the board pages extend. Leave null to use, in order,
+    | cms-framework's admin layout, the ecommerce admin's layout (when that
+    | package is installed), or this package's standalone layout. A custom
+    | layout must yield a `content` section (and may yield `title`) and load
+    | the Livewire assets itself.
+    |
+    */
+
+    'layout' => null,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cards
+    |--------------------------------------------------------------------------
+    |
+    | `per_column` is how many cards a column shows at first and how many more
+    | each "Show more" adds.
+    |
+    */
+
+    'cards' => [
+        'per_column' => 25,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Real-time updates
     |--------------------------------------------------------------------------
     |
