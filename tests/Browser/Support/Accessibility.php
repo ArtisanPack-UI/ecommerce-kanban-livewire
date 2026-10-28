@@ -52,6 +52,18 @@ final class Accessibility
     ];
 
     /**
+     * JavaScript: whether every finite CSS animation and transition on the
+     * page has finished, so axe sees final colours: a modal is "visible"
+     * while its box is still fading in from opacity 0. Endless animations
+     * (skeletons, a moving card's pulse) are left out.
+     *
+     * @var string
+     */
+    public const ANIMATIONS_SETTLED = <<<'JS'
+        document.getAnimations().every( ( animation ) => 'running' !== animation.playState || Infinity === animation.effect?.getTiming().iterations )
+        JS;
+
+    /**
      * JavaScript: whether every open drawer has finished sliding and fading
      * in, so axe sees its final colours.
      *
@@ -73,6 +85,7 @@ final class Accessibility
     {
         $page->assertScript( 'document.readyState', 'complete' );
         $page->assertScript( self::DRAWERS_SETTLED );
+        $page->assertScript( self::ANIMATIONS_SETTLED );
 
         $ignored = json_encode( self::LIBRARY_ISSUES );
 
