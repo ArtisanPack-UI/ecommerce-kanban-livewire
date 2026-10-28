@@ -3,6 +3,8 @@
     view, "Remove from board" (handed to the board's confirmation), and "Add
     to another board" (spec §7.6.1). The drawer traps focus while open and closes on Escape; closing it
     hands focus back to the card (`ec-kb-focus-card`, handled by the board).
+    The customer is shown in the body, not as the drawer's subtitle, which
+    the library draws below 4.5:1 contrast.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceKanbanLivewire
@@ -16,7 +18,6 @@
         close-on-escape
         with-close-button
         :title="null === $detail ? '' : __( 'Order :number', [ 'number' => $detail['number'] ] )"
-        :subtitle="$detail['customer'] ?? null"
         class="w-11/12 max-w-lg"
     >
         @if ( null !== $detail )

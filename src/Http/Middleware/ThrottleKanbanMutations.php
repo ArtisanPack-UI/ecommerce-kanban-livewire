@@ -29,8 +29,10 @@ use Symfony\Component\HttpFoundation\Response;
  * Registered on the board routes as `ecommerce-kanban.throttle` and as
  * Livewire persistent middleware, so it re-runs on every update request from
  * a board page. Page loads are not counted, and neither are updates that only
- * read: no property updates, and only calls listed in {@see self::READ_CALLS}
- * (loading the board, collapsing a column, paging).
+ * read: no property updates beyond {@see self::READ_PROPERTIES}, and only
+ * calls listed in {@see self::READ_CALLS} (loading the board or a column,
+ * collapsing a column, paging, polling, real-time refreshes, and automation
+ * feedback).
  *
  * Over the limit it answers 429 with `Retry-After` and a JSON body
  * (`message`, `retry_after`); the page turns that into a toast. The response
@@ -69,7 +71,29 @@ class ThrottleKanbanMutations
      *
      * @var array<int, string>
      */
-    public const READ_CALLS = [ '$refresh', 'loadBoard', 'toggleColumn', 'showMore' ];
+    public const READ_CALLS = [
+        '$refresh',
+        'loadBoard',
+        'loadColumns',
+        'toggleColumn',
+        'showMore',
+        'poll',
+        'refreshColumns',
+        'refreshCards',
+        'boardEvent',
+        'automationFeedback',
+    ];
+
+    /**
+     * Properties the page sets for itself rather than the user, so a request
+     * whose only updates are these still counts as a read. The board sends
+     * `liveFeedback` with its next request when its connection changes.
+     *
+     * @since 1.0.0
+     *
+     * @var array<int, string>
+     */
+    public const READ_PROPERTIES = [ 'liveFeedback' ];
 
     /**
      * @since 1.0.0
@@ -135,7 +159,7 @@ class ThrottleKanbanMutations
 
     /**
      * Whether every component in the update only reads: it sends no property
-     * updates, and every call it makes is one of {@see self::READ_CALLS}. A
+     * updates beyond {@see self::READ_PROPERTIES}, and every call it makes is one of {@see self::READ_CALLS}. A
      * commit with no calls at all is a read too: it is how Livewire 3 sends
      * `wire:poll` and `$refresh`.
      *
@@ -154,7 +178,7 @@ class ThrottleKanbanMutations
         }
 
         foreach ( $components as $component ) {
-            if ( ! is_array( $component ) || [] !== (array) ( $component['updates'] ?? [] ) ) {
+            if ( ! is_array( $component ) || [] !== array_diff( array_keys( (array) ( $component['updates'] ?? [] ) ), self::READ_PROPERTIES ) ) {
                 return false;
             }
 

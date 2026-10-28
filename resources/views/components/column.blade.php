@@ -26,7 +26,9 @@
     column's edit controls: move left / right (`$first` / `$last` disable
     them at the ends), edit, card widgets, and remove. The board passes the
     outer drag context's item attributes through `$attributes`, so the
-    column itself can be dragged to a new place.
+    column itself can be dragged to a new place. The explicit `region` role
+    keeps livewire-drag-and-drop from making the column a button, since it
+    holds the column's controls and cards.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceKanbanLivewire
@@ -49,6 +51,7 @@
 @endphp
 <section
     {{ $attributes->class( [ 'flex shrink-0 snap-start flex-col rounded-box bg-base-100 shadow-sm', 'w-80 max-w-[85vw]' => ! $collapsed, 'w-14' => $collapsed ] ) }}
+    role="region"
     aria-labelledby="{{ $headingId }}"
     data-ec-kb-column="{{ $column['id'] }}"
     @if ( $collapsed ) data-ec-kb-collapsed @endif

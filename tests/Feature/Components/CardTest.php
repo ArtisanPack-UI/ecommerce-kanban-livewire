@@ -100,10 +100,10 @@ it( 'maps tones to badge colours with an icon and text, never colour alone', fun
         ->assertSeeHtml( 'data-ec-kb-tone="' . $tone . '"' );
 
     null === $text
-        ? $component->assertDontSeeHtml( 'data-ec-kb-tone-icon' )
+        ? expect( $component->assertDontSeeHtml( 'data-ec-kb-tone-icon' )->html() )->not->toMatch( '/badge-neutral[^>]*data-ec-kb-widget=/' )
         : $component->assertSeeHtml( 'data-ec-kb-tone-icon' )->assertSee( '(' . $text . ')' );
 } )->with( [
-    'neutral' => [ 'neutral', 'badge-neutral', null ],
+    'neutral' => [ 'neutral', 'badge-outline', null ],
     'success' => [ 'success', 'badge-success', 'Good' ],
     'warning' => [ 'warning', 'badge-warning', 'Needs attention' ],
     'danger'  => [ 'danger', 'badge-error', 'Problem' ],
@@ -226,4 +226,21 @@ it( 'has hooks for the moving and reverting states', function (): void {
         ->assertDontSeeHtml( 'bg-base-100 transition ' )
         ->assertSee( 'Moving…' )
         ->assertSee( 'Move undone' );
+} );
+
+it( 'renders the card as a focusable group that holds still under reduced motion', function (): void {
+    $html = cardBoard( [] )->html();
+
+    expect( $html )->toMatch( '/<div\s[^>]*tabindex="0"\s+role="group"\s+aria-label="Order 1042/' )
+        ->and( $html )->not->toContain( '<article' )
+        ->and( $html )->toContain( 'motion-reduce:transition-none' )
+        ->and( $html )->toContain( 'animate-pulse motion-reduce:animate-none' );
+} );
+
+it( 'gives each column an explicit region role, so a draggable column never becomes a button', function (): void {
+    [ $board ] = makeBoard( [ 0, 0 ] );
+
+    $html = Livewire::test( Board::class, [ 'board' => $board ] )->call( 'loadBoard', [] )->html();
+
+    expect( preg_match_all( '/<section\s[^>]*role="region"\s+aria-labelledby="ec-kb-column-\d+-title"/', $html ) )->toBe( 2 );
 } );

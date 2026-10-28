@@ -194,3 +194,74 @@ jobs:
           --path="$GITHUB_WORKSPACE/src"
           --path="$GITHUB_WORKSPACE/resources"
           --lang="$GITHUB_WORKSPACE/lang"
+
+  browser:
+    runs-on: ubuntu-latest
+    # A browser step that never resolves can wait indefinitely, so cap it.
+    timeout-minutes: 20
+    name: Browser (Livewire ${{ matrix.livewire }})
+
+    # The board journeys, keyboard checks, and accessibility checks in
+    # tests/Browser, against the workbench asset bundle (Tailwind + daisyUI
+    # and livewire-drag-and-drop) on a seeded demo board.
+    strategy:
+      fail-fast: false
+      matrix:
+        livewire: ['3', '4']
+        include:
+          - livewire: '3'
+            livewire-constraint: '^3.6'
+          - livewire: '4'
+            livewire-constraint: '^4.0'
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.4'
+          extensions: dom, curl, libxml, mbstring, zip, pdo, sqlite, pdo_sqlite, intl, sockets
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-browser-lw${{ matrix.livewire }}-composer-${{ hashFiles('**/composer.json') }}
+          restore-keys: ${{ runner.os }}-browser-lw${{ matrix.livewire }}-composer-
+
+      - name: Install PHP dependencies
+        env:
+          LIVEWIRE: ${{ matrix.livewire-constraint }}
+        run: |
+          composer require "livewire/livewire:${LIVEWIRE}" --no-interaction --no-update
+          composer update --no-interaction --prefer-dist --with-all-dependencies
+
+      - name: Install npm dependencies and Chromium
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Build the browser asset bundle
+        run: npm run build:browser
+
+      - name: Run browser tests
+        # The browser plugin waits without a deadline on an action Playwright
+        # never finishes (e.g. clicking a disabled button), so fail early.
+        timeout-minutes: 10
+        env:
+          XDEBUG_MODE: off
+        run: vendor/bin/pest --group=browser --no-coverage

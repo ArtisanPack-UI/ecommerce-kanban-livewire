@@ -3,6 +3,8 @@
     with the payload's `icon`, a `tooltip`, and a link when there is a
     safe `href` (http(s), mailto, or relative). A non-neutral tone also gets
     an icon and screen-reader text, so it is never conveyed by colour alone.
+    The neutral tone is a plain outline in the text colour: daisyUI's
+    `badge-neutral` outline is dark grey, which fails contrast in dark mode.
 
     Receives `$widget`: `key`, `label`, `value`, `tone`, and optionally
     `icon`, `tooltip`, `href`.
@@ -28,7 +30,7 @@
 @if ( '' !== $value )
     <{{ $tag }}
         @if ( null !== $href ) href="{{ $href }}" @endif
-        @class( [ 'badge badge-sm gap-1 whitespace-nowrap', 'badge-' . $tone['color'], 'badge-outline' => 'neutral' === $tone['color'], 'tooltip' => null !== $tooltip, 'link link-hover' => null !== $href ] )
+        @class( [ 'badge badge-sm gap-1 whitespace-nowrap', 'badge-' . $tone['color'] => 'neutral' !== $tone['color'], 'badge-outline' => 'neutral' === $tone['color'], 'tooltip' => null !== $tooltip, 'link link-hover' => null !== $href ] )
         @if ( null !== $tooltip ) data-tip="{{ $tooltip }}" @endif
         data-ec-kb-widget="{{ $widget['key'] ?? '' }}"
         data-ec-kb-tone="{{ $widget['tone'] ?? 'neutral' }}"
