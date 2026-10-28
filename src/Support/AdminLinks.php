@@ -54,6 +54,15 @@ final class AdminLinks
     public const BOARD_EDIT_ROUTE = 'artisanpack.ecommerce.admin.kanban-boards.edit';
 
     /**
+     * The id of the automations heading on the admin's board edit screen.
+     *
+     * @since 1.0.0
+     *
+     * @var string
+     */
+    public const AUTOMATIONS_ANCHOR = 'board-automations-heading';
+
+    /**
      * Where to create a board, when the admin is installed.
      *
      * @since 1.0.0
@@ -92,6 +101,25 @@ final class AdminLinks
     public static function boardEditUrl( int $boardId ): ?string
     {
         return self::url( self::BOARD_EDIT_ROUTE, [ 'board' => $boardId ] );
+    }
+
+    /**
+     * The admin's automations section for a board, when the admin is
+     * installed: the board edit screen at its automations heading, with
+     * `automation` set to the automation to edit or `new` to add one.
+     *
+     * @since 1.0.0
+     *
+     * @param  int       $boardId       The board id.
+     * @param  int|null  $automationId  The automation to edit; null to add one.
+     *
+     * @return string|null
+     */
+    public static function automationUrl( int $boardId, ?int $automationId = null ): ?string
+    {
+        $url = self::url( self::BOARD_EDIT_ROUTE, [ 'board' => $boardId, 'automation' => $automationId ?? 'new' ] );
+
+        return null === $url ? null : $url . '#' . self::AUTOMATIONS_ANCHOR;
     }
 
     /**

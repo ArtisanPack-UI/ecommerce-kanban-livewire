@@ -138,54 +138,10 @@ final class CardActions
             ],
         ];
 
-        $actions = applyFilters( self::FILTER, $actions, $order, $column, $this->board );
-        $result  = [];
-
-        foreach ( is_array( $actions ) ? $actions : [] as $action ) {
-            $action = is_array( $action ) ? $this->normalize( $action ) : null;
-
-            if ( null !== $action ) {
-                $result[] = $action;
-            }
-        }
-
-        return $result;
-    }
-
-    /**
-     * A well-formed action the viewer may take, or null.
-     *
-     * @since 1.0.0
-     *
-     * @param  array<string, mixed>  $action  Raw action.
-     *
-     * @return array{key: string, label: string, icon: string|null, url: string|null, event: string|null}|null
-     */
-    private function normalize( array $action ): ?array
-    {
-        $string = static fn ( mixed $value ): ?string => is_string( $value ) && '' !== trim( $value ) ? trim( $value ) : null;
-
-        $key     = $string( $action['key'] ?? null );
-        $label   = $string( $action['label'] ?? null );
-        $url     = SafeUrl::of( $string( $action['url'] ?? null ) );
-        $event   = $string( $action['event'] ?? null );
-        $ability = $string( $action['ability'] ?? null );
-
-        if ( null === $key || null === $label || ( null === $url && null === $event ) ) {
-            return null;
-        }
-
-        if ( null !== $ability && ! $this->allows( $ability ) ) {
-            return null;
-        }
-
-        return [
-            'key'   => $key,
-            'label' => $label,
-            'icon'  => Icons::name( $string( $action['icon'] ?? null ) ),
-            'url'   => $url,
-            'event' => $event,
-        ];
+        return ActionList::normalize(
+            applyFilters( self::FILTER, $actions, $order, $column, $this->board ),
+            fn ( string $ability ): bool => $this->allows( $ability ),
+        );
     }
 
     /**

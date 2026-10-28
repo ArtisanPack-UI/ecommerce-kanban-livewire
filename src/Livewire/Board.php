@@ -21,17 +21,17 @@ use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Concerns\EditsColumns;
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Concerns\FiltersCards;
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Concerns\ManagesAssignments;
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Concerns\MovesCards;
+use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Concerns\RendersColumns;
+use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Concerns\ShowsAutomationFeedback;
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Concerns\SyncsBoard;
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Concerns\WithActionToken;
 use ArtisanPackUI\EcommerceKanbanLivewire\Queries\BoardsQuery;
 use ArtisanPackUI\EcommerceKanbanLivewire\Queries\ColumnCardsQuery;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\Authorization;
+use ArtisanPackUI\EcommerceKanbanLivewire\Support\BoardToolbar;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\BoardUrls;
-use ArtisanPackUI\EcommerceKanbanLivewire\Support\CardActions;
-use ArtisanPackUI\EcommerceKanbanLivewire\Support\CardPresenter;
-use ArtisanPackUI\EcommerceKanbanLivewire\Support\Icons;
+use ArtisanPackUI\EcommerceKanbanLivewire\Support\Hooks;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\LastBoard;
-use ArtisanPackUI\EcommerceKanbanLivewire\Support\Statuses;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
@@ -43,9 +43,11 @@ use Livewire\Component;
  * WIP indicator, collapse toggle, and "Show more" paging (spec §7.2).
  *
  * The first render draws the column headers only. The page then calls
- * {@see self::loadBoard()} with the columns the user collapsed last time
- * (remembered per board in `localStorage`), so collapsed columns never load
- * their cards.
+ * {@see RendersColumns::loadBoard()} with the columns the user collapsed
+ * last time (remembered per board in `localStorage`) and the columns on
+ * screen, so collapsed columns never load their cards and the rest load as
+ * they scroll into view. Moves, real-time events, and polls re-render only
+ * the columns they change ({@see RendersColumns}).
  *
  * Cards move by drag-and-drop (columns are connected
  * `livewire-drag-and-drop` contexts) or the "Move to…" dialog
@@ -53,8 +55,11 @@ use Livewire\Component;
  * `?card={order}` opens the card slide-out ({@see CardDetail}). Orders are
  * added and removed by hand ({@see ManagesAssignments}), "Edit board" mode
  * edits the columns ({@see EditsColumns}) and opens the widget picker
- * ({@see WidgetPicker}), and changes made elsewhere arrive over Echo or
- * polling ({@see SyncsBoard}).
+ * ({@see WidgetPicker}), the automations panel ({@see AutomationsPanel})
+ * lists what runs on a move, the mover is told which automations ran
+ * ({@see ShowsAutomationFeedback}), and changes made elsewhere arrive over
+ * Echo or polling ({@see SyncsBoard}). Satellites extend the board through
+ * the hooks in {@see Hooks}.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceKanbanLivewire
@@ -68,6 +73,8 @@ class Board extends Component
     use FiltersCards;
     use ManagesAssignments;
     use MovesCards;
+    use RendersColumns;
+    use ShowsAutomationFeedback;
     use SyncsBoard;
     use Toast;
     use WithActionToken;
@@ -184,23 +191,6 @@ class Board extends Component
     }
 
     /**
-     * Loads the cards, leaving the given columns collapsed.
-     *
-     * @since 1.0.0
-     *
-     * @param  array<int, mixed>  $collapsed  Column ids the user collapsed before.
-     *
-     * @return void
-     */
-    public function loadBoard( array $collapsed = [] ): void
-    {
-        $this->collapsed = $this->ownColumnIds( $collapsed );
-        $this->loaded    = true;
-
-        $this->loadTagOptions();
-    }
-
-    /**
      * Collapses or expands a column.
      *
      * @since 1.0.0
@@ -215,9 +205,15 @@ class Board extends Component
             return;
         }
 
-        $this->collapsed = in_array( $columnId, $this->collapsed, true )
+        $expanding = in_array( $columnId, $this->collapsed, true );
+
+        $this->collapsed = $expanding
             ? array_values( array_diff( $this->collapsed, [ $columnId ] ) )
             : [ ...$this->collapsed, $columnId ];
+
+        if ( $expanding && ! in_array( $columnId, $this->opened, true ) ) {
+            $this->opened[] = $columnId;
+        }
     }
 
     /**
@@ -247,35 +243,17 @@ class Board extends Component
      */
     public function render(): View
     {
-        $board    = $this->board;
-        $columns  = $this->columns;
-        $user     = auth()->user();
-        $filters  = $this->cardFilters();
-        $filtered = ! $filters->isEmpty();
-        $counts   = $this->loaded ? ColumnCardsQuery::counts( $board, $columns, $filters ) : [];
-        $cards    = [];
+        $board   = $this->board;
+        $user    = auth()->user();
+        $counts  = $this->loaded ? ColumnCardsQuery::counts( $board, $this->columns, $this->cardFilters() ) : [];
+        $columns = $this->presentColumns( $this->columns, $counts );
 
-        if ( $this->loaded ) {
-            $presenter = app( CardPresenter::class );
-            $actions   = new CardActions( $board, $user );
-
-            foreach ( $columns as $column ) {
-                if ( in_array( (int) $column->id, $this->collapsed, true ) || 0 === ( $counts[ $column->id ]['count'] ?? 0 ) ) {
-                    continue;
-                }
-
-                foreach ( ColumnCardsQuery::cards( $column, $this->limitFor( (int) $column->id ), $filters ) as $card ) {
-                    $cards[ $column->id ][] = [
-                        ...$presenter->present( $card, $column ),
-                        'actions' => $actions->for( $card->order, $column ),
-                    ];
-                }
-            }
-        }
+        doAction( Hooks::BOARD_RENDERED, $board, $columns, $user );
 
         return view( 'ecommerce-kanban::livewire.board', [
             'board'        => $board,
-            'columns'      => $columns->map( fn ( KanbanColumn $column ): array => $this->presentColumn( $column, $counts, $cards, $filtered ) )->all(),
+            'columns'      => $columns,
+            'toolbar'      => ( new BoardToolbar( $board, $user ) )->actions(),
             'boards'       => BoardsQuery::visibleTo( $user ),
             'pickerUrl'    => BoardUrls::picker(),
             'storageKey'   => 'ecommerce-kanban.collapsed.' . $board->id,
@@ -343,40 +321,6 @@ class Board extends Component
     }
 
     /**
-     * A column's display data.
-     *
-     * @since 1.0.0
-     *
-     * @param  KanbanColumn                                   $column    The column.
-     * @param  array<int, array{count: int, total: int}>      $counts    Filtered and total card counts by column id.
-     * @param  array<int, array<int, array<string, mixed>>>  $cards     Presented cards by column id.
-     * @param  bool                                           $filtered  Whether a filter is set.
-     *
-     * @return array<string, mixed>
-     */
-    private function presentColumn( KanbanColumn $column, array $counts, array $cards, bool $filtered ): array
-    {
-        $id    = (int) $column->id;
-        $count = $counts[ $id ]['count'] ?? null;
-        $total = $counts[ $id ]['total'] ?? null;
-        $shown = $cards[ $id ] ?? [];
-
-        return [
-            'id'        => $id,
-            'label'     => $column->displayLabel(),
-            'color'     => self::safeHex( $column->color_override ?? $column->substatus?->color ),
-            'icon'      => Icons::name( $column->icon_override ?? $column->substatus?->icon ),
-            'wip_limit' => null !== $column->wip_limit && $column->wip_limit > 0 ? (int) $column->wip_limit : null,
-            'count'     => $total,
-            'matching'  => $filtered ? $count : null,
-            'exit'      => in_array( $column->substatus?->system_status, Statuses::EXIT, true ),
-            'collapsed' => in_array( $id, $this->collapsed, true ),
-            'cards'     => $shown,
-            'has_more'  => null !== $count && $count > count( $shown ) && ! in_array( $id, $this->collapsed, true ),
-        ];
-    }
-
-    /**
      * How many cards a column shows now.
      *
      * @since 1.0.0
@@ -405,19 +349,5 @@ class Board extends Component
         $ids = array_map( 'intval', array_filter( $ids, 'is_numeric' ) );
 
         return array_values( array_unique( array_intersect( $ids, $own ) ) );
-    }
-
-    /**
-     * A `#rrggbb` colour, or null for anything else.
-     *
-     * @since 1.0.0
-     *
-     * @param  mixed  $color  Raw colour.
-     *
-     * @return string|null
-     */
-    private static function safeHex( mixed $color ): ?string
-    {
-        return is_string( $color ) && 1 === preg_match( '/^#[0-9A-Fa-f]{6}$/D', $color ) ? $color : null;
     }
 }

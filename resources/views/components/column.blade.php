@@ -6,8 +6,16 @@
 
     `$column` is the board component's column array (`id`, `label`, `color`,
     `icon`, `wip_limit`, `count` (every card), `matching` (cards the filters
-    leave, or null without filters), `exit`, `collapsed`, `cards`,
-    `has_more`).
+    leave, or null without filters), `exit`, `collapsed`, `loaded`, `lazy`,
+    `automations`, `cards`, `has_more`).
+
+    A column whose cards haven't loaded shows skeletons. When it is `lazy`
+    (the board has loaded, this column hasn't scrolled into view yet), the
+    skeletons dispatch `ec-kb-column-visible` once they come into view and
+    the board loads the column.
+
+    When automations fire into the column, the header shows how many; the
+    count opens the automations panel for the column.
 
     When `$draggable`, the card list is a livewire-drag-and-drop context in
     the `cards` group, so cards move between columns; drops and drag ends
@@ -76,6 +84,18 @@
             @endif
             <x-artisanpack-ec-kb-wip :count="$column['count']" :limit="$column['wip_limit']" />
         @endif
+
+        @if ( ( $column['automations'] ?? 0 ) > 0 && ! $collapsed )
+            <x-artisanpack-button
+                variant="ghost" size="sm" class="gap-1 px-1"
+                icon="o-bolt"
+                :label="(string) $column['automations']"
+                x-on:click="$dispatch( 'ec-kb-edit-automations', { columnId: {{ $column['id'] }} } )"
+                :tooltip="trans_choice( ':count automation runs when a card moves into :column|:count automations run when a card moves into :column', $column['automations'], [ 'count' => $column['automations'], 'column' => $column['label'] ] )"
+                aria-label="{{ trans_choice( ':count automation runs when a card moves into :column|:count automations run when a card moves into :column', $column['automations'], [ 'count' => $column['automations'], 'column' => $column['label'] ] ) }}"
+                data-ec-kb-column-automations="{{ $column['automations'] }}"
+            />
+        @endif
     </header>
 
     @if ( $editing )
@@ -115,6 +135,14 @@
                 data-ec-kb-column-widgets
             />
             <x-artisanpack-button
+                variant="ghost" size="sm" class="btn-square gap-0"
+                icon="o-bolt"
+                x-on:click="$dispatch( 'ec-kb-edit-automations', { columnId: {{ $column['id'] }} } )"
+                :tooltip="__( 'Automations' )"
+                aria-label="{{ __( 'Automations for :column', [ 'column' => $column['label'] ] ) }}"
+                data-ec-kb-column-automations-edit
+            />
+            <x-artisanpack-button
                 variant="ghost" size="sm" class="btn-square gap-0 text-error"
                 icon="o-trash"
                 wire:click="confirmDeleteColumn( {{ $column['id'] }} )"
@@ -128,7 +156,15 @@
     <div id="{{ $listId }}" @class( [ 'flex flex-col gap-2 px-3 pb-3', 'hidden' => $collapsed ] )>
         @if ( ! $collapsed )
             @if ( ! $loaded )
-                <div class="flex flex-col gap-2" aria-hidden="true" data-ec-kb-loading>
+                <div
+                    class="flex flex-col gap-2"
+                    aria-hidden="true"
+                    data-ec-kb-loading
+                    @if ( $column['lazy'] ?? false )
+                        x-intersect.once="$dispatch( 'ec-kb-column-visible', { columnId: {{ $column['id'] }} } )"
+                        data-ec-kb-lazy
+                    @endif
+                >
                     <div class="skeleton h-20 w-full"></div>
                     <div class="skeleton h-20 w-full"></div>
                 </div>

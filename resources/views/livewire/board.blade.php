@@ -4,7 +4,16 @@
 
     The collapsed columns are remembered per board in `localStorage` under
     `$storageKey`; the first render draws only the column headers, then
-    `loadBoard()` loads the cards of the columns left open.
+    `loadBoard()` loads the cards of the open columns on screen. Columns
+    further along load as they scroll into view (`ec-kb-column-visible`,
+    batched into `loadColumns()`).
+
+    Single columns re-render without the board (spec §12): a successful
+    drop's two columns arrive in `ec-kb-columns-rendered`, and real-time
+    card events, polls, and lazy loads return column HTML; `morphColumns()`
+    morphs each in place, or re-renders the board when the result asks for
+    it (or Alpine's morph plugin is missing). Column morphs wait while a
+    card is being dragged.
 
     When the user may move cards, each column's card list is a
     livewire-drag-and-drop context (spec §5.5). `drop()` refuses a drop
@@ -25,9 +34,18 @@
     user's own in-flight move (`actor_user_id`), cancels a drag whose card a
     remote change moved, batches `card-updated` events so each card
     re-renders once (`refreshCards()`, morphed in place), and sends the rest
-    to `boardEvent()`. Without Echo it polls every `$realtime['poll']`
-    seconds, skipping while a card is dragged, a move is in flight, or the
-    tab is hidden, and polls at once when the tab is shown again. `x-artisanpack-ec-kb-connection` shows which applies.
+    to `refreshColumns()` (card events naming columns) or `boardEvent()`.
+    Without Echo it polls every `$realtime['poll']` seconds, skipping while
+    a card is dragged, a move is in flight, or the tab is hidden, and polls
+    at once when the tab is shown again. `x-artisanpack-ec-kb-connection`
+    shows which applies.
+
+    Automation feedback (spec §7.10): while live, the board sets
+    `liveFeedback` and collects the engine's `automation-fired` /
+    `automation-failed` broadcasts for cards this browser moved in the last
+    `feedbackWindow` ms (`ec-kb-card-moved` marks them), then sends each
+    card's batch to `automationFeedback()` for one toast. Otherwise the move
+    request toasts from the order timeline itself.
 
     In "Edit board" mode the column strip is an outer drag context (group
     `columns`): a header drop calls `reorderColumns()` and is reverted when
@@ -56,6 +74,13 @@
         inFlight: {},
         pendingCards: new Set(),
         cardTimer: null,
+        pendingColumns: new Set(),
+        columnTimer: null,
+        lazyColumns: new Set(),
+        lazyTimer: null,
+        recentMoves: {},
+        feedback: {},
+        feedbackWindow: 15000,
         announcement: '',
         remoteMoveMessage: @js( __( 'This card was moved by someone else, so your move was canceled.' ) ),
         read() {
@@ -77,7 +102,7 @@
         init() {
             this.connect();
 
-            this.$wire.loadBoard( this.read() ).then( () => {
+            this.$wire.loadBoard( this.read(), this.visibleColumns() ).then( () => {
                 this.$wire.$watch( 'collapsed', ( ids ) => this.write( ids ) );
 
                 const card = new URLSearchParams( window.location.search ).get( 'card' );
@@ -134,7 +159,7 @@
         },
         pollNow() {
             if ( 'polling' === this.connection && null === this.dragging && ! document.hidden && navigator.onLine && 0 === Object.keys( this.inFlight ).length ) {
-                this.$wire.poll();
+                this.$wire.poll().then( ( result ) => this.morphColumns( result ) );
             }
         },
         updateConnection() {
@@ -149,6 +174,12 @@
             }
 
             clearInterval( this.pollTimer );
+
+            const live = 'live' === this.connection;
+
+            if ( this.$wire.liveFeedback !== live ) {
+                this.$wire.$set( 'liveFeedback', live, false );
+            }
 
             if ( 'polling' === this.connection ) {
                 this.pollTimer = setInterval( () => this.pollNow(), this.realtime.poll * 1000 );
@@ -178,10 +209,119 @@
             }
 
             if ( [ 'automation-fired', 'automation-failed' ].includes( event.type ) ) {
+                this.queueFeedback( orderId, event );
+
+                return;
+            }
+
+            const columns = [ event.from_column_id, event.to_column_id, event.column_id ].filter( ( id ) => null !== id && undefined !== id ).map( Number );
+
+            if ( [ 'card-moved', 'card-reordered', 'card-added', 'card-removed' ].includes( event.type ) && columns.length > 0 ) {
+                columns.forEach( ( id ) => this.pendingColumns.add( id ) );
+                clearTimeout( this.columnTimer );
+                this.columnTimer = setTimeout( () => this.flushColumns(), 300 );
+
                 return;
             }
 
             this.$wire.boardEvent( event.type );
+        },
+        visibleColumns() {
+            const strip = this.$refs.columns;
+
+            if ( ! strip ) {
+                return [];
+            }
+
+            const box    = strip.getBoundingClientRect();
+            const margin = box.width / 2;
+
+            return Array.from( strip.querySelectorAll( '[data-ec-kb-column]' ) )
+                .filter( ( column ) => {
+                    const rect = column.getBoundingClientRect();
+
+                    return rect.right >= box.left - margin && rect.left <= box.right + margin;
+                } )
+                .map( ( column ) => Number( column.dataset.ecKbColumn ) );
+        },
+        queueLazy( columnId ) {
+            this.lazyColumns.add( Number( columnId ) );
+            clearTimeout( this.lazyTimer );
+            this.lazyTimer = setTimeout( () => {
+                const ids = Array.from( this.lazyColumns );
+
+                this.lazyColumns.clear();
+                this.$wire.loadColumns( ids ).then( ( result ) => this.morphColumns( result ) );
+            }, 100 );
+        },
+        flushColumns() {
+            if ( null !== this.dragging ) {
+                this.columnTimer = setTimeout( () => this.flushColumns(), 500 );
+
+                return;
+            }
+
+            const ids = Array.from( this.pendingColumns );
+
+            this.pendingColumns.clear();
+
+            if ( ids.length > 0 ) {
+                this.$wire.refreshColumns( ids ).then( ( result ) => this.morphColumns( result ) );
+            }
+        },
+        morphColumns( result ) {
+            const columns = Object.entries( result?.columns ?? {} );
+
+            if ( result?.refresh || ( columns.length > 0 && ! window.Alpine?.morph ) ) {
+                return this.$wire.$refresh();
+            }
+
+            if ( null !== this.dragging && columns.length > 0 ) {
+                return setTimeout( () => this.morphColumns( result ), 500 );
+            }
+
+            for ( const [ columnId, html ] of columns ) {
+                const column = this.$root.querySelector( '[data-ec-kb-column=\'' + Number( columnId ) + '\']' );
+
+                if ( ! column ) {
+                    return this.$wire.$refresh();
+                }
+
+                window.Alpine.morph( column, html );
+            }
+        },
+        markMoved( orderId ) {
+            const now = Date.now();
+
+            Object.keys( this.recentMoves ).forEach( ( id ) => {
+                if ( now - this.recentMoves[ id ] > this.feedbackWindow ) {
+                    delete this.recentMoves[ id ];
+                }
+            } );
+
+            this.recentMoves[ Number( orderId ) ] = now;
+        },
+        queueFeedback( orderId, event ) {
+            if ( null === orderId || ! this.realtime.echo ) {
+                return;
+            }
+
+            const entry = this.feedback[ orderId ] ?? { fired: [], failed: [], timer: null };
+
+            ( 'automation-failed' === event.type ? entry.failed : entry.fired ).push( Number( event.automation_id ) );
+            clearTimeout( entry.timer );
+            entry.timer = setTimeout( () => this.flushFeedback( orderId ), 1500 );
+            this.feedback[ orderId ] = entry;
+        },
+        flushFeedback( orderId ) {
+            const entry = this.feedback[ orderId ];
+            const moved = this.recentMoves[ orderId ];
+
+            delete this.feedback[ orderId ];
+
+            if ( entry && undefined !== moved && Date.now() - moved <= this.feedbackWindow ) {
+                this.$wire.automationFeedback( orderId, entry.fired, entry.failed );
+            }
         },
         cancelDrag() {
             this.card( this.dragging )?.dispatchEvent( new KeyboardEvent( 'keydown', { key: 'Escape', bubbles: true } ) );
@@ -292,6 +432,7 @@
             };
 
             this.inFlight[ orderId ] = true;
+            this.markMoved( orderId );
             this.state( detail.itemId, 'moving' );
 
             this.$wire.moveCard( orderId, Number( detail.toContext ), before, after )
@@ -302,6 +443,9 @@
     }"
     x-on:ec-kb-focus-card.window="focusCard( $event.detail.orderId )"
     x-on:ec-kb-focus-column.window="focusColumn( $event.detail )"
+    x-on:ec-kb-columns-rendered.window="morphColumns( { columns: $event.detail.columns } )"
+    x-on:ec-kb-card-moved.window="markMoved( $event.detail.orderId )"
+    x-on:ec-kb-column-visible="queueLazy( $event.detail.columnId )"
 >
     <div class="sr-only" aria-live="assertive" x-text="announcement" data-ec-kb-announcer></div>
 
@@ -336,6 +480,40 @@
 
         <div class="flex flex-wrap items-center gap-2">
             <x-artisanpack-ec-kb-connection />
+
+            @foreach ( $toolbar as $action )
+                @if ( null !== $action['url'] && null !== $action['event'] )
+                    <x-artisanpack-button
+                        variant="ghost" size="sm"
+                        :icon="$action['icon']"
+                        :link="$action['url']"
+                        no-wire-navigate
+                        :label="$action['label']"
+                        x-on:click="if ( ! ( $event.metaKey || $event.ctrlKey || $event.shiftKey || $event.altKey ) ) { $event.preventDefault(); $wire.dispatch( {{ \Illuminate\Support\Js::from( $action['event'] ) }}, { boardId: {{ (int) $board->id }} } ) }"
+                        data-ec-kb-toolbar-action="{{ $action['key'] }}"
+                    />
+                @elseif ( null !== $action['url'] )
+                    <x-artisanpack-button variant="ghost" size="sm" :icon="$action['icon']" :link="$action['url']" no-wire-navigate :label="$action['label']" data-ec-kb-toolbar-action="{{ $action['key'] }}" />
+                @else
+                    <x-artisanpack-button
+                        variant="ghost" size="sm"
+                        :icon="$action['icon']"
+                        :label="$action['label']"
+                        x-on:click="$wire.dispatch( {{ \Illuminate\Support\Js::from( $action['event'] ) }}, { boardId: {{ (int) $board->id }} } )"
+                        data-ec-kb-toolbar-action="{{ $action['key'] }}"
+                    />
+                @endif
+            @endforeach
+
+            @unless ( $editing )
+                <x-artisanpack-button
+                    variant="ghost" size="sm"
+                    icon="o-bolt"
+                    x-on:click="$dispatch( 'ec-kb-edit-automations', { columnId: null } )"
+                    :label="__( 'Automations' )"
+                    data-ec-kb-automations
+                />
+            @endunless
 
             @if ( $canEdit && ! $editing )
                 <x-artisanpack-button size="sm" icon="o-plus" wire:click="openAddOrder" :label="__( 'Add order' )" data-ec-kb-add-order />
@@ -427,6 +605,7 @@
             aria-labelledby="ec-kb-board-title"
             aria-busy="{{ $this->loaded ? 'false' : 'true' }}"
             data-ec-kb-columns
+            x-ref="columns"
             @if ( $editing )
                 x-drag-context
                 data-drag-group="columns"
@@ -441,7 +620,7 @@
                 @if ( $editing )
                     <x-artisanpack-ec-kb-column
                         :column="$column"
-                        :loaded="$this->loaded"
+                        :loaded="$column['loaded']"
                         :draggable="false"
                         :drag-messages="$dragMessages"
                         editing
@@ -452,13 +631,7 @@
                         data-drag-label="{{ $column['label'] }}"
                     />
                 @else
-                    <x-artisanpack-ec-kb-column
-                        :column="$column"
-                        :loaded="$this->loaded"
-                        :draggable="$canMove"
-                        :drag-messages="$dragMessages"
-                        wire:key="column-{{ $column['id'] }}"
-                    />
+                    @include( 'ecommerce-kanban::partials.column-item', [ 'column' => $column, 'draggable' => $canMove ] )
                 @endif
             @endforeach
 
@@ -676,6 +849,8 @@
 
         <livewire:artisanpack-ecommerce-kanban-widget-picker :board-id="$board->id" wire:key="widget-picker-{{ $board->id }}" />
     @endif
+
+    <livewire:artisanpack-ecommerce-kanban-automations :board-id="$board->id" wire:key="automations-{{ $board->id }}" />
 
     <livewire:artisanpack-ecommerce-kanban-card-detail :board-id="$board->id" wire:key="card-detail-{{ $board->id }}" />
 </div>
