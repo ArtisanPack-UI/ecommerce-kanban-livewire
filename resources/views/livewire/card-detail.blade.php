@@ -1,6 +1,7 @@
 {{--
     The card slide-out (spec §7.6): a right-hand drawer with a mini order
-    view. The drawer traps focus while open and closes on Escape; closing it
+    view, "Remove from board" (handed to the board's confirmation), and "Add
+    to another board" (spec §7.6.1). The drawer traps focus while open and closes on Escape; closing it
     hands focus back to the card (`ec-kb-focus-card`, handled by the board).
 
     @package    ArtisanPack_UI
@@ -30,6 +31,9 @@
                 <div class="flex flex-wrap gap-2">
                     @if ( $canMove && null !== $detail['column_id'] )
                         <x-artisanpack-button class="btn-sm" icon="o-arrows-right-left" wire:click="moveTo" :label="__( 'Move to…' )" data-ec-kb-detail-move />
+                    @endif
+                    @if ( $canRemove )
+                        <x-artisanpack-button variant="ghost" size="sm" class="text-error" icon="o-x-mark" wire:click="removeFromBoard" :label="__( 'Remove from board' )" data-ec-kb-detail-remove />
                     @endif
                     @if ( null !== $detail['admin_url'] )
                         <x-artisanpack-button class="btn-sm btn-ghost" icon="o-arrow-top-right-on-square" :link="$detail['admin_url']" no-wire-navigate :label="__( 'Open in admin' )" data-ec-kb-detail-admin />
@@ -117,6 +121,33 @@
                                 <li wire:key="detail-board-{{ $loop->index }}">{{ __( ':board: :column', $assignment ) }}</li>
                             @endforeach
                         </ul>
+                    @endif
+
+                    @if ( [] !== $addBoards )
+                        <x-artisanpack-form wire:submit="addToBoard" no-separator class="mt-3" data-ec-kb-detail-add-board>
+                            <x-artisanpack-select
+                                id="ec-kb-detail-add-board"
+                                wire:model.live="addBoardId"
+                                :label="__( 'Add to another board' )"
+                                :options="$addBoards"
+                                :placeholder="__( 'Choose a board' )"
+                                data-ec-kb-detail-add-board-select
+                            />
+
+                            @if ( [] !== $addColumns )
+                                <x-artisanpack-select
+                                    id="ec-kb-detail-add-column"
+                                    wire:model="addBoardColumnId"
+                                    :label="__( 'Column' )"
+                                    :options="$addColumns"
+                                    data-ec-kb-detail-add-column
+                                />
+                            @endif
+
+                            <x-slot:actions>
+                                <x-artisanpack-button type="submit" size="sm" icon="o-plus" :label="__( 'Add to board' )" spinner="addToBoard" data-ec-kb-detail-add-board-submit />
+                            </x-slot:actions>
+                        </x-artisanpack-form>
                     @endif
                 </section>
 

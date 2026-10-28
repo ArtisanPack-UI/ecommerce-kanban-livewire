@@ -45,6 +45,15 @@ final class AdminLinks
     public const ORDER_ROUTE = 'artisanpack.ecommerce.admin.orders.show';
 
     /**
+     * The admin's board edit screen (routing, columns, automations).
+     *
+     * @since 1.0.0
+     *
+     * @var string
+     */
+    public const BOARD_EDIT_ROUTE = 'artisanpack.ecommerce.admin.kanban-boards.edit';
+
+    /**
      * Where to create a board, when the admin is installed.
      *
      * @since 1.0.0
@@ -68,6 +77,21 @@ final class AdminLinks
     public static function orderUrl( int $orderId ): ?string
     {
         return self::url( self::ORDER_ROUTE, [ 'order' => $orderId ] );
+    }
+
+    /**
+     * The admin's edit screen for a board — the "Advanced settings" link in
+     * edit mode — when the admin is installed.
+     *
+     * @since 1.0.0
+     *
+     * @param  int  $boardId  The board id.
+     *
+     * @return string|null
+     */
+    public static function boardEditUrl( int $boardId ): ?string
+    {
+        return self::url( self::BOARD_EDIT_ROUTE, [ 'board' => $boardId ] );
     }
 
     /**

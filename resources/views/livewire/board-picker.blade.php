@@ -16,7 +16,7 @@
         <x-artisanpack-ec-kb-empty
             icon="o-view-columns"
             :title="__( 'No boards yet' )"
-            :description="__( 'A board groups orders into columns by fulfilment step. Create one to start working orders here.' )"
+            :description="__( 'A board groups orders into columns by fulfillment step. Create one to start working orders here.' )"
             data-ec-kb-no-boards
         >
             @if ( null !== $createBoardUrl )
@@ -28,12 +28,12 @@
             @foreach ( $boards as $board )
                 @php( $boardUrl = BoardUrls::show( $board ) )
                 <li wire:key="board-{{ $board->id }}">
-                    <x-artisanpack-card class="h-full" data-ec-kb-board="{{ $board->key }}">
+                    <x-artisanpack-card @class( [ 'h-full', 'relative transition-shadow hover:shadow-md' => null !== $boardUrl ] ) data-ec-kb-board="{{ $board->key }}">
                         <div class="flex flex-col gap-2">
                             <div class="flex items-start justify-between gap-2">
                                 <h2 class="text-lg font-semibold">
                                     @if ( null !== $boardUrl )
-                                        <a href="{{ $boardUrl }}" class="link link-hover">{{ $board->name }}</a>
+                                        <a href="{{ $boardUrl }}" class="link link-hover cursor-pointer after:absolute after:inset-0">{{ $board->name }}</a>
                                     @else
                                         {{ $board->name }}
                                     @endif

@@ -22,6 +22,7 @@ use ArtisanPackUI\EcommerceKanbanLivewire\Http\Middleware\ThrottleKanbanMutation
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Board;
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\BoardPicker;
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\CardDetail;
+use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\WidgetPicker;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\BoardUrls;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\LayoutResolver;
 use Illuminate\Contracts\View\View as ViewContract;
@@ -81,9 +82,10 @@ class EcommerceKanbanLivewireServiceProvider extends ServiceProvider
      * @var array<string, class-string>
      */
     public const LIVEWIRE_COMPONENTS = [
-        'artisanpack-ecommerce-kanban-board'        => Board::class,
-        'artisanpack-ecommerce-kanban-board-picker' => BoardPicker::class,
-        'artisanpack-ecommerce-kanban-card-detail'  => CardDetail::class,
+        'artisanpack-ecommerce-kanban-board'         => Board::class,
+        'artisanpack-ecommerce-kanban-board-picker'  => BoardPicker::class,
+        'artisanpack-ecommerce-kanban-card-detail'   => CardDetail::class,
+        'artisanpack-ecommerce-kanban-widget-picker' => WidgetPicker::class,
     ];
 
     /**
@@ -95,11 +97,12 @@ class EcommerceKanbanLivewireServiceProvider extends ServiceProvider
      * @var array<string, string>
      */
     public const BLADE_COMPONENTS = [
-        'card'   => self::VIEW_NAMESPACE . '::components.card',
-        'column' => self::VIEW_NAMESPACE . '::components.column',
-        'empty'  => self::VIEW_NAMESPACE . '::components.empty',
-        'widget' => self::VIEW_NAMESPACE . '::components.widget',
-        'wip'    => self::VIEW_NAMESPACE . '::components.wip',
+        'card'       => self::VIEW_NAMESPACE . '::components.card',
+        'column'     => self::VIEW_NAMESPACE . '::components.column',
+        'connection' => self::VIEW_NAMESPACE . '::components.connection',
+        'empty'      => self::VIEW_NAMESPACE . '::components.empty',
+        'widget'     => self::VIEW_NAMESPACE . '::components.widget',
+        'wip'        => self::VIEW_NAMESPACE . '::components.wip',
     ];
 
     /**
