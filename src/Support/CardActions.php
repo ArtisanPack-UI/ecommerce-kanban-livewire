@@ -24,14 +24,17 @@ use Illuminate\Contracts\Auth\Authenticatable;
  * filter.
  *
  * Each action is `key`, `label`, optional `icon` and `ability`
- * (`{resource}.{action}`, checked against the board), and a `url`, an
+ * (`{resource}.{action}`, checked against the board; check order-level
+ * abilities in the filter callback, with the order), and a `url`, an
  * `event` (a Livewire event dispatched with `{ orderId, columnId, boardId }`
  * for a component on the page to handle), or both: a plain click then
  * dispatches the event and a modified click (new tab) follows the link.
  *
  * ```php
  * addFilter( 'ap.ecommerceKanbanLivewire.cardActions', function ( array $actions, Order $order, KanbanColumn $column, KanbanBoard $board ): array {
- *     $actions[] = [ 'key' => 'reprint', 'label' => __( 'Reprint label' ), 'icon' => 'o-printer', 'ability' => 'order.update', 'event' => 'print-labels.reprint' ];
+ *     if ( Authorization::allows( auth()->user(), 'order.update', $order ) ) {
+ *         $actions[] = [ 'key' => 'reprint', 'label' => __( 'Reprint label' ), 'icon' => 'o-printer', 'event' => 'print-labels.reprint' ];
+ *     }
  *
  *     return $actions;
  * } );

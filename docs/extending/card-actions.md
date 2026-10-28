@@ -13,7 +13,7 @@ Add items to every card's actions menu with `ap.ecommerceKanbanLivewire.cardActi
 | `key` | Yes | A unique key. The menu item carries it as `data-ec-kb-action="{key}"` (`data-ec-kb-toolbar-action` in the header). |
 | `label` | Yes | The visible text. Translate it with `__()`. |
 | `icon` | No | A component library icon name, such as `o-printer`. An unknown icon is dropped. |
-| `ability` | No | `{resource}.{action}`, such as `order.update`. The action is left out for viewers who don't hold it on the board. |
+| `ability` | No | `{resource}.{action}`, such as `kanbanBoard.update`. The action is left out for viewers who don't hold it with the board as the subject. For an order-level ability such as `order.update`, check it in your filter callback with the order instead (see the example below). |
 | `url` | One of `url` and `event` | A link. Only `http`, `https`, `mailto`, and relative URLs are kept. |
 | `event` | One of `url` and `event` | A Livewire event dispatched on the page when the action is clicked |
 
@@ -37,15 +37,18 @@ Add, reorder, or remove entries from the filter:
 use ArtisanPackUI\Ecommerce\Models\KanbanBoard;
 use ArtisanPackUI\Ecommerce\Models\KanbanColumn;
 use ArtisanPackUI\Ecommerce\Models\Order;
+use ArtisanPackUI\EcommerceKanbanLivewire\Support\Authorization;
 
 addFilter( 'ap.ecommerceKanbanLivewire.cardActions', function ( array $actions, Order $order, KanbanColumn $column, KanbanBoard $board ): array {
-    $actions[] = [
-        'key'     => 'reprint',
-        'label'   => __( 'Reprint label' ),
-        'icon'    => 'o-printer',
-        'ability' => 'order.update',
-        'event'   => 'print-labels.reprint',
-    ];
+    // `ability` is checked against the board, so check order-level abilities here, with the order.
+    if ( Authorization::allows( auth()->user(), 'order.update', $order ) ) {
+        $actions[] = [
+            'key'   => 'reprint',
+            'label' => __( 'Reprint label' ),
+            'icon'  => 'o-printer',
+            'event' => 'print-labels.reprint',
+        ];
+    }
 
     return $actions;
 } );

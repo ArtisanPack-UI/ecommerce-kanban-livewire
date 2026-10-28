@@ -73,7 +73,7 @@ Tracked in [livewire-ui-components#135](https://github.com/ArtisanPack-UI/livewi
 - **Close buttons.** The icon-only close buttons of the library's modal and drawer have no accessible name.
 - **Customer and product filters.** On Livewire 4, the library's `x-artisanpack-choices` keeps its options in its Alpine state, so after a server search changes them the control stops responding and shows no results. The tags filter works around this by being replaced, not morphed, when its options change; the server-searched filters can't, because that would drop the text being typed.
 
-Each is excluded from the automated check by axe rule and selector in `Accessibility::LIBRARY_ISSUES`; a node is ignored only when it, or an ancestor, matches that selector, so nothing else can regress unnoticed. An exclusion is removed when the library fixes it.
+Each is excluded from the automated check by axe rule and selector in `Accessibility::LIBRARY_ISSUES`; a node is ignored only when it, or an ancestor, matches that selector. Some selectors are broader than the library markup they target: the `select-name` exclusion, for example, skips any `<select>` inside a `<fieldset>`, including one the board renders itself. A regression of that same rule inside an excluded selector would not fail the suite, so check new markup there by hand. An exclusion is removed when the library fixes it.
 
 ## What your theme and layout need
 

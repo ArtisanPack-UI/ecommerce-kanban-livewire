@@ -22,15 +22,18 @@ The board's hooks are all named `ap.ecommerceKanbanLivewire.*`, and `ArtisanPack
 use ArtisanPackUI\Ecommerce\Models\KanbanBoard;
 use ArtisanPackUI\Ecommerce\Models\KanbanColumn;
 use ArtisanPackUI\Ecommerce\Models\Order;
+use ArtisanPackUI\EcommerceKanbanLivewire\Support\Authorization;
 
 addFilter( 'ap.ecommerceKanbanLivewire.cardActions', function ( array $actions, Order $order, KanbanColumn $column, KanbanBoard $board ): array {
-    $actions[] = [
-        'key'     => 'reprint',
-        'label'   => __( 'Reprint label' ),
-        'icon'    => 'o-printer',
-        'ability' => 'order.update',
-        'event'   => 'print-labels.reprint',
-    ];
+    // `ability` is checked against the board, so check order-level abilities here, with the order.
+    if ( Authorization::allows( auth()->user(), 'order.update', $order ) ) {
+        $actions[] = [
+            'key'   => 'reprint',
+            'label' => __( 'Reprint label' ),
+            'icon'  => 'o-printer',
+            'event' => 'print-labels.reprint',
+        ];
+    }
 
     return $actions;
 } );
