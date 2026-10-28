@@ -21,6 +21,7 @@ use ArtisanPackUI\Ecommerce\Models\OrderBoardAssignment;
 use ArtisanPackUI\Ecommerce\Services\KanbanBoardService;
 use ArtisanPackUI\EcommerceKanbanLivewire\Queries\ColumnCardsQuery;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\CardActions;
+use ArtisanPackUI\EcommerceKanbanLivewire\Support\Hooks;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\MoveErrors;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\Statuses;
 use Livewire\Attributes\Locked;
@@ -33,10 +34,13 @@ use Livewire\Attributes\On;
  * apply.
  *
  * A drop is optimistic: the card stays where it was dropped while the
- * request runs. When the engine refuses, {@see self::moveCard()} toasts why,
- * skips the re-render, and returns {@see self::REJECTED}, and the client
- * reverts that move. A move into an exit column (cancelled, refunded,
- * failed) changes the whole order's status, so it asks first.
+ * request runs. When it goes through, only its two columns re-render
+ * (`ec-kb-columns-rendered`). When the engine refuses,
+ * {@see self::moveCard()} toasts why, runs
+ * `ap.ecommerceKanbanLivewire.cardMoveFailed`, skips the re-render, and
+ * returns {@see self::REJECTED}, and the client reverts that move. A move
+ * into an exit column (cancelled, refunded, failed) changes the whole
+ * order's status, so it asks first.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceKanbanLivewire
@@ -161,7 +165,7 @@ trait MovesCards
             default                 => null,
         };
 
-        return $this->performMove( $orderId, $toColumnId, $placement );
+        return $this->performMove( $orderId, $toColumnId, $placement, partial: true );
     }
 
     /**
@@ -368,10 +372,11 @@ trait MovesCards
      * @param  int                       $toColumnId  Target column.
      * @param  KanbanCardPlacement|null  $placement   Where it lands.
      * @param  bool                      $confirmed   Whether an exit-column move was confirmed.
+     * @param  bool                      $partial     Re-render only the two columns (a drop) rather than the board.
      *
      * @return string
      */
-    private function performMove( int $orderId, int $toColumnId, ?KanbanCardPlacement $placement, bool $confirmed = false ): string
+    private function performMove( int $orderId, int $toColumnId, ?KanbanCardPlacement $placement, bool $confirmed = false, bool $partial = false ): string
     {
         $this->authorizeKanban( 'kanbanCard.move', $this->board );
 
@@ -380,11 +385,11 @@ trait MovesCards
         $order  = Order::query()->find( $orderId );
 
         if ( null === $column ) {
-            return $this->refuse( 'column-not-on-board', '' );
+            return $this->refuse( 'column-not-on-board', null, $order );
         }
 
         if ( null === $order ) {
-            return $this->refuse( 'not-on-board', $column->displayLabel() );
+            return $this->refuse( 'not-on-board', $column );
         }
 
         $current = $this->cardColumn( $orderId );
@@ -396,15 +401,47 @@ trait MovesCards
             return self::CONFIRM;
         }
 
+        $since = $this->automationFeedbackStart();
+
         try {
             app( KanbanBoardService::class )->move( $order, $column, self::actorId(), null, $placement );
         } catch ( EcommerceException $exception ) {
-            return $this->refuse( MoveErrors::code( $exception ), $column->displayLabel() );
+            return $this->refuse( MoveErrors::code( $exception ), $column, $order );
         }
 
+        $this->automationFeedbackSince( $order, $since );
+
+        if ( $partial ) {
+            $this->renderMovedColumns( array_values( array_unique( array_filter( [ (int) $current?->id, (int) $column->id ] ) ) ) );
+        }
+
+        $this->dispatch( 'ec-kb-card-moved', orderId: $orderId );
         $this->dispatch( 'ec-kb-focus-card', orderId: $orderId );
 
         return self::MOVED;
+    }
+
+    /**
+     * Re-renders just the columns a drop changed: their HTML goes to the
+     * page in `ec-kb-columns-rendered` and the board render is skipped. In
+     * "Edit board" mode the board renders as usual.
+     *
+     * @since 1.0.0
+     *
+     * @param  array<int, int>  $columnIds  The source and target columns.
+     *
+     * @return void
+     */
+    private function renderMovedColumns( array $columnIds ): void
+    {
+        $result = $this->columnsHtml( $columnIds );
+
+        if ( $result['refresh'] ) {
+            return;
+        }
+
+        $this->skipRender();
+        $this->dispatch( 'ec-kb-columns-rendered', columns: $result['columns'] );
     }
 
     /**
@@ -413,15 +450,18 @@ trait MovesCards
      *
      * @since 1.0.0
      *
-     * @param  string  $code    Refusal code.
-     * @param  string  $column  Target column label.
+     * @param  string             $code    Refusal code.
+     * @param  KanbanColumn|null  $column  Target column, when it is on this board.
+     * @param  Order|null         $order   The order, when it exists.
      *
      * @return string
      */
-    private function refuse( string $code, string $column ): string
+    private function refuse( string $code, ?KanbanColumn $column, ?Order $order = null ): string
     {
+        doAction( Hooks::CARD_MOVE_FAILED, $code, $order, $column, $this->board, auth()->user() );
+
         // The toast renders its title as HTML; column labels are admin-entered.
-        $this->error( e( MoveErrors::message( $code, $column ) ) );
+        $this->error( e( MoveErrors::message( $code, $column?->displayLabel() ?? '' ) ) );
         $this->skipRender();
 
         return self::REJECTED;

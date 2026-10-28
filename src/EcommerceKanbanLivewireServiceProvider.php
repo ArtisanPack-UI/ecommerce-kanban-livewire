@@ -19,6 +19,7 @@ use ArtisanPackUI\Ecommerce\Registries\AdminMenuRegistry;
 use ArtisanPackUI\Ecommerce\Registries\SatelliteRegistry;
 use ArtisanPackUI\EcommerceKanbanLivewire\Console\Commands\InstallCommand;
 use ArtisanPackUI\EcommerceKanbanLivewire\Http\Middleware\ThrottleKanbanMutations;
+use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\AutomationsPanel;
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Board;
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\BoardPicker;
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\CardDetail;
@@ -82,6 +83,7 @@ class EcommerceKanbanLivewireServiceProvider extends ServiceProvider
      * @var array<string, class-string>
      */
     public const LIVEWIRE_COMPONENTS = [
+        'artisanpack-ecommerce-kanban-automations'   => AutomationsPanel::class,
         'artisanpack-ecommerce-kanban-board'         => Board::class,
         'artisanpack-ecommerce-kanban-board-picker'  => BoardPicker::class,
         'artisanpack-ecommerce-kanban-card-detail'   => CardDetail::class,

@@ -33,6 +33,17 @@ use Throwable;
 final class CardPresenter
 {
     /**
+     * The card CSS classes filter: `( array $classes, Order $order,
+     * KanbanColumn $column, KanbanBoard $board ): array`. The classes must be
+     * in the host's Tailwind sources.
+     *
+     * @since 1.0.0
+     *
+     * @var string
+     */
+    public const CLASSES_FILTER = 'ap.ecommerceKanbanLivewire.cardClasses';
+
+    /**
      * @since 1.0.0
      *
      * @param  KanbanCardRenderer  $renderer  The engine's widget renderer.
@@ -53,7 +64,7 @@ final class CardPresenter
      * @param  OrderBoardAssignment  $card    The card (its `order` loaded).
      * @param  KanbanColumn          $column  The column it is in.
      *
-     * @return array{order_id: int, column_id: int, number: string, customer: string, placed_at: string, placed_at_iso: string|null, widgets: array<int, array<string, string|null>>, label: string}
+     * @return array{order_id: int, column_id: int, number: string, customer: string, placed_at: string, placed_at_iso: string|null, widgets: array<int, array<string, string|null>>, label: string, classes: array<int, string>}
      */
     public function present( OrderBoardAssignment $card, KanbanColumn $column ): array
     {
@@ -86,6 +97,7 @@ final class CardPresenter
             'placed_at_iso' => $order->placed_at?->toIso8601String(),
             'widgets'       => $widgets,
             'label'         => self::label( $number, $customer, $widgets ),
+            'classes'       => self::classes( $order, $column ),
         ];
     }
 
@@ -105,6 +117,31 @@ final class CardPresenter
         $name    = trim( ( (string) ( $address['first_name'] ?? '' ) ) . ' ' . ( (string) ( $address['last_name'] ?? '' ) ) );
 
         return '' !== $name ? $name : (string) $order->email;
+    }
+
+    /**
+     * Extra CSS classes for a card from the `cardClasses` filter: strings
+     * only, split on whitespace, without repeats.
+     *
+     * @since 1.0.0
+     *
+     * @param  Order         $order   The card's order.
+     * @param  KanbanColumn  $column  The column it is in.
+     *
+     * @return array<int, string>
+     */
+    private static function classes( Order $order, KanbanColumn $column ): array
+    {
+        $classes = applyFilters( self::CLASSES_FILTER, [], $order, $column, $column->board );
+        $result  = [];
+
+        foreach ( is_array( $classes ) ? $classes : [] as $class ) {
+            if ( is_string( $class ) ) {
+                array_push( $result, ...preg_split( '/\s+/', trim( $class ), -1, PREG_SPLIT_NO_EMPTY ) );
+            }
+        }
+
+        return array_values( array_unique( $result ) );
     }
 
     /**

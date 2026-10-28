@@ -3,6 +3,7 @@
 declare( strict_types=1 );
 
 use ArtisanPackUI\Ecommerce\Models\KanbanColumn;
+use ArtisanPackUI\Ecommerce\Models\OrderBoardAssignment;
 use ArtisanPackUI\Ecommerce\Models\OrderSubstatus;
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Board;
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\CardDetail;
@@ -86,13 +87,70 @@ it( 'ignores unknown event types without rendering', function (): void {
     expect( $component->effects['html'] ?? null )->toBeNull();
 } );
 
-it( 'polls the board from the database', function (): void {
-    [ $board, $columns ] = makeBoard( [ 0 ] );
+it( 'polls the board from the database and returns only the columns that changed', function (): void {
+    [ $board, $columns ] = makeBoard( [ 0, 1 ] );
 
     $component = Livewire::test( Board::class, [ 'board' => $board ] )->call( 'loadBoard', [] );
     addCard( $columns[0], [ 'order_number' => 'POLLED-1' ] );
 
-    $component->call( 'poll' )->assertSee( 'Order POLLED-1' );
+    $polled = $component->call( 'poll' );
+    $result = $polled->effects['returns'][0];
+
+    expect( $polled->effects['html'] ?? null )->toBeNull()
+        ->and( $result['refresh'] )->toBeFalse()
+        ->and( array_keys( $result['columns'] ) )->toBe( [ $columns[0]->id ] )
+        ->and( $result['columns'][ $columns[0]->id ] )->toContain( 'Order POLLED-1' )
+        ->and( $result['columns'][ $columns[0]->id ] )->toContain( 'data-ec-kb-column="' . $columns[0]->id . '"' );
+
+    $quiet = $component->call( 'poll' )->effects['returns'][0];
+
+    expect( $quiet )->toBe( [ 'refresh' => false, 'columns' => [] ] );
+
+    $this->travel( 5 )->seconds();
+    OrderBoardAssignment::query()->where( 'substatus_id', $columns[1]->substatus_id )->first()->order->update( [ 'email' => 'changed@example.test' ] );
+
+    expect( array_keys( $component->call( 'poll' )->effects['returns'][0]['columns'] ) )->toBe( [ $columns[1]->id ] );
+} );
+
+it( 'notices a column edit made in the same second on the next poll', function (): void {
+    [ $board, $columns ] = makeBoard( [ 0 ] );
+    $this->freezeSecond();
+
+    $component = Livewire::test( Board::class, [ 'board' => $board ] )->call( 'loadBoard', [] );
+
+    $columns[0]->update( [ 'label_override' => 'Renamed' ] );
+
+    expect( $component->call( 'poll' )->effects['returns'][0] )->toBe( [ 'refresh' => true, 'columns' => [] ] );
+} );
+
+it( 'notices a reorder within a column on the next poll', function (): void {
+    [ $board, $columns ] = makeBoard( [ 0, 0 ] );
+    $first               = addCard( $columns[0], [], [ 'position' => 0 ] );
+    $second              = addCard( $columns[0], [], [ 'position' => 1 ] );
+
+    $component = Livewire::test( Board::class, [ 'board' => $board ] )->call( 'loadBoard', [] );
+
+    $first->update( [ 'position' => 1 ] );
+    $second->update( [ 'position' => 0 ] );
+
+    expect( array_keys( $component->call( 'poll' )->effects['returns'][0]['columns'] ) )->toBe( [ $columns[0]->id ] );
+} );
+
+it( 'asks for a board render when a poll finds the setup changed', function (): void {
+    [ $board, $columns ] = makeBoard( [ 0, 0 ] );
+
+    $component = Livewire::test( Board::class, [ 'board' => $board ] )->call( 'loadBoard', [ $columns[1]->id ] );
+
+    $columns[1]->delete();
+
+    expect( $component->call( 'poll' )->effects['returns'][0] )->toBe( [ 'refresh' => true, 'columns' => [] ] );
+    $component->assertSet( 'collapsed', [] );
+} );
+
+it( 'polls nothing before the board has loaded', function (): void {
+    [ $board ] = makeBoard( [ 1 ] );
+
+    expect( Livewire::test( Board::class, [ 'board' => $board ] )->call( 'poll' )->effects['returns'][0] )->toBe( [ 'refresh' => false, 'columns' => [] ] );
 } );
 
 it( 'needs kanbanBoard.view for every sync action', function (): void {

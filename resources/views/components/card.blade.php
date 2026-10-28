@@ -9,7 +9,8 @@
     flags a move that was undone, in text as well as colour.
 
     `$card` is the board component's card array (see `CardPresenter`, plus
-    `actions` from `CardActions`). On a board the column passes the
+    `actions` from `CardActions`); `classes` from the
+    `ap.ecommerceKanbanLivewire.cardClasses` filter are added to the card. On a board the column passes the
     drag-and-drop attributes (`x-drag-item`, `data-drag-label`) through
     `$attributes`; the explicit `role` keeps livewire-drag-and-drop from
     making the card a button, since it holds the actions menu.
@@ -36,7 +37,7 @@
     $orderId = (int) $card['order_id'];
 @endphp
 <article
-    {{ $attributes->class( [ 'card card-compact border border-base-300 bg-base-100 transition-[opacity,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary' ] ) }}
+    {{ $attributes->class( [ 'card card-compact border border-base-300 bg-base-100 transition-[opacity,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary', ...( $card['classes'] ?? [] ) ] ) }}
     tabindex="0"
     role="group"
     aria-label="{{ $card['label'] }}"

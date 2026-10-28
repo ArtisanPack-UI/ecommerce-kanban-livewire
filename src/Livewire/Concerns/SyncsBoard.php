@@ -19,6 +19,7 @@ use ArtisanPackUI\Ecommerce\Listeners\BroadcastKanbanCardMoved;
 use ArtisanPackUI\Ecommerce\Models\KanbanColumn;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\CardActions;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\CardPresenter;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Renderless;
 
@@ -28,16 +29,20 @@ use Livewire\Attributes\Renderless;
  * When `realtime.enabled` is on, the host has Laravel Echo, and the engine
  * broadcasts (`artisanpack.ecommerce.kanban.broadcast`), the page listens
  * on `private-ecommerce.kanban.board.{board}` for the engine's
- * `kanbanBoardEvent` and calls {@see self::boardEvent()}: card moves,
- * reorders, additions, and removals re-render the board; a config change
- * re-reads the columns too. `card-updated` events go to
- * {@see self::refreshCards()} instead, which re-renders just those cards
- * (and the slide-out, when it shows one of them).
+ * `kanbanBoardEvent`. Card moves, reorders, additions, and removals go to
+ * {@see self::refreshColumns()}, which re-renders just the columns they
+ * name; a config change (or an event without columns) goes to
+ * {@see self::boardEvent()}, which re-renders the board and re-reads the
+ * columns. `card-updated` events go to {@see self::refreshCards()}, which
+ * re-renders just those cards (and the slide-out, when it shows one of
+ * them). Automation broadcasts become toasts for the actor
+ * ({@see ShowsAutomationFeedback}).
  *
  * Without Echo the page calls {@see self::poll()} every `poll_interval`
  * seconds (0 turns polling off), pausing while a card is dragged or the tab
- * is hidden. The client ignores the echo of the user's own in-flight move,
- * and cancels a drag when a remote change moves the dragged card.
+ * is hidden; a poll re-renders only the columns whose cards changed. The
+ * client ignores the echo of the user's own in-flight move, and cancels a
+ * drag when a remote change moves the dragged card.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceKanbanLivewire
@@ -54,6 +59,17 @@ trait SyncsBoard
      * @var int
      */
     public static int $maxCardRefresh = 25;
+
+    /**
+     * Fingerprints from the last load or poll: `shape` (the board's setup)
+     * and `columns` (each column's cards, by column id).
+     *
+     * @since 1.0.0
+     *
+     * @var array{shape?: string, columns?: array<int, string>}
+     */
+    #[Locked]
+    public array $signatures = [];
 
     /**
      * Re-renders the board after a remote change. Unknown event types render
@@ -76,27 +92,76 @@ trait SyncsBoard
         $this->dispatch( 'ec-kb-board-refreshed' );
 
         if ( 'config-changed' === $type ) {
-            unset( $this->board, $this->columns );
-
-            $own             = $this->columns->pluck( 'id' )->map( static fn ( mixed $id ): int => (int) $id )->all();
-            $this->collapsed = array_values( array_intersect( $this->collapsed, $own ) );
-            $this->limits    = array_intersect_key( $this->limits, array_flip( $own ) );
+            $this->reloadColumns();
         }
     }
 
     /**
-     * The polling fallback: re-renders the board from the database and tells
-     * the slide-out, which re-renders when it is open.
+     * Re-renders the columns a remote card event names (its source and
+     * target), without rendering the board. Returns each column's HTML keyed
+     * by column id for the page to morph in, or `refresh: true` when the
+     * board should re-render instead: a named column isn't on the board
+     * (it was just added) or the board is in "Edit board" mode. Tells the
+     * slide-out, which re-renders when it is open.
      *
      * @since 1.0.0
      *
-     * @return void
+     * @param  array<int, mixed>  $columnIds  The columns the event names.
+     *
+     * @return array{refresh: bool, columns: array<int, string>}
      */
-    public function poll(): void
+    #[Renderless]
+    public function refreshColumns( array $columnIds ): array
     {
-        unset( $this->board, $this->columns );
-
         $this->dispatch( 'ec-kb-board-refreshed' );
+
+        $wanted = array_values( array_unique( array_map( 'intval', array_filter( $columnIds, 'is_numeric' ) ) ) );
+        $own    = $this->ownColumnIds( $wanted );
+
+        if ( ! $this->loaded || [] === $wanted ) {
+            return [ 'refresh' => false, 'columns' => [] ];
+        }
+
+        if ( count( $own ) !== count( $wanted ) ) {
+            return [ 'refresh' => true, 'columns' => [] ];
+        }
+
+        return $this->columnsHtml( $own );
+    }
+
+    /**
+     * The polling fallback. Compares each column's cards with the last poll
+     * (one query) and returns only the columns that changed, keyed by column
+     * id, for the page to morph in; `refresh: true` when the board's setup
+     * changed (columns added, removed, reordered, or edited) and the board
+     * should re-render. Nothing renders when nothing changed. Tells the
+     * slide-out, which re-renders when it is open.
+     *
+     * @since 1.0.0
+     *
+     * @return array{refresh: bool, columns: array<int, string>}
+     */
+    #[Renderless]
+    public function poll(): array
+    {
+        $this->dispatch( 'ec-kb-board-refreshed' );
+
+        if ( ! $this->loaded ) {
+            return [ 'refresh' => false, 'columns' => [] ];
+        }
+
+        $previous = $this->signatures;
+
+        $this->reloadColumns();
+        $this->rememberSignatures();
+
+        if ( ( $previous['shape'] ?? null ) !== $this->signatures['shape'] ) {
+            return [ 'refresh' => true, 'columns' => [] ];
+        }
+
+        $changed = array_keys( array_diff_assoc( $this->signatures['columns'] ?? [], $previous['columns'] ?? [] ) );
+
+        return [] === $changed ? [ 'refresh' => false, 'columns' => [] ] : $this->columnsHtml( $changed );
     }
 
     /**
@@ -168,7 +233,7 @@ trait SyncsBoard
     #[On( 'ec-kb-board-changed' )]
     public function boardChanged(): void
     {
-        unset( $this->board, $this->columns );
+        unset( $this->board, $this->columns, $this->automationCounts );
     }
 
     /**
@@ -190,5 +255,23 @@ trait SyncsBoard
             'poll'    => $enabled ? max( 0, (int) config( 'artisanpack.ecommerce-kanban-livewire.realtime.poll_interval', 30 ) ) : 0,
             'user'    => is_numeric( $id ) ? (int) $id : null,
         ];
+    }
+
+    /**
+     * Re-reads the board and its columns, and drops the collapsed and paging
+     * state of columns that are gone.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    private function reloadColumns(): void
+    {
+        unset( $this->board, $this->columns, $this->automationCounts );
+
+        $own             = $this->columns->pluck( 'id' )->map( static fn ( mixed $id ): int => (int) $id )->all();
+        $this->collapsed = array_values( array_intersect( $this->collapsed, $own ) );
+        $this->opened    = array_values( array_intersect( $this->opened, $own ) );
+        $this->limits    = array_intersect_key( $this->limits, array_flip( $own ) );
     }
 }
