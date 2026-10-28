@@ -73,9 +73,12 @@ final class ColumnCardsQuery
     /**
      * A fingerprint of each column's cards on `$board`, keyed by column id,
      * so the polling fallback can tell which columns changed without
-     * rendering them (spec §12). It changes when a card joins, leaves, or
-     * moves within the column, or when one of its orders is updated. One
-     * query; columns without cards get an empty string.
+     * rendering them (spec §12). It hashes each column's cards in display
+     * order (position, then `assigned_at` and id, as the board orders
+     * them), so it changes when a card joins, leaves, or moves within the
+     * column (a reorder included), or when one of its orders is updated.
+     * One query of a few narrow columns per card; columns without cards get
+     * an empty string.
      *
      * @since 1.0.0
      *
@@ -88,38 +91,34 @@ final class ColumnCardsQuery
     {
         $assignments = ( new OrderBoardAssignment() )->getTable();
         $orders      = ( new Order() )->getTable();
+        $sequences   = [];
 
         $rows = OrderBoardAssignment::query()
             ->active()
             ->where( $assignments . '.board_id', $board->id )
             ->join( $orders, $orders . '.id', '=', $assignments . '.order_id' )
-            ->groupBy( $assignments . '.substatus_id' )
-            ->selectRaw( implode( ', ', [
-                $assignments . '.substatus_id as substatus_id',
-                'count(*) as cards',
-                'sum(' . $assignments . '.order_id) as order_sum',
-                'sum(coalesce(' . $assignments . '.position, 0)) as position_sum',
-                'max(' . $assignments . '.moved_at) as last_moved',
-                'max(' . $assignments . '.assigned_at) as last_assigned',
-                'max(' . $orders . '.updated_at) as last_updated',
-            ] ) )
+            ->orderBy( $assignments . '.position' )
+            ->orderBy( $assignments . '.assigned_at' )
+            ->orderBy( $assignments . '.id' )
             ->toBase()
-            ->get()
-            ->keyBy( 'substatus_id' );
+            ->get( [
+                $assignments . '.substatus_id as substatus_id',
+                $assignments . '.order_id as order_id',
+                $assignments . '.position as position',
+                $assignments . '.moved_at as moved_at',
+                $orders . '.updated_at as order_updated_at',
+            ] );
+
+        foreach ( $rows as $row ) {
+            $sequences[ (int) $row->substatus_id ][] = implode( ':', [ $row->order_id, $row->position, $row->moved_at, $row->order_updated_at ] );
+        }
 
         $signatures = [];
 
         foreach ( $columns as $column ) {
-            $row = $rows->get( $column->substatus_id );
+            $sequence = $sequences[ (int) $column->substatus_id ] ?? [];
 
-            $signatures[ (int) $column->id ] = null === $row ? '' : md5( implode( '|', [
-                $row->cards,
-                $row->order_sum,
-                $row->position_sum,
-                $row->last_moved,
-                $row->last_assigned,
-                $row->last_updated,
-            ] ) );
+            $signatures[ (int) $column->id ] = [] === $sequence ? '' : md5( implode( '|', $sequence ) );
         }
 
         return $signatures;

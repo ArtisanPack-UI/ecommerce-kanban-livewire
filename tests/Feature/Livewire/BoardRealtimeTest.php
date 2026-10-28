@@ -112,6 +112,19 @@ it( 'polls the board from the database and returns only the columns that changed
     expect( array_keys( $component->call( 'poll' )->effects['returns'][0]['columns'] ) )->toBe( [ $columns[1]->id ] );
 } );
 
+it( 'notices a reorder within a column on the next poll', function (): void {
+    [ $board, $columns ] = makeBoard( [ 0, 0 ] );
+    $first               = addCard( $columns[0], [], [ 'position' => 0 ] );
+    $second              = addCard( $columns[0], [], [ 'position' => 1 ] );
+
+    $component = Livewire::test( Board::class, [ 'board' => $board ] )->call( 'loadBoard', [] );
+
+    $first->update( [ 'position' => 1 ] );
+    $second->update( [ 'position' => 0 ] );
+
+    expect( array_keys( $component->call( 'poll' )->effects['returns'][0]['columns'] ) )->toBe( [ $columns[0]->id ] );
+} );
+
 it( 'asks for a board render when a poll finds the setup changed', function (): void {
     [ $board, $columns ] = makeBoard( [ 0, 0 ] );
 
