@@ -14,6 +14,12 @@
     go to the board's `drop()` / `end()` (see the board view), and
     `$dragMessages` are the translated announcement templates.
 
+    When `$editing` (the board's "Edit board" mode), the header carries the
+    column's edit controls: move left / right (`$first` / `$last` disable
+    them at the ends), edit, card widgets, and remove. The board passes the
+    outer drag context's item attributes through `$attributes`, so the
+    column itself can be dragged to a new place.
+
     @package    ArtisanPack_UI
     @subpackage EcommerceKanbanLivewire
 
@@ -24,6 +30,9 @@
     'loaded'       => true,
     'draggable'    => false,
     'dragMessages' => [],
+    'editing'      => false,
+    'first'        => false,
+    'last'         => false,
 ] )
 @php
     $headingId = 'ec-kb-column-' . $column['id'] . '-title';
@@ -69,6 +78,53 @@
         @endif
     </header>
 
+    @if ( $editing )
+        <div @class( [ 'flex flex-wrap items-center gap-1 border-b border-base-300 px-3 pb-2', 'flex-col' => $collapsed ] ) role="toolbar" aria-label="{{ __( 'Edit :column', [ 'column' => $column['label'] ] ) }}" data-ec-kb-column-tools>
+            <x-artisanpack-button
+                variant="ghost" size="sm" class="btn-square gap-0"
+                icon="o-arrow-left"
+                wire:click="moveColumn( {{ $column['id'] }}, -1 )"
+                :disabled="$first"
+                :tooltip="__( 'Move left' )"
+                aria-label="{{ __( 'Move :column left', [ 'column' => $column['label'] ] ) }}"
+                data-ec-kb-move-column="left"
+            />
+            <x-artisanpack-button
+                variant="ghost" size="sm" class="btn-square gap-0"
+                icon="o-arrow-right"
+                wire:click="moveColumn( {{ $column['id'] }}, 1 )"
+                :disabled="$last"
+                :tooltip="__( 'Move right' )"
+                aria-label="{{ __( 'Move :column right', [ 'column' => $column['label'] ] ) }}"
+                data-ec-kb-move-column="right"
+            />
+            <x-artisanpack-button
+                variant="ghost" size="sm" class="btn-square gap-0"
+                icon="o-pencil-square"
+                wire:click="editColumn( {{ $column['id'] }} )"
+                :tooltip="__( 'Edit column' )"
+                aria-label="{{ __( 'Edit :column', [ 'column' => $column['label'] ] ) }}"
+                data-ec-kb-edit-column
+            />
+            <x-artisanpack-button
+                variant="ghost" size="sm" class="btn-square gap-0"
+                icon="o-squares-plus"
+                x-on:click="$dispatch( 'ec-kb-edit-widgets', { columnId: {{ $column['id'] }} } )"
+                :tooltip="__( 'Card widgets' )"
+                aria-label="{{ __( 'Card widgets for :column', [ 'column' => $column['label'] ] ) }}"
+                data-ec-kb-column-widgets
+            />
+            <x-artisanpack-button
+                variant="ghost" size="sm" class="btn-square gap-0 text-error"
+                icon="o-trash"
+                wire:click="confirmDeleteColumn( {{ $column['id'] }} )"
+                :tooltip="__( 'Remove column' )"
+                aria-label="{{ __( 'Remove :column', [ 'column' => $column['label'] ] ) }}"
+                data-ec-kb-delete-column
+            />
+        </div>
+    @endif
+
     <div id="{{ $listId }}" @class( [ 'flex flex-col gap-2 px-3 pb-3', 'hidden' => $collapsed ] )>
         @if ( ! $collapsed )
             @if ( ! $loaded )
@@ -91,21 +147,14 @@
                         data-ec-kb-total="{{ (int) $column['count'] }}"
                         data-ec-kb-limit="{{ $column['wip_limit'] ?? '' }}"
                         data-ec-kb-full="{{ __( ':column is at its WIP limit.', [ 'column' => $column['label'] ] ) }}"
+                        x-on:drag:start="dragStarted( $event, $el )"
+                        x-on:drag:cancel="dragStopped( $event, $el )"
                         x-on:drag:drop="drop( $event, $el )"
                         x-on:drag:end="end( $event, $el )"
                     @endif
                 >
                     @foreach ( $column['cards'] as $card )
-                        @if ( $draggable )
-                            <x-artisanpack-ec-kb-card
-                                :card="$card"
-                                wire:key="card-{{ $card['order_id'] }}"
-                                x-drag-item="{{ (int) $card['order_id'] }}"
-                                data-drag-label="{{ __( 'Order :number', [ 'number' => $card['number'] ] ) }}"
-                            />
-                        @else
-                            <x-artisanpack-ec-kb-card :card="$card" wire:key="card-{{ $card['order_id'] }}" />
-                        @endif
+                        @include( 'ecommerce-kanban::partials.card-item', [ 'card' => $card, 'draggable' => $draggable ] )
                     @endforeach
 
                     @if ( [] === $column['cards'] )

@@ -17,8 +17,12 @@ use ArtisanPack\LivewireUiComponents\Traits\Toast;
 use ArtisanPackUI\Ecommerce\Models\KanbanBoard;
 use ArtisanPackUI\Ecommerce\Models\KanbanColumn;
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Concerns\AuthorizesKanban;
+use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Concerns\EditsColumns;
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Concerns\FiltersCards;
+use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Concerns\ManagesAssignments;
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Concerns\MovesCards;
+use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Concerns\SyncsBoard;
+use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Concerns\WithActionToken;
 use ArtisanPackUI\EcommerceKanbanLivewire\Queries\BoardsQuery;
 use ArtisanPackUI\EcommerceKanbanLivewire\Queries\ColumnCardsQuery;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\Authorization;
@@ -46,7 +50,11 @@ use Livewire\Component;
  * Cards move by drag-and-drop (columns are connected
  * `livewire-drag-and-drop` contexts) or the "Move to…" dialog
  * ({@see MovesCards}), and the filter bar narrows them ({@see FiltersCards}).
- * `?card={order}` opens the card slide-out ({@see CardDetail}).
+ * `?card={order}` opens the card slide-out ({@see CardDetail}). Orders are
+ * added and removed by hand ({@see ManagesAssignments}), "Edit board" mode
+ * edits the columns ({@see EditsColumns}) and opens the widget picker
+ * ({@see WidgetPicker}), and changes made elsewhere arrive over Echo or
+ * polling ({@see SyncsBoard}).
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceKanbanLivewire
@@ -56,9 +64,13 @@ use Livewire\Component;
 class Board extends Component
 {
     use AuthorizesKanban;
+    use EditsColumns;
     use FiltersCards;
+    use ManagesAssignments;
     use MovesCards;
+    use SyncsBoard;
     use Toast;
+    use WithActionToken;
 
     /**
      * The board's id.
@@ -267,12 +279,29 @@ class Board extends Component
             'boards'       => BoardsQuery::visibleTo( $user ),
             'pickerUrl'    => BoardUrls::picker(),
             'storageKey'   => 'ecommerce-kanban.collapsed.' . $board->id,
-            'canMove'      => Authorization::allows( $user, 'kanbanCard.move', $board ),
+            'canMove'      => $this->cardsDraggable(),
+            'canEdit'      => Authorization::allows( $user, 'kanbanBoard.update', $board ),
             'dragMessages' => self::dragMessages(),
+            'realtime'     => $this->realtimeData(),
             ...$this->filterBarData(),
             ...$this->moveDialogData( $counts ),
             ...$this->confirmMoveData(),
+            ...$this->assignmentData(),
+            ...$this->editColumnsData( $counts ),
         ] );
+    }
+
+    /**
+     * Whether the viewer may drag cards: they hold `kanbanCard.move` and the
+     * board isn't in edit mode (where headers drag instead).
+     *
+     * @since 1.0.0
+     *
+     * @return bool
+     */
+    public function cardsDraggable(): bool
+    {
+        return ! $this->editing && Authorization::allows( auth()->user(), 'kanbanCard.move', $this->board );
     }
 
     /**
