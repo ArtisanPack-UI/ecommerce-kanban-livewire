@@ -62,6 +62,30 @@ it( 'does not count reads', function (): void {
     }
 } );
 
+it( 'does not count polls, lazy column loads, real-time refreshes, or automation feedback', function ( array $calls, array $updates ): void {
+    $user = makeUser();
+
+    foreach ( range( 1, 5 ) as $attempt ) {
+        expect( throttle( kanbanUpdate( $user, $calls, $updates ) ) )->toBe( 200 );
+    }
+} )->with( [
+    'poll'                => [ [ 'poll' ], [] ],
+    'poll with live flag' => [ [ 'poll' ], [ 'liveFeedback' => true ] ],
+    'lazy columns'        => [ [ 'loadColumns' ], [] ],
+    'column refresh'      => [ [ 'refreshColumns' ], [] ],
+    'card refresh'        => [ [ 'refreshCards' ], [] ],
+    'board event'         => [ [ 'boardEvent' ], [] ],
+    'automation feedback' => [ [ 'automationFeedback' ], [] ],
+] );
+
+it( 'still counts a read call that carries a filter change', function (): void {
+    $user = makeUser();
+
+    expect( throttle( kanbanUpdate( $user, [ 'poll' ], [ 'liveFeedback' => true, 'search' => 'x' ] ) ) )->toBe( 200 )
+        ->and( throttle( kanbanUpdate( $user, [ 'poll' ], [ 'search' => 'y' ] ) ) )->toBe( 200 )
+        ->and( throttle( kanbanUpdate( $user, [ 'poll' ], [ 'search' => 'z' ] ) ) )->toBe( 429 );
+} );
+
 it( 'ignores page loads', function (): void {
     $user    = makeUser();
     $request = kanbanUpdate( $user, [ 'moveCard' ] );

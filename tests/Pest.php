@@ -18,11 +18,24 @@ use Tests\Fixtures\User;
 | Feature tests boot the package, the engine, and Livewire in Testbench.
 | Unit tests run without a Laravel application.
 |
+| Browser tests (Pest 4 browser plugin) run the board in a real browser
+| against a seeded demo board, with the asset bundle built by `npm run
+| build:browser`. CI runs them in their own job; the unit / feature job
+| runs only the Unit and Feature suites, since loading the Browser suite
+| starts Playwright.
+|
 */
 
 pest()->extend( Tests\TestCase::class )
     ->use( RefreshDatabase::class )
     ->in( 'Feature' );
+
+pest()->extend( Tests\BrowserTestCase::class )
+    ->use( RefreshDatabase::class )
+    ->group( 'browser' )
+    ->in( 'Browser' );
+
+pest()->browser()->timeout( 10_000 );
 
 /*
 |--------------------------------------------------------------------------

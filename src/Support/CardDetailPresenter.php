@@ -175,17 +175,20 @@ final class CardDetailPresenter
         $value = static fn ( string $key ): string => is_scalar( $payload[ $key ] ?? null ) ? (string) $payload[ $key ] : '';
 
         return match ( $type ) {
-            'order.placed'              => __( 'Order placed' ),
-            'order.status_changed'      => __( 'Status changed from :from to :to', [ 'from' => Statuses::label( 'system', $value( 'from' ) ), 'to' => Statuses::label( 'system', $value( 'to' ) ) ] ),
-            'order.substatus_changed'   => __( 'Moved to :column', [ 'column' => '' !== $value( 'to_label' ) ? $value( 'to_label' ) : __( 'another column' ) ] ),
-            'order.cancelled'           => __( 'Order cancelled' ),
-            'order.refunded'            => __( 'Order refunded' ),
-            'order.edited'              => __( 'Order edited' ),
-            'note.added'                => __( 'Note added' ),
-            'payment.captured'          => __( 'Payment captured' ),
-            'kanban.assignment_added'   => __( 'Added to board :board', [ 'board' => $value( 'board_key' ) ] ),
-            'kanban.assignment_removed' => __( 'Removed from board :board', [ 'board' => $value( 'board_key' ) ] ),
-            default                     => Str::headline( str_replace( '.', ' ', $type ) ),
+            'order.placed'               => __( 'Order placed' ),
+            'order.status_changed'       => __( 'Status changed from :from to :to', [ 'from' => Statuses::label( 'system', $value( 'from' ) ), 'to' => Statuses::label( 'system', $value( 'to' ) ) ] ),
+            'order.substatus_changed'    => __( 'Moved to :column', [ 'column' => '' !== $value( 'to_label' ) ? $value( 'to_label' ) : __( 'another column' ) ] ),
+            'order.cancelled'            => __( 'Order cancelled' ),
+            'order.refunded'             => __( 'Order refunded' ),
+            'order.edited'               => __( 'Order edited' ),
+            'note.added'                 => __( 'Note added' ),
+            'payment.captured'           => __( 'Payment captured' ),
+            'kanban.assignment_added'    => __( 'Added to board :board', [ 'board' => $value( 'board_key' ) ] ),
+            'kanban.assignment_removed'  => __( 'Removed from board :board', [ 'board' => $value( 'board_key' ) ] ),
+            'kanban.automation_fired'    => __( 'Automation ran: :trigger', [ 'trigger' => Automations::triggerLabel( $value( 'trigger_key' ) ) ] ),
+            'kanban.automation_failed'   => __( 'Automation failed: :trigger', [ 'trigger' => Automations::triggerLabel( $value( 'trigger_key' ) ) ] ),
+            'kanban.order_field_updated' => __( 'Order field :field updated', [ 'field' => $value( 'field' ) ] ),
+            default                      => Str::headline( str_replace( '.', ' ', $type ) ),
         };
     }
 }

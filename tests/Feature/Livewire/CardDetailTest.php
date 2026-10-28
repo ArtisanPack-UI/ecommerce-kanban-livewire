@@ -9,6 +9,7 @@ use ArtisanPackUI\Ecommerce\Models\OrderTimelineEntry;
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Board;
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\CardDetail;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\CardActions;
+use ArtisanPackUI\EcommerceKanbanLivewire\Support\CardDetailPresenter;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
@@ -85,6 +86,16 @@ it( 'opens on the card menu event with the order summary', function (): void {
         ->assertSee( [ 'Paid', 'Unfulfilled' ] )
         ->assertSee( 'Shipping: Awaiting label' )
         ->assertSee( [ 'Moved to Printing', 'Order placed' ] );
+} );
+
+it( 'shows the customer in the body, not as the drawer subtitle', function (): void {
+    [ $board, $order ] = detailOrder();
+
+    // The library's drawer prints a subtitle in text-base-content/50, below 4.5:1.
+    Livewire::test( CardDetail::class, [ 'boardId' => $board->id ] )
+        ->dispatch( CardActions::OPEN_EVENT, orderId: $order->id )
+        ->assertSeeInOrder( [ 'Customer', 'Jane Doe', 'jane@example.test' ] )
+        ->assertDontSeeHtml( 'text-base-content/50' );
 } );
 
 it( 'opens from ?card= on the board URL', function (): void {
@@ -196,3 +207,11 @@ it( 're-checks board access on every update', function (): void {
 
     $component->call( 'show', $order->id )->assertForbidden();
 } );
+
+it( 'describes the engine automation timeline entries in words', function ( string $type, array $payload, string $text ): void {
+    expect( CardDetailPresenter::describe( $type, $payload ) )->toBe( $text );
+} )->with( [
+    'fired'         => [ 'kanban.automation_fired', [ 'trigger_key' => 'update-order-field' ], 'Automation ran: Update an order field' ],
+    'failed'        => [ 'kanban.automation_failed', [ 'trigger_key' => 'gone' ], 'Automation failed: Unavailable trigger (gone)' ],
+    'field updated' => [ 'kanban.order_field_updated', [ 'field' => 'meta.priority' ], 'Order field meta.priority updated' ],
+] );

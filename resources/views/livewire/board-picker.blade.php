@@ -28,7 +28,7 @@
             @foreach ( $boards as $board )
                 @php( $boardUrl = BoardUrls::show( $board ) )
                 <li wire:key="board-{{ $board->id }}">
-                    <x-artisanpack-card @class( [ 'h-full', 'relative transition-shadow hover:shadow-md' => null !== $boardUrl ] ) data-ec-kb-board="{{ $board->key }}">
+                    <x-artisanpack-card @class( [ 'h-full', 'relative transition-shadow motion-reduce:transition-none hover:shadow-md' => null !== $boardUrl ] ) data-ec-kb-board="{{ $board->key }}">
                         <div class="flex flex-col gap-2">
                             <div class="flex items-start justify-between gap-2">
                                 <h2 class="text-lg font-semibold">

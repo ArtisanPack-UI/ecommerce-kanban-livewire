@@ -2,8 +2,9 @@
     `x-artisanpack-ec-kb-card`: one card (spec §7.2, §8). Order number,
     customer, placed date, then the widgets in order, with the actions menu.
 
-    The card is focusable and named by a summary ("Order 1042, Jane Doe,
-    3 items, $124.00"). While a move is in flight the board dispatches
+    The card is a focusable group named by a summary ("Order 1042, Jane
+    Doe, 3 items, $124.00"). It is a `div`: `role="group"` isn't allowed on
+    an `article`. While a move is in flight the board dispatches
     `ec-kb-card-state` on `window` with `{ orderId, state }`, where `state`
     is `moving`, `reverting`, or `idle`; the card dims while moving and
     flags a move that was undone, in text as well as colour.
@@ -23,7 +24,8 @@
 
     Only opacity and the ring transition: livewire-drag-and-drop moves its
     floating copy of the card with `transform`, and a transform transition
-    would make that copy trail the pointer.
+    would make that copy trail the pointer. Neither transitions nor pulses
+    when the user asks for reduced motion.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceKanbanLivewire
@@ -36,15 +38,15 @@
 @php
     $orderId = (int) $card['order_id'];
 @endphp
-<article
-    {{ $attributes->class( [ 'card card-compact border border-base-300 bg-base-100 transition-[opacity,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary', ...( $card['classes'] ?? [] ) ] ) }}
+<div
+    {{ $attributes->class( [ 'card card-compact border border-base-300 bg-base-100 transition-[opacity,box-shadow] motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary', ...( $card['classes'] ?? [] ) ] ) }}
     tabindex="0"
     role="group"
     aria-label="{{ $card['label'] }}"
     data-ec-kb-card="{{ $orderId }}"
     x-data="{ state: 'idle' }"
     x-on:ec-kb-card-state.window="if ( Number( $event.detail?.orderId ) === {{ $orderId }} ) { state = $event.detail.state ?? 'idle' }"
-    x-bind:class="{ 'opacity-60 animate-pulse': 'moving' === state, 'ring-2 ring-error': 'reverting' === state }"
+    x-bind:class="{ 'opacity-60 animate-pulse motion-reduce:animate-none': 'moving' === state, 'ring-2 ring-error': 'reverting' === state }"
     x-bind:aria-busy="'moving' === state ? 'true' : 'false'"
     x-bind:data-ec-kb-state="state"
 >
@@ -106,4 +108,4 @@
             <span x-show="'reverting' === state" class="text-error">{{ __( 'Move undone' ) }}</span>
         </p>
     </div>
-</article>
+</div>

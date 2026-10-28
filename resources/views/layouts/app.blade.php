@@ -22,7 +22,8 @@
     $ecommerceKanbanPickerUrl = \ArtisanPackUI\EcommerceKanbanLivewire\Support\BoardUrls::picker();
 @endphp
 <!DOCTYPE html>
-<html lang="{{ str_replace( '_', '-', app()->getLocale() ) }}">
+{{-- The scroll padding keeps a focused control from scrolling under the sticky header (WCAG 2.2 SC 2.4.11). It is inline because the theme toggle replaces the root's classes. --}}
+<html lang="{{ str_replace( '_', '-', app()->getLocale() ) }}" style="scroll-padding-top: 5rem">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -37,8 +38,9 @@
         {{ __( 'Skip to content' ) }}
     </a>
 
-    <header>
-        <x-artisanpack-nav sticky full-width>
+    {{-- The header sticks, not the nav: a sticky element can't leave its parent, and the header is only as tall as the nav. --}}
+    <header class="sticky top-0 z-30">
+        <x-artisanpack-nav full-width>
             <x-slot:brand>
                 @if ( null !== $ecommerceKanbanPickerUrl )
                     <a href="{{ $ecommerceKanbanPickerUrl }}" class="font-bold">{{ __( 'Kanban' ) }}</a>

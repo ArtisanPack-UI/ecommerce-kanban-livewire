@@ -235,3 +235,19 @@ it( 'only offers customers and products from orders on this board', function ():
         ->test( Board::class, [ 'board' => $board ] )
         ->assertDontSee( 'Other mug' );
 } );
+
+it( 'labels the date inputs, hides the filters toggle on wide screens, and replaces the tags control when its options change', function (): void {
+    [ $board ] = filterBoard();
+
+    $component = Livewire::test( Board::class, [ 'board' => $board ] );
+    $before    = $component->html();
+    $after     = $component->call( 'loadBoard', [] )->html();
+
+    $tagsKey = static fn ( string $html ): string => preg_match( '/wire:key="(ec-kb-filters-tags-[0-9a-f]{32})"/', $html, $matches ) ? $matches[1] : '';
+
+    expect( $after )->toContain( 'aria-label="Placed from"' )
+        ->and( $after )->toContain( 'aria-label="Placed to"' )
+        ->and( $after )->toMatch( '/<div class="md:hidden">\s*(<!--\[if BLOCK\]><!\[endif\]-->)?\s*<button[^>]*data-ec-kb-filters-toggle/' )
+        ->and( $tagsKey( $before ) )->not->toBe( '' )
+        ->and( $tagsKey( $after ) )->not->toBe( $tagsKey( $before ) );
+} );

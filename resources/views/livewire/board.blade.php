@@ -545,20 +545,23 @@
                 />
             @endif
 
-            <x-artisanpack-button
-                class="btn-sm md:hidden"
-                icon="o-funnel"
-                x-on:click="$dispatch( 'ec-kb-open-filters' )"
-                data-ec-kb-filters-toggle
-            >
-                {{ __( 'Filters' ) }}
-                @if ( $activeFilters > 0 )
-                    <span class="badge badge-sm badge-primary" data-ec-kb-filter-count>
-                        <span aria-hidden="true">{{ $activeFilters }}</span>
-                        <span class="sr-only">{{ trans_choice( ':count filter active|:count filters active', $activeFilters, [ 'count' => $activeFilters ] ) }}</span>
-                    </span>
-                @endif
-            </x-artisanpack-button>
+            {{-- Wrapped: the button's own `!inline-flex` would beat `md:hidden` on it. --}}
+            <div class="md:hidden">
+                <x-artisanpack-button
+                    class="btn-sm"
+                    icon="o-funnel"
+                    x-on:click="$dispatch( 'ec-kb-open-filters' )"
+                    data-ec-kb-filters-toggle
+                >
+                    {{ __( 'Filters' ) }}
+                    @if ( $activeFilters > 0 )
+                        <span class="badge badge-sm badge-primary" data-ec-kb-filter-count>
+                            <span aria-hidden="true">{{ $activeFilters }}</span>
+                            <span class="sr-only">{{ trans_choice( ':count filter active|:count filters active', $activeFilters, [ 'count' => $activeFilters ] ) }}</span>
+                        </span>
+                    @endif
+                </x-artisanpack-button>
+            </div>
         </div>
 
         @if ( filled( $board->description ) )

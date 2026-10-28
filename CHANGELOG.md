@@ -24,6 +24,9 @@
 - Automation feedback after a move (#18): one toast per move naming the automations that ran, or an error naming each failed trigger with a link to the order's slide-out. Read from the timeline entries the move wrote, or from the engine's `automation-fired` / `automation-failed` broadcasts while the board is live; only the person who moved the card sees it.
 - Extension surface (#19), listed in `Support\Hooks`: the new `ap.ecommerceKanbanLivewire.boardToolbar` (header buttons) and `ap.ecommerceKanbanLivewire.cardClasses` (card CSS classes) filters, and the `ap.ecommerceKanbanLivewire.boardRendered` and `ap.ecommerceKanbanLivewire.cardMoveFailed` actions.
 - Spanish, French, and German translations for every new string, and tests that every catalogue has every key and placeholder and that plural strings resolve for 0, 1, and many (#21).
+- Browser test suite (#23): a workbench (`package.json`, `vite.config.js`, `npm run build:browser`, `composer test:browser`) with a seeded demo board; journeys for dragging a card between columns with the automation firing, reordering within a column, keyboard moves, "Move to…", the exit-column confirmation, WIP refusals, filtering by tag and date, `?card=`, reordering columns in edit mode, and a move made in another browser; axe checks on every screen and dialog (light, dark, phone); and a CI `browser` job for Livewire 3 and 4.
+- Documentation in `docs/` and a new README with screenshots (#24).
+- The card slide-out describes the engine's automation timeline entries ("Automation ran: …", "Automation failed: …", "Order field … updated") in every catalogue.
 
 ### Changed
 
@@ -31,3 +34,5 @@
 - Cards are read through the engine's `KanbanCardQuery`, in their manual order.
 - A card action may have both a `url` and an `event`: a plain click dispatches the event and a modified click follows the link. "Open" now opens the slide-out in place.
 - Large boards (#20): columns load as they scroll into view (collapsed columns never query), a drop re-renders only its two columns, real-time card events only the columns they name, and polls only the columns whose cards changed. Board load, column paging, card re-renders, polls, and the slide-out have fixed query budgets; a 1,000-card board loads in 24 queries.
+- Accessibility fixes from the WCAG 2.2 AA audit (#22): cards are `div` groups (not `article`); columns have an explicit `region` role so a draggable column in edit mode isn't a button; neutral widget badges use an outline in the text color (dark-mode contrast); the slide-out drops its low-contrast subtitle; the date filters are labelled; the card pulse and transitions stop under reduced motion; the standalone layout's header now sticks and the page has scroll padding so focus isn't hidden under it; the "Filters" toggle only shows on small screens; and the tags filter is replaced rather than morphed when its options load, so tags can be picked (livewire-ui-components#135).
+- Polls, lazy column loads, real-time refreshes, and automation feedback no longer count against the `ecommerce.admin.mutate` limit.
