@@ -112,6 +112,17 @@ it( 'polls the board from the database and returns only the columns that changed
     expect( array_keys( $component->call( 'poll' )->effects['returns'][0]['columns'] ) )->toBe( [ $columns[1]->id ] );
 } );
 
+it( 'notices a column edit made in the same second on the next poll', function (): void {
+    [ $board, $columns ] = makeBoard( [ 0 ] );
+    $this->freezeSecond();
+
+    $component = Livewire::test( Board::class, [ 'board' => $board ] )->call( 'loadBoard', [] );
+
+    $columns[0]->update( [ 'label_override' => 'Renamed' ] );
+
+    expect( $component->call( 'poll' )->effects['returns'][0] )->toBe( [ 'refresh' => true, 'columns' => [] ] );
+} );
+
 it( 'notices a reorder within a column on the next poll', function (): void {
     [ $board, $columns ] = makeBoard( [ 0, 0 ] );
     $first               = addCard( $columns[0], [], [ 'position' => 0 ] );

@@ -273,8 +273,11 @@ trait RendersColumns
     }
 
     /**
-     * A fingerprint of the board's setup: the board, its columns in order,
-     * and the automation badges. When it changes, the whole board renders.
+     * A fingerprint of the board's setup: the board's stored attributes,
+     * each column's (in order) with its sub-status, and the automation
+     * badges. When it changes, the whole board renders. Stored values are
+     * used rather than `updated_at`, whose second precision can hide two
+     * edits made in the same second.
      *
      * @since 1.0.0
      *
@@ -282,12 +285,15 @@ trait RendersColumns
      */
     private function shapeSignature(): string
     {
-        $columns = $this->columns->map( static fn ( KanbanColumn $column ): string => $column->id . ':' . $column->position . ':' . $column->updated_at?->getTimestamp() )->all();
+        $columns = $this->columns->map( static fn ( KanbanColumn $column ): array => [
+            'column'    => $column->getAttributes(),
+            'substatus' => $column->substatus?->getAttributes(),
+        ] )->all();
 
         return md5( (string) json_encode( [
-            $this->board->updated_at?->getTimestamp(),
-            $columns,
-            $this->automationCounts,
+            'board'       => $this->board->getAttributes(),
+            'columns'     => $columns,
+            'automations' => $this->automationCounts,
         ] ) );
     }
 

@@ -188,6 +188,26 @@ it( 'deletes an automation once per confirmation token', function (): void {
         ->and( json_encode( $replayed->effects['xjs'] ?? [] ) )->toContain( 'This action has expired.' );
 } );
 
+it( 'refuses a second use of the same token for the same automation', function (): void {
+    [ $board, , $automations ] = automatedBoard();
+
+    // Keep the automation so the replay reaches the token check.
+    KanbanAutomation::deleting( static fn (): bool => false );
+
+    $component = Livewire::test( AutomationsPanel::class, [ 'boardId' => $board->id ] )
+        ->call( 'openFor', null )
+        ->call( 'confirmDelete', $automations['email']->id );
+
+    $token = $component->viewData( 'deleting' )['token'];
+
+    $component->call( 'deleteAutomation', $token );
+
+    $replayed = $component->call( 'confirmDelete', $automations['email']->id )->call( 'deleteAutomation', $token );
+
+    expect( $automations['email']->fresh() )->not->toBeNull()
+        ->and( json_encode( $replayed->effects['xjs'] ?? [] ) )->toContain( 'That action was already submitted.' );
+} );
+
 it( 'does nothing when deleting without a confirmation', function (): void {
     [ $board, , $automations ] = automatedBoard();
 
