@@ -154,3 +154,37 @@ it( 'refreshes the slide-out only when it shows the changed card', function (): 
 
     $detail->call( 'cardUpdated', $card->order_id )->assertSee( 'Paid' );
 } );
+
+it( 'refreshes an open slide-out after a poll or board event, and skips a closed one', function (): void {
+    [ $board, $columns ] = makeBoard( [ 0 ] );
+    $card                = addCard( $columns[0], [ 'payment_status' => 'pending' ] );
+
+    Livewire::test( Board::class, [ 'board' => $board ] )->call( 'poll' )->assertDispatched( 'ec-kb-board-refreshed' );
+    Livewire::test( Board::class, [ 'board' => $board ] )->call( 'boardEvent', 'card-moved' )->assertDispatched( 'ec-kb-board-refreshed' );
+
+    $closed = Livewire::test( CardDetail::class, [ 'boardId' => $board->id ] )->call( 'boardRefreshed' );
+    expect( $closed->effects['html'] ?? null )->toBeNull();
+
+    $detail = Livewire::test( CardDetail::class, [ 'boardId' => $board->id ] )->call( 'show', $card->order_id );
+    $card->order->update( [ 'payment_status' => 'paid' ] );
+    $detail->call( 'boardRefreshed' )->assertSee( 'Paid' );
+} );
+
+it( 'applies the card-query hook to targeted refreshes', function (): void {
+    [ $board, $columns ] = makeBoard( [ 0 ] );
+    $visible             = addCard( $columns[0] );
+    $hidden              = addCard( $columns[0] );
+
+    addFilter( 'ap.ecommerce.kanban.cardQuery', function ( $query ) use ( $hidden ) {
+        $query->where( $query->qualifyColumn( 'order_id' ), '!=', $hidden->order_id );
+
+        return $query;
+    } );
+
+    $result = Livewire::test( Board::class, [ 'board' => $board ] )
+        ->call( 'loadBoard', [] )
+        ->call( 'refreshCards', [ $visible->order_id, $hidden->order_id ] )
+        ->effects['returns'][0];
+
+    expect( array_keys( $result['cards'] ) )->toBe( [ $visible->order_id ] );
+} );

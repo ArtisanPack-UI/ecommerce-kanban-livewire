@@ -154,11 +154,11 @@ it( 'removes a card after confirmation, once per token', function (): void {
 
     // A replayed token changes nothing.
     addCardFor( $card->order, $columns[0] );
-    $component->set( 'confirmingRemove', true );
-    ( fn () => $this->removingOrderId = $card->order_id )->call( $component->instance() );
-    $component->call( 'removeCard', $token );
+    $component->call( 'confirmRemoveCard', $card->order_id )->assertSet( 'removingOrderId', $card->order_id );
+    $replayed = $component->call( 'removeCard', $token );
 
-    expect( onBoardIn( $card->order, $board ) )->not->toBeNull();
+    expect( onBoardIn( $card->order, $board ) )->not->toBeNull()
+        ->and( json_encode( $replayed->effects['xjs'] ?? [] ) )->toContain( 'That action was already submitted.' );
 } );
 
 it( 'cancels a removal and refuses one for a card not on the board or without the ability', function (): void {

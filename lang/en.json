@@ -204,6 +204,7 @@
     "Tax": "Tax",
     "That action was already submitted. Nothing was changed the second time.": "That action was already submitted. Nothing was changed the second time.",
     "That column is not on this board.": "That column is not on this board.",
+    "That column no longer exists, so its widgets were not saved.": "That column no longer exists, so its widgets were not saved.",
     "That order no longer exists.": "That order no longer exists.",
     "The card could not be moved.": "The card could not be moved.",
     "The columns changed while you were editing. The board has been refreshed.": "The columns changed while you were editing. The board has been refreshed.",

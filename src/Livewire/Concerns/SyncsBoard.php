@@ -14,10 +14,9 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Concerns;
 
 use ArtisanPackUI\Ecommerce\Broadcasting\KanbanBoardBroadcast;
+use ArtisanPackUI\Ecommerce\Kanban\KanbanCardQuery;
 use ArtisanPackUI\Ecommerce\Listeners\BroadcastKanbanCardMoved;
 use ArtisanPackUI\Ecommerce\Models\KanbanColumn;
-use ArtisanPackUI\Ecommerce\Models\Order;
-use ArtisanPackUI\Ecommerce\Models\OrderBoardAssignment;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\CardActions;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\CardPresenter;
 use Livewire\Attributes\On;
@@ -74,6 +73,8 @@ trait SyncsBoard
             return;
         }
 
+        $this->dispatch( 'ec-kb-board-refreshed' );
+
         if ( 'config-changed' === $type ) {
             unset( $this->board, $this->columns );
 
@@ -84,7 +85,8 @@ trait SyncsBoard
     }
 
     /**
-     * The polling fallback: re-renders the board from the database.
+     * The polling fallback: re-renders the board from the database and tells
+     * the slide-out, which re-renders when it is open.
      *
      * @since 1.0.0
      *
@@ -93,6 +95,8 @@ trait SyncsBoard
     public function poll(): void
     {
         unset( $this->board, $this->columns );
+
+        $this->dispatch( 'ec-kb-board-refreshed' );
     }
 
     /**
@@ -126,12 +130,10 @@ trait SyncsBoard
             return [ 'refresh' => true, 'cards' => [] ];
         }
 
-        $cards = OrderBoardAssignment::query()
-            ->active()
-            ->where( 'board_id', $this->boardId )
-            ->whereIn( 'order_id', $ids )
-            ->with( [ 'order' => static fn ( $query ) => $query->with( [ ...Order::kanbanCardRelations(), 'boardAssignments' ] ) ] )
-            ->get();
+        // The board's own card query, so `ap.ecommerce.kanban.cardQuery`
+        // restrictions apply here as they do to a full render.
+        $query = KanbanCardQuery::for( $this->board )->filter( $this->cardFilters() )->builder();
+        $cards = $query->whereIn( $query->qualifyColumn( 'order_id' ), $ids )->get();
 
         $presenter = app( CardPresenter::class );
         $actions   = new CardActions( $this->board, auth()->user() );

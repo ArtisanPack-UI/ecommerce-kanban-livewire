@@ -172,3 +172,52 @@ it( 'skips the preview until the settings are valid', function (): void {
         ->set( 'entries.0.config.max_tags', '2' )
         ->assertSee( 'Order PV-2' );
 } );
+
+it( 'refuses to save a column that was deleted while the picker was open', function (): void {
+    [ $board, $columns ] = makeBoard( [ 0 ] );
+
+    $component = Livewire::test( WidgetPicker::class, [ 'boardId' => $board->id ] )
+        ->call( 'openFor', $columns[0]->id )
+        ->set( 'addKey', 'total' )->call( 'addWidget' );
+
+    $columns[0]->delete();
+
+    $component->call( 'save' )->assertSet( 'open', false );
+
+    expect( $board->fresh()->settings['card_widgets'] ?? [] )->toBe( [] )
+        ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'That column no longer exists' );
+} );
+
+it( 'keeps settings it has no control for', function (): void {
+    app( ArtisanPackUI\Ecommerce\Registries\KanbanCardWidgetRegistry::class )->register( 'printful:status', new class () implements ArtisanPackUI\Ecommerce\Contracts\KanbanCardWidget {
+        public function key(): string
+        {
+            return 'printful:status';
+        }
+
+        public function label(): string
+        {
+            return 'Print status';
+        }
+
+        public function render( ArtisanPackUI\Ecommerce\Models\Order $order, ArtisanPackUI\Ecommerce\Models\KanbanColumn $column ): array
+        {
+            return [ 'label' => 'Print status', 'value' => 'Queued' ];
+        }
+
+        public function refreshSubscription( ArtisanPackUI\Ecommerce\Models\Order $order ): ?string
+        {
+            return null;
+        }
+    } );
+
+    [ $board, $columns ] = makeBoard( [ [ 'cards' => 0, 'card_widgets' => [ [ 'key' => 'printful:status', 'config' => [ 'show_eta' => false, 'region' => 'eu' ] ] ] ] ] );
+
+    Livewire::test( WidgetPicker::class, [ 'boardId' => $board->id ] )
+        ->call( 'openFor', $columns[0]->id )
+        ->set( 'addKey', 'total' )->call( 'addWidget' )
+        ->call( 'save' )
+        ->assertHasNoErrors();
+
+    expect( $columns[0]->fresh()->card_widgets )->toBe( [ [ 'key' => 'printful:status', 'config' => [ 'show_eta' => false, 'region' => 'eu' ] ], 'total' ] );
+} );

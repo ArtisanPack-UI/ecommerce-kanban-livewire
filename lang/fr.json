@@ -204,6 +204,7 @@
     "Tax": "Taxes",
     "That action was already submitted. Nothing was changed the second time.": "Cette action a déjà été envoyée. Rien n'a été modifié la deuxième fois.",
     "That column is not on this board.": "Cette colonne n'est pas sur ce tableau.",
+    "That column no longer exists, so its widgets were not saved.": "Cette colonne n'existe plus ; ses widgets n'ont donc pas été enregistrés.",
     "That order no longer exists.": "Cette commande n'existe plus.",
     "The card could not be moved.": "La carte n'a pas pu être déplacée.",
     "The columns changed while you were editing. The board has been refreshed.": "Les colonnes ont changé pendant votre modification. Le tableau a été actualisé.",

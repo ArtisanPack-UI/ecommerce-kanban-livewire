@@ -286,6 +286,14 @@ class WidgetPicker extends Component
         $this->updatedEntries();
 
         $column = null === $this->columnId ? null : $this->column( $this->columnId );
+
+        if ( null !== $this->columnId && null === $column ) {
+            $this->open = false;
+            $this->error( e( __( 'That column no longer exists, so its widgets were not saved.' ) ) );
+
+            return;
+        }
+
         $list   = $this->storedList();
         $actor  = auth()->id();
         $actor  = is_numeric( $actor ) ? (int) $actor : null;
@@ -354,8 +362,9 @@ class WidgetPicker extends Component
 
     /**
      * The list as it is stored: a plain key for a widget without settings,
-     * `{ key, config }` otherwise. Empty values are dropped and numbers and
-     * booleans cast to what the schema declares.
+     * `{ key, config }` otherwise. For fields the picker renders, empty
+     * values are dropped and numbers and booleans cast to what the schema
+     * declares; any other setting is kept unchanged.
      *
      * @since 1.0.0
      *
@@ -366,11 +375,19 @@ class WidgetPicker extends Component
         $list = [];
 
         foreach ( $this->entries as $entry ) {
-            $config = [];
-            $types  = array_column( $this->fields( $entry['key'] ), 'type', 'name' );
+            $config   = [];
+            $rendered = array_filter( $this->fields( $entry['key'] ), static fn ( array $field ): bool => $field['supported'] );
+            $types    = array_column( $rendered, 'type', 'name' );
 
             foreach ( (array) ( $entry['config'] ?? [] ) as $name => $value ) {
                 $type = $types[ $name ] ?? null;
+
+                // Settings the picker has no control for are kept exactly as stored.
+                if ( null === $type ) {
+                    $config[ $name ] = $value;
+
+                    continue;
+                }
 
                 if ( null === $value || '' === $value || ( 'boolean' !== $type && false === $value ) ) {
                     continue;

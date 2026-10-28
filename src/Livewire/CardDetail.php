@@ -179,6 +179,22 @@ class CardDetail extends Component
     }
 
     /**
+     * Re-renders after the board refreshed (a poll or a board event) when
+     * the drawer is open; skips the render otherwise.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    #[On( 'ec-kb-board-refreshed' )]
+    public function boardRefreshed(): void
+    {
+        if ( ! $this->open ) {
+            $this->skipRender();
+        }
+    }
+
+    /**
      * Resets the column when the target board changes.
      *
      * @since 1.0.0
