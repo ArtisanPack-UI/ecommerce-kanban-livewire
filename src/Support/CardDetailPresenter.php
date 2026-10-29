@@ -22,6 +22,7 @@ use ArtisanPackUI\Ecommerce\Models\OrderSubstatus;
 use ArtisanPackUI\Ecommerce\Models\OrderTimelineEntry;
 use ArtisanPackUI\Ecommerce\Support\LocalizedDate;
 use ArtisanPackUI\Ecommerce\Support\MoneyFormatter;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Str;
 
 /**
@@ -47,16 +48,18 @@ final class CardDetailPresenter
     public const TIMELINE_ENTRIES = 5;
 
     /**
-     * `$order`'s detail as seen from `$board`.
+     * `$order`'s detail as seen from `$board`. "Other boards" lists only
+     * the boards `$user` may view.
      *
      * @since 1.0.0
      *
-     * @param  Order        $order  The order (with `items` loaded).
-     * @param  KanbanBoard  $board  The board the slide-out is on.
+     * @param  Order                 $order  The order (with `items` loaded).
+     * @param  KanbanBoard           $board  The board the slide-out is on.
+     * @param  Authenticatable|null  $user   The viewer.
      *
      * @return array<string, mixed>
      */
-    public static function present( Order $order, KanbanBoard $board ): array
+    public static function present( Order $order, KanbanBoard $board, ?Authenticatable $user = null ): array
     {
         $currency    = (string) $order->currency;
         $money       = static fn ( mixed $amount ): string => MoneyFormatter::format( (int) $amount, $currency );
@@ -97,6 +100,7 @@ final class CardDetailPresenter
             'fulfillment' => Statuses::label( 'fulfillment', $order->fulfillment_status ),
             'boards'      => $assignments
                 ->reject( static fn ( OrderBoardAssignment $card ): bool => (int) $card->board_id === (int) $board->id || null === $card->board )
+                ->filter( static fn ( OrderBoardAssignment $card ): bool => Authorization::allows( $user, 'kanbanBoard.view', $card->board ) )
                 ->map( static fn ( OrderBoardAssignment $card ): array => [ 'board' => (string) $card->board->name, 'column' => $column( $card ) ] )
                 ->values()
                 ->all(),

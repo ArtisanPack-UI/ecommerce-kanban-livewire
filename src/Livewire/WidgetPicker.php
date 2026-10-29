@@ -42,14 +42,14 @@ use Livewire\Component;
  * The list holds registered widgets (label and provider); widgets are
  * added, removed, and reordered by dragging or with "Move up / down". A
  * widget that declares a `configSchema()` gets a form for its `text`,
- * `number`, `boolean`, and `select` fields; the engine validates on save
+ * `textarea`, `number`, `boolean`, and `select` fields; the engine validates on save
  * and its messages show on the fields. The picker says which list applies
  * — an empty column list falls back to the board default, an empty board
  * default to the engine's — and previews a card from the board with the
  * list as it stands (only once the settings are valid).
  *
  * The board opens it with `ec-kb-edit-widgets` (`columnId`, null for the
- * board default). Needs `kanbanBoard.update`.
+ * board default). Needs `kanbanBoard.update` to open, edit, or save.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceKanbanLivewire
@@ -187,6 +187,22 @@ class WidgetPicker extends Component
     }
 
     /**
+     * Refuses to open the picker from the browser without `kanbanBoard.update`.
+     *
+     * @since 1.0.0
+     *
+     * @param  mixed  $value  The new open state.
+     *
+     * @return void
+     */
+    public function updatedOpen( mixed $value ): void
+    {
+        if ( $value ) {
+            $this->authorizeEditing();
+        }
+    }
+
+    /**
      * Adds the chosen widget to the end of the list.
      *
      * @since 1.0.0
@@ -195,6 +211,8 @@ class WidgetPicker extends Component
      */
     public function addWidget(): void
     {
+        $this->authorizeEditing();
+
         $key = is_string( $this->addKey ) ? $this->addKey : '';
 
         if ( ! app( KanbanCardWidgetRegistry::class )->has( $key ) || in_array( $key, array_column( $this->entries, 'key' ), true ) ) {
@@ -216,6 +234,8 @@ class WidgetPicker extends Component
      */
     public function removeWidget( int $index ): void
     {
+        $this->authorizeEditing();
+
         unset( $this->entries[ $index ] );
 
         $this->entries = array_values( $this->entries );
@@ -234,6 +254,8 @@ class WidgetPicker extends Component
      */
     public function moveWidget( int $index, int $direction ): void
     {
+        $this->authorizeEditing();
+
         $swap = $index + ( $direction < 0 ? -1 : 1 );
 
         if ( ! isset( $this->entries[ $index ], $this->entries[ $swap ] ) ) {
@@ -256,6 +278,8 @@ class WidgetPicker extends Component
      */
     public function reorderWidgets( array $order ): void
     {
+        $this->authorizeEditing();
+
         $order = array_map( 'intval', array_filter( $order, 'is_numeric' ) );
         $keys  = array_keys( $this->entries );
 
@@ -294,9 +318,9 @@ class WidgetPicker extends Component
             return;
         }
 
-        $list   = $this->storedList();
-        $actor  = auth()->id();
-        $actor  = is_numeric( $actor ) ? (int) $actor : null;
+        $list  = $this->storedList();
+        $actor = auth()->id();
+        $actor = is_numeric( $actor ) ? (int) $actor : null;
 
         try {
             if ( null === $column ) {
@@ -329,6 +353,8 @@ class WidgetPicker extends Component
         if ( ! $this->open ) {
             return view( 'ecommerce-kanban::livewire.widget-picker', [ 'title' => '', 'catalog' => [], 'rows' => [], 'addOptions' => [], 'source' => '', 'preview' => null, 'previewInvalid' => false ] );
         }
+
+        $this->authorizeEditing();
 
         $this->updatedEntries();
 
@@ -528,6 +554,18 @@ class WidgetPicker extends Component
         $sample->setRelation( 'board', $owner );
 
         return [ ...app( CardPresenter::class )->present( $card, $sample ), 'actions' => [] ];
+    }
+
+    /**
+     * Aborts with 403 unless the user may edit the board's widgets.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    private function authorizeEditing(): void
+    {
+        $this->authorizeKanban( 'kanbanBoard.update', $this->board() );
     }
 
     /**

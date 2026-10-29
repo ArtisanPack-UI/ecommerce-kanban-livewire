@@ -11,6 +11,7 @@ use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Board;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\FilterControls;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 
 beforeEach( function (): void {
@@ -222,12 +223,12 @@ it( 'only offers customers and products from orders on this board', function ():
         ->and( array_column( $component->get( 'productOptions' ), 'id' ) )->toBe( [ $onBoard->id ] );
 
     // A customer id typed into the URL doesn't reveal a customer from elsewhere.
-    $component->set( 'customerId', $nowhere->id )->set( 'customerOptions', [] )->call( 'searchCustomers', '' );
+    $component->set( 'customerId', $nowhere->id )->call( 'searchCustomers', '' );
 
     expect( array_column( $component->get( 'customerOptions' ), 'id' ) )->not->toContain( $nowhere->id );
 
     // Nor does a product id typed into the URL.
-    $component->set( 'productIds', [ $offBoard->id ] )->set( 'productOptions', [] )->call( 'searchProducts', '' );
+    $component->set( 'productIds', [ $offBoard->id ] )->call( 'searchProducts', '' );
 
     expect( array_column( $component->get( 'productOptions' ), 'id' ) )->not->toContain( $offBoard->id );
 
@@ -235,6 +236,12 @@ it( 'only offers customers and products from orders on this board', function ():
         ->test( Board::class, [ 'board' => $board ] )
         ->assertDontSee( 'Other mug' );
 } );
+
+it( 'keeps the customer and product options server-side', function ( string $property ): void {
+    [ $board ] = filterBoard();
+
+    Livewire::test( Board::class, [ 'board' => $board ] )->set( $property, [ [ 'id' => 1, 'name' => 'Spoofed' ] ] );
+} )->with( [ 'customerOptions', 'productOptions' ] )->throws( CannotUpdateLockedPropertyException::class );
 
 it( 'labels the date inputs, hides the filters toggle on wide screens, and replaces the tags control when its options change', function (): void {
     [ $board ] = filterBoard();

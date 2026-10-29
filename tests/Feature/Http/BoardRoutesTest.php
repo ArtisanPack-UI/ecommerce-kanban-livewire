@@ -86,3 +86,38 @@ it( 'renders the picker page', function (): void {
         ->assertSee( 'Kanban boards' )
         ->assertSeeLivewire( 'artisanpack-ecommerce-kanban-board-picker' );
 } );
+
+it( 'hides a switched-off board from people who can\'t edit it', function (): void {
+    grantAbilities( [ 'kanbanBoard.viewAny', 'kanbanBoard.view' ] );
+    denyAbilities( [ 'kanbanBoard.update' ] );
+    [ $board ] = makeBoard( [ 0 ], [ 'name' => 'Retired', 'is_active' => false ] );
+
+    $this->actingAs( makeUser() )->get( route( 'artisanpack.ecommerce.kanban.boards.show', [ 'board' => $board->id ] ) )->assertNotFound();
+
+    Livewire\Livewire::test( ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Board::class, [ 'board' => $board ] )->assertNotFound();
+} );
+
+it( 'opens a switched-off board for an editor, says so, and doesn\'t remember it', function (): void {
+    grantAbilities( [ 'kanbanBoard.viewAny', 'kanbanBoard.view', 'kanbanBoard.update' ] );
+    [ $board ] = makeBoard( [ 0 ], [ 'name' => 'Retired', 'is_active' => false ] );
+    $user      = makeUser();
+
+    $this->actingAs( $user )
+        ->get( route( 'artisanpack.ecommerce.kanban.boards.show', [ 'board' => $board->id ] ) )
+        ->assertOk()
+        ->assertSee( 'This board is switched off.' );
+
+    expect( ArtisanPackUI\EcommerceKanbanLivewire\Support\LastBoard::id( $user ) )->toBeNull();
+
+    $this->get( route( 'artisanpack.ecommerce.kanban.boards.index', [ 'pick' => 1 ] ) )->assertDontSee( 'Retired' );
+} );
+
+it( 'escapes the rate-limit message before the toast renders it', function (): void {
+    grantAbilities( [ 'kanbanBoard.viewAny', 'kanbanBoard.view' ] );
+    [ $board ] = makeBoard( [ 0 ] );
+
+    $this->actingAs( makeUser() )
+        ->get( route( 'artisanpack.ecommerce.kanban.boards.show', [ 'board' => $board->id ] ) )
+        ->assertSee( 'element.textContent = value;', false )
+        ->assertSee( 'description: escape( message )', false );
+} );

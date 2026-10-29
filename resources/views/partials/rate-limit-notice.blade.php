@@ -15,6 +15,15 @@
         const fallback = @js( __( 'Too many changes in a short time. Try again shortly.' ) );
         const title    = @js( __( 'Slow down' ) );
 
+        // The toast renders its text as HTML, and any 429 on the page lands here.
+        const escape = ( value ) => {
+            const element = document.createElement( 'div' );
+
+            element.textContent = value;
+
+            return element.innerHTML;
+        };
+
         const register = () => {
             if ( window.ecommerceKanbanRateLimitNotice || ! window.Livewire ) {
                 return;
@@ -40,7 +49,7 @@
                     preventDefault();
 
                     if ( 'function' === typeof window.toast ) {
-                        window.toast( { toast: { type: 'warning', title, description: message, icon: '', css: 'alert-warning' } } );
+                        window.toast( { toast: { type: 'warning', title: escape( title ), description: escape( message ), icon: '', css: 'alert-warning' } } );
                     }
                 } );
             } );

@@ -170,6 +170,7 @@ trait FiltersCards
      *
      * @var array<int, array{id: int, name: string}>
      */
+    #[Locked]
     public array $customerOptions = [];
 
     /**
@@ -179,6 +180,7 @@ trait FiltersCards
      *
      * @var array<int, array{id: int, name: string}>
      */
+    #[Locked]
     public array $productOptions = [];
 
     /**

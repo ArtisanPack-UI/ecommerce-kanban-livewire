@@ -64,6 +64,10 @@ class BoardScreenController extends Controller
     {
         abort_unless( Authorization::allows( $request->user(), 'kanbanBoard.view', $board ), 403 );
 
+        // A switched-off board is hidden from the picker, so it is missing
+        // for anyone who can't edit it rather than forbidden.
+        abort_unless( Authorization::canOpenBoard( $request->user(), $board ), 404 );
+
         return view( 'ecommerce-kanban::pages.boards.show', [ 'board' => $board ] );
     }
 }

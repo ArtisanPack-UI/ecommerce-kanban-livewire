@@ -221,3 +221,44 @@ it( 'keeps settings it has no control for', function (): void {
 
     expect( $columns[0]->fresh()->card_widgets )->toBe( [ [ 'key' => 'printful:status', 'config' => [ 'show_eta' => false, 'region' => 'eu' ] ], 'total' ] );
 } );
+
+it( 'keeps view-only users out of the picker however it is opened', function (): void {
+    [ $board, $columns ] = makeBoard( [ 1 ] );
+    denyAbilities( [ 'kanbanBoard.update' ] );
+
+    Livewire::test( WidgetPicker::class, [ 'boardId' => $board->id ] )->set( 'open', true )->assertForbidden();
+
+    foreach ( [ [ 'addWidget' ], [ 'removeWidget', 0 ], [ 'moveWidget', 0, 1 ], [ 'reorderWidgets', [ 0 ] ] ] as $call ) {
+        Livewire::test( WidgetPicker::class, [ 'boardId' => $board->id ] )->call( ...$call )->assertForbidden();
+    }
+} );
+
+it( 'renders a textarea for a textarea setting', function (): void {
+    app( ArtisanPackUI\Ecommerce\Registries\KanbanCardWidgetRegistry::class )->register( 'note-widget', new class () extends ArtisanPackUI\Ecommerce\Kanban\Widgets\AbstractKanbanCardWidget {
+        public function key(): string
+        {
+            return 'note-widget';
+        }
+
+        public function label(): string
+        {
+            return 'Note';
+        }
+
+        public function render( ArtisanPackUI\Ecommerce\Models\Order $order, ArtisanPackUI\Ecommerce\Models\KanbanColumn $column ): array
+        {
+            return [ 'key' => 'note-widget', 'label' => 'Note', 'value' => (string) ( $this->config( 'text' ) ?? '' ), 'tone' => 'neutral' ];
+        }
+
+        public function configSchema(): array
+        {
+            return [ [ 'name' => 'text', 'type' => 'textarea', 'label' => 'Text' ] ];
+        }
+    } );
+
+    [ $board, $columns ] = makeBoard( [ [ 'cards' => 0, 'card_widgets' => [ 'note-widget' ] ] ] );
+
+    Livewire::test( WidgetPicker::class, [ 'boardId' => $board->id ] )
+        ->call( 'openFor', $columns[0]->id )
+        ->assertSeeHtml( '<textarea' );
+} );

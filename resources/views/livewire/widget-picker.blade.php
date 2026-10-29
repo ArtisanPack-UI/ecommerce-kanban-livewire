@@ -94,6 +94,8 @@
                                                     <x-artisanpack-toggle :id="$fieldId" wire:model.live="{{ $model }}" :label="$field['label']" :hint="$field['help']" />
                                                 @elseif ( 'select' === $field['type'] )
                                                     <x-artisanpack-select :id="$fieldId" wire:model.live="{{ $model }}" :label="$field['label']" :hint="$field['help']" :options="$field['options']" :placeholder="__( 'Default' )" />
+                                                @elseif ( 'textarea' === $field['type'] )
+                                                    <x-artisanpack-textarea :id="$fieldId" wire:model.live.debounce.500ms="{{ $model }}" :label="$field['label']" :hint="$field['help']" />
                                                 @elseif ( 'number' === $field['type'] )
                                                     <x-artisanpack-input :id="$fieldId" type="number" wire:model.live.debounce.500ms="{{ $model }}" :label="$field['label']" :hint="$field['help']" />
                                                 @else
