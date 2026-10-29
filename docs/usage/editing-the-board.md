@@ -18,7 +18,7 @@ In edit mode cards don't drag, and each column header gets a toolbar:
 | Automations | Opens the [automations panel](Usage-Automations) for this column |
 | Remove column | Asks before removing the column |
 
-The header adds **Default card widgets** (the widget picker for the board default) and, when the ecommerce admin is installed, **Advanced settings**, which opens the admin's edit screen for the board (details, routing rules, columns, and automations).
+The widget picker needs `kanbanBoard.update` to open, edit, and save, however it is opened. The header adds **Default card widgets** (the widget picker for the board default) and, when the ecommerce admin is installed, **Advanced settings**, which opens the admin's edit screen for the board (details, routing rules, columns, and automations).
 
 ## Reordering columns
 
@@ -47,8 +47,10 @@ The color is only drawn as the column's top border. Column text never sits on it
 
 - An empty column is removed after you confirm. Automations that move cards into it are removed with it.
 - A column with cards asks where to move them ("Move the cards to"). The cards move to that column first, then the column is removed. Moving the cards also needs `kanbanCard.move`.
+- Moving them into an exit column (cancelled, refunded, or failed) changes each of those orders' status on every board it is on, just as dropping a card there does. The dialog says so ("Moving 3 orders to Cancelled changes each order's status to Cancelled on every board it is on.") and needs **I understand** checked before it removes the column. Choosing another column asks again.
+- When the engine won't move a card to the chosen column (for example, a pending order can't go straight to Refunded), nothing changes and the dialog says why under "Move the cards to". Choose another column and confirm again.
 
-Removing runs once per confirmation, so a double click can't remove two columns.
+Removing runs once per confirmation, so a double click can't remove two columns. Cancel, Escape, or a click outside the dialog closes it and puts focus back on the column's **Remove column** button.
 
 ## Card widgets
 

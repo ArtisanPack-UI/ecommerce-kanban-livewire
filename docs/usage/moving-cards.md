@@ -12,7 +12,7 @@ Moving needs `kanbanCard.move` on the board. Without it, cards don't drag and "M
 
 Drag a card to another column, or up and down within its column. Cards keep the position you drop them at: the board stores a manual order, so "next up" stays at the top.
 
-A drop is optimistic. The card stays where you dropped it and dims ("Moving…") while the request runs. When the move goes through, only the two columns it touched re-render. When it is refused, the card goes back where it came from, is outlined and marked "Move undone" for a moment, and a toast says why.
+A drop is optimistic. The card stays where you dropped it and dims ("Moving…") while the request runs. When the move goes through, only the two columns it touched re-render. When it is refused, the card goes back where it came from, is outlined and marked "Move undone" for a moment, and a toast says why. The same happens when the request itself fails, for example when you hit the [rate limit](Advanced#rate-limits) (the toast then says how long to wait), and a move that gets no answer at all is put back after 20 seconds and the board re-reads.
 
 A drop into a column already at its WIP limit is refused in the browser before anything moves, and the engine checks the limit again on the server.
 
@@ -36,7 +36,7 @@ Each step is announced to screen readers with the order, the column, and the pos
 Every card's actions menu has **Move to…**, and so does the [card slide-out](Usage-Card-Detail). It opens a dialog titled "Move order N" with:
 
 - **Column**: every column on the board. The card's own column is marked "(current column)". A column at its WIP limit is marked "(at its WIP limit)" and can't be chosen.
-- **Position**: **Top of the column**, **Bottom of the column**, or **After a card** (offered when the column has other cards), which adds an **After** list of that column's cards.
+- **Position**: **Top of the column**, **Bottom of the column**, or **After a card** (offered when the column has other cards), which adds an **After** list of that column's cards. The list holds the column's first 50 cards; when the column has more, a hint says so, and **Top**, **Bottom**, or dragging reach the rest.
 
 **Move** runs the move. When it is refused, the dialog stays open and a toast says why. When it goes through, focus returns to the moved card.
 

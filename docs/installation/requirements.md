@@ -18,7 +18,6 @@ Composer installs these ArtisanPack UI packages with it:
 | `artisanpack-ui/livewire-ui-components` | `^2.1` | Every button, input, select, modal, drawer, dropdown, and toast |
 | `artisanpack-ui/core` | `^1.0` | Shared helpers |
 | `artisanpack-ui/hooks` | `^1.2` | The filters and actions used for [extension](Extending) |
-| `artisanpack-ui/security` | `^1.0.3` or `^2.0` | Output escaping and sanitization |
 
 `php artisan ecommerce-kanban:install` warns when the installed engine is older than 1.2.0.
 

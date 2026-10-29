@@ -23,6 +23,10 @@ The picker lists the active boards you may view (`kanbanBoard.view`), in their c
 
 With no boards, the picker says so. When the ecommerce admin is installed, it shows a **Create board** button linking to the admin's board list.
 
+## Switched-off boards
+
+A board that is switched off (inactive) is left out of the picker and the board switcher. Its URL still opens for people who can edit it (`kanbanBoard.update`), with a notice: "This board is switched off. Only people who can edit it see it." That lets an admin check a board before switching it on. Anyone else gets a 404, from the board route and from an embedded board component alike. A switched-off board is never remembered as your last board.
+
 ## Switching boards
 
 On a board, the **Switch board** menu next to the board name lists the other boards you can open, with the current one marked, and an **All boards** link to the picker. It appears when you can see more than one board or the picker has a URL.

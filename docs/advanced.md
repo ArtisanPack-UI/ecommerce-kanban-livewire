@@ -34,8 +34,20 @@ Board changes run through the engine's `ecommerce.admin.mutate` rate limiter (12
 
 What counts:
 
-- **Not counted:** page loads, and updates that only read: no property changes (other than the board's own `liveFeedback` flag), and only these calls: loading the board or a lazy column, collapsing or expanding a column, "Show more", `$refresh`, polls, real-time column, card, and board refreshes, and automation feedback (`ThrottleKanbanMutations::READ_CALLS`).
-- **Counted:** every other update, including moves, edits, dialogs, and filter changes.
+- **Not counted:** page loads, and updates from this package's components that only read:
+  - **Property changes** (`ThrottleKanbanMutations::READ_PROPERTIES`) limited to:
+    - the board's own `liveFeedback` flag;
+    - the filter bar and the "Add order" search;
+    - whether a dialog or panel is open.
+  - **Calls** (`ThrottleKanbanMutations::READ_CALLS`) limited to:
+    - loading the board or a lazy column, collapsing or expanding a column, and "Show more";
+    - `$refresh`, polls, and real-time column, card, and board refreshes;
+    - automation feedback;
+    - the customer and product searches and "Clear filters";
+    - opening and closing dialogs and panels.
+- **Counted:** every other update: moves, adding and removing cards, column and widget edits, automation changes, and any update from a component that isn't this package's (named by the snapshot), whatever its properties are called.
+
+Livewire runs persistent middleware on a copy of the update request that carries the page's path and no request body, so the middleware reads the update itself from the current request (`ThrottleKanbanMutations::updateRequest()`).
 
 Over the limit, the update doesn't run. The middleware answers `429` with a `Retry-After` header and a JSON body (`message`, `retry_after`), and the page shows "Too many changes in a short time. Try again in N seconds." as a toast instead of Livewire's error dialog (`ecommerce-kanban::partials.rate-limit-notice`).
 

@@ -86,7 +86,7 @@ The board watches the Echo connection. When it drops, or the channel refuses the
 
 ## Troubleshooting
 
-If the header says "Updates every few seconds" instead of "Live":
+If the header says "Updates every N seconds" (for example "Updates every 30 seconds") instead of "Live":
 
 - Check `ECOMMERCE_KANBAN_BROADCAST=true` and that the config cache is fresh (`php artisan config:clear`).
 - Check `realtime.enabled` is `true` in this package's config.

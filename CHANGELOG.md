@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-29
+
+The first release of the Livewire order board for the ArtisanPack UI ecommerce
+engine. Orders show as cards in columns by sub-status and move by drag-and-drop,
+keyboard, or a "Move to…" dialog. The package also covers filtering, a card
+slide-out, adding and removing orders, board-native column and card-widget
+editing, an automations panel, and real-time sync. Every change goes through
+the engine's services.
+
+### Requirements
+
+- PHP 8.3+, Laravel 12 or 13, Livewire 3.6+ or 4.
+- `artisanpack-ui/ecommerce` `^1.2`: manual card order, the filterable card query, board events, card refresh, widget config, and the column service (ArtisanPack-UI/ecommerce#198–#203).
+- `artisanpack-ui/livewire-ui-components` `^2.1`, `artisanpack-ui/core` `^1.0`, `artisanpack-ui/hooks` `^1.2`, and `@artisanpack-ui/livewire-drag-and-drop` `^2.1` on the front end.
+
 ### Added
 
 - Package scaffold: service provider, config, and `SatelliteRegistry` registration.
@@ -27,12 +42,44 @@
 - Browser test suite (#23): a workbench (`package.json`, `vite.config.js`, `npm run build:browser`, `composer test:browser`) with a seeded demo board; journeys for dragging a card between columns with the automation firing, reordering within a column, keyboard moves, "Move to…", the exit-column confirmation, WIP refusals, filtering by tag and date, `?card=`, reordering columns in edit mode, and a move made in another browser; axe checks on every screen and dialog (light, dark, phone); and a CI `browser` job for Livewire 3 and 4.
 - Documentation in `docs/` and a new README with screenshots (#24).
 - The card slide-out describes the engine's automation timeline entries ("Automation ran: …", "Automation failed: …", "Order field … updated") in every catalogue.
+- Cards read through the engine's `KanbanCardQuery`, in their manual order.
+- A card action may have both a `url` and an `event`: a plain click dispatches the event and a modified click follows the link. "Open" opens the slide-out in place.
+- Large boards (#20):
+  - Columns load as they scroll into view, and collapsed columns never query.
+  - A drop re-renders only its two columns, real-time card events only the columns they name, and polls only the columns whose cards changed.
+  - Board load, column paging, card re-renders, polls, and the slide-out have fixed query budgets; a 1,000-card board loads in 24 queries.
+- WCAG 2.2 AA (#22):
+  - Cards are focusable groups, and columns are labelled regions.
+  - Neutral widget badges use an outline in the text color (dark-mode contrast).
+  - The date filters are labelled, and the card pulse and transitions stop under reduced motion.
+  - The standalone layout's sticky header has scroll padding so focus isn't hidden under it.
+  - The "Filters" toggle only shows on small screens.
+  - The tags filter is replaced rather than morphed when its options load (livewire-ui-components#135).
+- Rate limiting that counts only changes: page loads, polls, lazy column loads, real-time refreshes, automation feedback, filtering, searching, and opening or closing dialogs don't count against `ecommerce.admin.mutate`. The read lists only apply to this package's components.
 
-### Changed
+### Fixed
 
-- Requires `artisanpack-ui/ecommerce` `^1.2` (manual card order and the filterable card query, ArtisanPack-UI/ecommerce#198 and #199; board events, card refresh, widget config, and the column service, #200–#203).
-- Cards are read through the engine's `KanbanCardQuery`, in their manual order.
-- A card action may have both a `url` and an `event`: a plain click dispatches the event and a modified click follows the link. "Open" now opens the slide-out in place.
-- Large boards (#20): columns load as they scroll into view (collapsed columns never query), a drop re-renders only its two columns, real-time card events only the columns they name, and polls only the columns whose cards changed. Board load, column paging, card re-renders, polls, and the slide-out have fixed query budgets; a 1,000-card board loads in 24 queries.
-- Accessibility fixes from the WCAG 2.2 AA audit (#22): cards are `div` groups (not `article`); columns have an explicit `region` role so a draggable column in edit mode isn't a button; neutral widget badges use an outline in the text color (dark-mode contrast); the slide-out drops its low-contrast subtitle; the date filters are labelled; the card pulse and transitions stop under reduced motion; the standalone layout's header now sticks and the page has scroll padding so focus isn't hidden under it; the "Filters" toggle only shows on small screens; and the tags filter is replaced rather than morphed when its options load, so tags can be picked (livewire-ui-components#135).
-- Polls, lazy column loads, real-time refreshes, and automation feedback no longer count against the `ecommerce.admin.mutate` limit.
+Found in the 1.0.0 release-readiness review (#31) and fixed before release:
+
+- **Removing columns:**
+  - When the engine won't move a removed column's cards to the chosen column (for example, an illegal status change), the dialog says why instead of failing with a server error.
+  - Moving them into an exit column (cancelled, refunded, failed) needs an extra confirmation, as a drop does.
+- **Rate limiting:** the rate limiter reads the Livewire update from the current request. As persistent middleware it receives a copy without the request body, so before this fix every board update counted, reads included.
+- **Failed requests:** a drop or column reorder whose request fails (rate limited, server error) goes back where it was, and a move that never gets an answer is put back after 20 seconds.
+- **Access:**
+  - A switched-off board opens only for people who can edit it, with a notice, and is never remembered as the last board.
+  - The widget picker needs `kanbanBoard.update` to open and edit, however it is opened.
+  - The slide-out's "Other boards" lists only boards the viewer can see.
+  - The filter option lists are locked to the server.
+  - The rate-limit toast escapes its text.
+- **Accessibility:**
+  - The automation switch is labelled "Active" and sets the state rather than flipping it.
+  - The automation delete confirmation takes focus and gives it back.
+  - Every dialog returns focus to what opened it, however it is closed (Escape and backdrop included).
+  - The slide-out announces only status and column changes; empty columns are no longer live regions, and the board announces how many orders match the filters.
+  - Read-only card lists are named groups, and "Show more" moves focus to the first new card.
+  - The connection status shows the real poll interval ("Updates every 30 seconds").
+- **Smaller fixes:**
+  - "After a card" in "Move to…" says when its list is cut short at 50 cards.
+  - Widget tone badge classes are written out in full for Tailwind.
+  - `textarea` widget settings render as a textarea.

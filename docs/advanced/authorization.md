@@ -29,9 +29,9 @@ A Gate for a specific ability decides that ability; otherwise `ecommerce.admin` 
 | Ability | Needed to |
 | --- | --- |
 | `kanbanBoard.viewAny` | Open the board picker, and see the "Kanban" admin menu entry |
-| `kanbanBoard.view` (on the board) | Open a board and read its automations. Also authorizes the board's broadcast channel. |
+| `kanbanBoard.view` (on the board) | Open a board and read its automations. Also authorizes the board's broadcast channel. A switched-off board also needs `kanbanBoard.update`. |
 | `kanbanCard.move` (on the board) | Drag cards, move them by keyboard, and use "Move to…" |
-| `kanbanBoard.update` (on the board) | Add and remove orders, add the order to another board from the slide-out, "Edit board" (columns and card widgets), and switch automations on and off or delete them |
+| `kanbanBoard.update` (on the board) | Add and remove orders, add the order to another board from the slide-out, "Edit board" (columns and card widgets, including opening the widget picker), switch automations on and off or delete them, and open a switched-off board |
 | `order.view` | Open a card's slide-out, and find orders in "Add order" |
 
 Removing a column that still has cards also needs `kanbanCard.move`, since its cards move first.
@@ -41,13 +41,14 @@ Removing a column that still has cards also needs `kanbanCard.move`, since its c
 | Screen or action | Check |
 | --- | --- |
 | Picker page (`boards.index`) | The controller answers 403 without `kanbanBoard.viewAny`, and the picker component checks again on mount and every update |
-| Board page (`boards.show`) | The controller answers 403 without `kanbanBoard.view` on the board, and the board component checks again on mount and every update |
+| Board page (`boards.show`) | The controller answers 403 without `kanbanBoard.view` on the board, and 404 for a switched-off board without `kanbanBoard.update`. The board component checks both again on mount and every update. |
 | Board list in the picker and switcher | Only active boards the user may view |
 | Card actions and toolbar buttons | Actions naming an `ability` are left out for users without it (checked once per render, against the board) |
 | Every move, edit, assignment, and automation change | The action checks its ability on the server before it runs, whatever the page showed |
-| Card slide-out | `order.view`, and the order must be on the board |
+| Card slide-out | `order.view`, and the order must be on the board. "Other boards" lists only boards the user may view. |
+| Widget picker | `kanbanBoard.update` to open it (from the browser too), render it, edit the list, and save |
 | "Add order" search | Only orders the user may view, that aren't on the board yet |
-| Customer and product filter options | Only customers and products with orders on this board |
+| Customer and product filter options | Only customers and products with orders on this board. The option lists are filled on the server and locked, so the browser can't replace them. |
 | Broadcast channel `private-ecommerce.kanban.board.{board}` | `kanbanBoard.view` on the board (registered by the engine) |
 
 A guest is sent to sign in by the `auth` middleware in `board.middleware`.

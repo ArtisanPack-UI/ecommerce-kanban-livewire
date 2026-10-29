@@ -19,12 +19,12 @@ With `kanbanBoard.update`:
 
 | Action | Does |
 | --- | --- |
-| On / Off | Switches the automation on or off |
-| Delete | Asks first ("It stops running right away. This cannot be undone."), then deletes it, once per confirmation |
+| Active | A switch that turns the automation on or off. Its screen-reader name is "Active: " plus the trigger and columns. The row also says **On** or **Off** in text. Pressing it sets the state rather than flipping it, so a repeated or late request can't undo a change. |
+| Delete | Asks first, in a confirmation that takes focus ("It stops running right away. This cannot be undone."), then deletes it, once per confirmation. Cancel or Escape closes the confirmation (not the panel) and puts focus back on the row's **Delete** button. |
 | Add automation | Opens the admin's automation form for the board (admin installed only) |
 | Edit | Opens the admin's form for that automation (admin installed only) |
 
-Without the ecommerce admin, the panel is list, toggle, and delete. Create and edit automations through the engine's REST API. A trigger's settings are never shown in the panel: they are encrypted and can hold webhook signing secrets.
+Without the ecommerce admin, the panel is list, switch on or off, and delete. Create and edit automations through the engine's REST API. A trigger's settings are never shown in the panel: they are encrypted and can hold webhook signing secrets.
 
 Changes update the column badges at once and reach other open boards as a board config change.
 

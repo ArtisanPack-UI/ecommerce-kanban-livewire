@@ -36,7 +36,7 @@ The board header shows which mode applies, in text:
 | Text | Meaning |
 | --- | --- |
 | Live | Listening over Echo |
-| Updates every few seconds | Polling |
+| Updates every N seconds (the poll interval, e.g. "Updates every 30 seconds") | Polling |
 | Offline | The browser has no network |
 | Not updating automatically | Neither Echo nor polling: changes show on reload |
 

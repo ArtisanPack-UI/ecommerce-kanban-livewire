@@ -17,7 +17,7 @@ Opening a card needs `order.view`, and the order must be on the board. Otherwise
 - the shipping address;
 - the items, with SKU, quantity, and line total, and the order totals;
 - payment and fulfillment status;
-- the other boards the order is on, and the column on each;
+- the other boards the order is on that you can view, and the column on each;
 - the five latest timeline entries ("Recent activity").
 
 ## Actions
@@ -42,4 +42,4 @@ Both go through the engine's `KanbanRoutingService`, so its hooks fire and other
 
 ## Staying current
 
-An open slide-out re-renders when its order changes elsewhere: a live `card-updated` event, a poll, or a board event. See [Real-Time Updates](Realtime).
+An open slide-out re-renders when its order changes elsewhere: a live `card-updated` event, a poll, or a board event. When the order's status or column changes, screen readers hear just that ("Order 1042 is now Complete in Shipped"), not the whole drawer. See [Real-Time Updates](Realtime).

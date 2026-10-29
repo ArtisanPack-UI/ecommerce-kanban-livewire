@@ -10,7 +10,7 @@ The board targets **WCAG 2.2 AA**. Everything staff do on it (choosing a board, 
 
 ### Structure and names
 
-- **Columns are labelled regions.** Each column is a `section` with an explicit `role="region"`, named by its heading. Its card list is named "Orders in {column}".
+- **Columns are labelled regions.** Each column is a `section` with an explicit `role="region"`, named by its heading. Its card list is a group named "Orders in {column}", on read-only boards too.
 - **Cards are focusable groups.** Each card is a focusable `role="group"` named by a summary, such as "Order 1042, Jane Doe, 3 items, $124.00". Its actions button is named "Actions for order 1042".
 - **The column strip can be scrolled by keyboard.** It is focusable, so the arrow keys scroll it sideways.
 - **The filter bar is a search landmark** named "Filter orders". The date fields repeat their label as `aria-label`, since the component library prints it as a legend the input isn't linked to.
@@ -21,7 +21,8 @@ The board targets **WCAG 2.2 AA**. Everything staff do on it (choosing a board, 
 - **WIP state.** At the limit, the count adds a warning icon, and screen readers hear "1 of 1 cards, WIP limit reached".
 - **Widget tones.** A warning, problem, success, or note tone adds an icon and screen-reader text ("Needs attention", "Problem", "Good", "Note").
 - **Move state.** A card in flight says "Moving…", and a refused move says "Move undone", in a `role="status"` element.
-- **Connection.** The connection indicator says "Live", "Updates every few seconds", "Offline", or "Not updating automatically" in text.
+- **Connection.** The connection indicator says "Live", "Updates every N seconds" (the poll interval), "Offline", or "Not updating automatically" in text.
+- **Automation switches.** Each automation's switch is labelled "Active" (its screen-reader name is "Active: " plus the automation, so it starts with the visible label, SC 2.5.3), and the row says "On" or "Off" in text.
 - **Column color is decoration.** The user-set column color is only drawn as a top border. Labels never sit on it, so no color a store picks can fail contrast.
 
 ### Moving cards
@@ -30,12 +31,20 @@ The board targets **WCAG 2.2 AA**. Everything staff do on it (choosing a board, 
 - **A single-pointer alternative (SC 2.5.7).** Every card's menu has **Move to…**, a dialog with a column and a position, which makes the same move as a drop.
 - **Exit columns confirm first.** A move into a `cancelled`, `refunded`, or `failed` column asks before it changes the order's status.
 - **Remote changes are announced.** When someone else moves the card you are dragging, the drag is canceled and an assertive live region says "This card was moved by someone else, so your move was canceled."
+- **A failed move goes back.** When a move's request fails (rate limited, server error), the card returns to where it was and says "Move undone".
 
 ### Focus
 
 - **Skip link.** The standalone layout's first tab stop is "Skip to content".
 - **The card slide-out traps focus** while open, closes with Escape, and returns focus to the card it opened from.
+- **Dialogs give focus back.** However a dialog closes (its button, Escape, or a click outside), focus returns to what opened it:
+  - "Move to…", the exit-column confirmation, and "Remove from board" return to the card;
+  - "Add order" returns to its header button;
+  - the column editor and "Remove column" return to the column's button;
+  - "Add a column" returns to its button.
 - **"Move to…" returns focus to the moved card** after the move.
+- **The automation delete confirmation takes focus** when it appears. Escape cancels it without closing the panel, and focus returns to the row's **Delete** button, or moves on after a delete.
+- **"Show more" moves focus** to the first card it loaded, so focus isn't lost when the button goes away.
 - **Column move buttons keep focus.** In edit mode, "Move left" and "Move right" stay focused after the column moves, so you can press again.
 - **Nothing hides under the sticky header (SC 2.4.11).** The standalone layout's header is sticky, and the page has `scroll-padding-top`, so a focused card or control scrolls clear of it.
 - **Visible focus.** Cards and card lists draw a focus outline in the primary color.
@@ -45,6 +54,7 @@ The board targets **WCAG 2.2 AA**. Everything staff do on it (choosing a board, 
 - **Reduced motion.** Under `prefers-reduced-motion`, the card pulse while a move is in flight and the card transitions are turned off. Cards never transition `transform`, so a dragged card's floating copy follows the pointer without lag.
 - **Target size (SC 2.5.8).** Buttons meet the 24px minimum, and the browser suite runs axe's `target-size` rule on every screen.
 - **Toasts** for refused moves, automation results, and rate limits use `role="alert"`.
+- **Status messages stay short.** The card slide-out announces only a change to the open order's status or column ("Order 1042 is now Complete in Shipped"), not its whole contents. Empty columns aren't live regions, so a filter change doesn't announce every empty column; instead one status message says how many orders match the filters. The "No boards yet" and "This board has no columns" empty states are status messages.
 - **Phones.** Below the `md` breakpoint the filters move into a drawer, and each column takes most of the screen width.
 - **Language.** The standalone layout's `<html lang>` follows the application locale.
 
@@ -52,8 +62,16 @@ The board targets **WCAG 2.2 AA**. Everything staff do on it (choosing a board, 
 
 The browser suite (see [Browser Tests](Advanced-Browser-Tests)) drives the board in Chromium against a seeded demo board:
 
-- **axe on every screen and dialog.** `tests/Browser/AccessibilityTest.php` runs every axe rule, with `target-size` (WCAG 2.2, 24px) turned on, on the board picker, the board in light and dark mode, the board with filters that hide cards, the card slide-out, the "Move to…" and "Add order" dialogs, edit mode and its dialogs, the widget picker, the automations panel, and the board on a phone with the filters open. Any violation fails the build, except the known library issues below.
-- **Keyboard.** `tests/Browser/KeyboardTest.php` checks the skip link, the names of cards and columns (and the WIP text), the announcements of a keyboard move by order, column, and position, opening a card's actions and "Move to…" from the keyboard, focus returning to the card when the slide-out closes, moving columns by keyboard in edit mode with focus kept, and focused controls staying clear of the sticky header.
+- **axe on every screen and dialog.** `tests/Browser/AccessibilityTest.php` runs every axe rule, with `target-size` (WCAG 2.2, 24px) turned on, on:
+  - the board picker;
+  - the board in light and dark mode, read-only, and with filters that hide cards;
+  - the card slide-out;
+  - the "Move to…" and "Add order" dialogs;
+  - edit mode and its dialogs;
+  - the widget picker;
+  - the automations panel and its delete confirmation;
+  - the board on a phone with the filters open. Any violation fails the build, except the known library issues below.
+- **Keyboard.** `tests/Browser/KeyboardTest.php` checks the skip link, the names of cards and columns (and the WIP text), the announcements of a keyboard move by order, column, and position, opening a card's actions and "Move to…" from the keyboard, focus returning to the card when the slide-out closes or a dialog is dismissed with Escape, focus in and out of the automation delete confirmation, focus after "Show more", moving columns by keyboard in edit mode with focus kept, and focused controls staying clear of the sticky header.
 - **Journeys.** `tests/Browser/JourneysTest.php` moves a card with the keyboard and with "Move to…", as well as by dragging.
 
 The axe helper is `tests/Browser/Support/Accessibility.php` (`Accessibility::assertAccessible( $page )`).
