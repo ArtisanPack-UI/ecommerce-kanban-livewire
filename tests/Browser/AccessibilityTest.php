@@ -104,3 +104,25 @@ it( 'has no accessibility violations on a phone with the filters open', function
 
     Accessibility::assertAccessible( $page );
 } );
+
+it( 'has no accessibility violations on a read-only board', function (): void {
+    $viewer = Tests\Fixtures\User::query()->create( [ 'name' => 'Val Viewer', 'email' => 'viewer@example.test', 'password' => 'secret' ] );
+
+    grantAbilities( [ 'kanbanBoard.viewAny', 'kanbanBoard.view', 'order.view' ] );
+
+    $this->actingAs( $viewer );
+
+    $page = visit( $this->boardUrl() )->assertPresent( '[data-ec-kb-card]' )->assertNotPresent( '[data-ec-kb-add-order]' );
+
+    JavaScript::assertNoErrors( $page );
+    Accessibility::assertAccessible( $page );
+} );
+
+it( 'has no accessibility violations with the automation delete confirmation open', function (): void {
+    $page = visit( $this->boardUrl() )
+        ->click( '[data-ec-kb-automations]' )
+        ->click( '[data-ec-kb-automation] [data-ec-kb-delete-automation]' )
+        ->assertVisible( '[data-ec-kb-confirm-delete-automation]' );
+
+    Accessibility::assertAccessible( $page );
+} );

@@ -184,3 +184,45 @@ it( 'describes the keyboard model in translated instructions for every card', fu
         ->assertSeeHtml( e( json_encode( 'Press Space or Enter to pick up the card. While holding it, use the arrow keys to move it within a column or between columns, Home or End to jump to the top or bottom, Space or Enter to drop, and Escape to cancel.' ) ) )
         ->assertSeeHtml( 'focus-visible:outline-primary' );
 } );
+
+it( 'says when the "After a card" list is cut short', function ( int $cards, bool $truncated ): void {
+    [ $board, $columns ] = makeBoard( [ [ 'cards' => 1 ], [ 'cards' => $cards ] ] );
+    $mover               = OrderBoardAssignment::query()->where( 'substatus_id', $columns[0]->substatus_id )->value( 'order_id' );
+
+    $component = Livewire::test( Board::class, [ 'board' => $board ] )
+        ->call( 'loadBoard', [] )
+        ->call( 'openMoveDialog', $mover )
+        ->set( 'moveColumnId', $columns[1]->id )
+        ->set( 'movePosition', 'after' );
+
+    expect( $component->viewData( 'moveCards' ) )->toHaveCount( min( $cards, Board::MOVE_AFTER_LIMIT ) )
+        ->and( $component->viewData( 'moveCardsTruncated' ) )->toBe( $truncated );
+
+    $truncated
+        ? $component->assertSee( 'Showing the first 50 cards.' )
+        : $component->assertDontSee( 'Showing the first' );
+} )->with( [ 'exactly the limit' => [ 50, false ], 'one more' => [ 51, true ] ] );
+
+it( 'hands focus back to the card when the dialog is closed without moving', function (): void {
+    [ $board, , $orders ] = dialogBoard();
+
+    Livewire::test( Board::class, [ 'board' => $board ] )
+        ->call( 'loadBoard', [] )
+        ->call( 'openMoveDialog', $orders['P1']->id )
+        ->call( 'closeMoveDialog' )
+        ->assertSet( 'moveDialog', false )
+        ->assertSet( 'moveOrderId', null )
+        ->assertDispatched( 'ec-kb-focus-card', orderId: $orders['P1']->id );
+} );
+
+it( 'forgets the dialog\'s card after a move', function (): void {
+    [ $board, $columns, $orders ] = dialogBoard();
+
+    Livewire::test( Board::class, [ 'board' => $board ] )
+        ->call( 'loadBoard', [] )
+        ->call( 'openMoveDialog', $orders['P1']->id )
+        ->set( 'moveColumnId', $columns['packing']->id )
+        ->call( 'submitMove' )
+        ->assertSet( 'moveDialog', false )
+        ->assertSet( 'moveOrderId', null );
+} );

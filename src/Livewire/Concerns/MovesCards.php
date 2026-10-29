@@ -77,6 +77,15 @@ trait MovesCards
     public const CONFIRM = 'confirm';
 
     /**
+     * Most cards the "Move to…" dialog offers to place the card after.
+     *
+     * @since 1.0.0
+     *
+     * @var int
+     */
+    public const MOVE_AFTER_LIMIT = 50;
+
+    /**
      * A move into an exit column waiting for confirmation: `order_id`,
      * `column_id`, and the placement as an array.
      *
@@ -283,7 +292,28 @@ trait MovesCards
         $result = $this->performMove( $this->moveOrderId, (int) $this->moveColumnId, $placement );
 
         if ( self::REJECTED !== $result ) {
-            $this->moveDialog = false;
+            $this->moveDialog  = false;
+            $this->moveOrderId = null;
+        }
+    }
+
+    /**
+     * Closes the "Move to…" dialog without moving, and hands focus back to
+     * the card (Cancel, Escape, or the backdrop).
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    public function closeMoveDialog(): void
+    {
+        $orderId = $this->moveOrderId;
+
+        $this->moveDialog  = false;
+        $this->moveOrderId = null;
+
+        if ( null !== $orderId ) {
+            $this->dispatch( 'ec-kb-focus-card', orderId: $orderId );
         }
     }
 
@@ -300,7 +330,7 @@ trait MovesCards
     protected function moveDialogData( array $counts ): array
     {
         if ( ! $this->moveDialog || null === $this->moveOrderId ) {
-            return [ 'moveColumns' => [], 'moveCards' => [], 'moveNumber' => null ];
+            return [ 'moveColumns' => [], 'moveCards' => [], 'moveCardsTruncated' => false, 'moveNumber' => null ];
         }
 
         $current = $this->cardColumn( $this->moveOrderId );
@@ -325,7 +355,8 @@ trait MovesCards
         $cards  = [];
 
         if ( $target instanceof KanbanColumn ) {
-            foreach ( ColumnCardsQuery::cards( $target, 50 ) as $card ) {
+            // One more than shown, to tell whether the list was cut short.
+            foreach ( ColumnCardsQuery::cards( $target, self::MOVE_AFTER_LIMIT + 2 ) as $card ) {
                 if ( (int) $card->order_id !== $this->moveOrderId ) {
                     $cards[] = [ 'id' => (int) $card->order_id, 'name' => __( 'Order :number', [ 'number' => $card->order->order_number ] ) ];
                 }
@@ -333,9 +364,10 @@ trait MovesCards
         }
 
         return [
-            'moveColumns' => $options,
-            'moveCards'   => $cards,
-            'moveNumber'  => Order::query()->whereKey( $this->moveOrderId )->value( 'order_number' ),
+            'moveColumns'        => $options,
+            'moveCards'          => array_slice( $cards, 0, self::MOVE_AFTER_LIMIT ),
+            'moveCardsTruncated' => count( $cards ) > self::MOVE_AFTER_LIMIT,
+            'moveNumber'         => Order::query()->whereKey( $this->moveOrderId )->value( 'order_number' ),
         ];
     }
 

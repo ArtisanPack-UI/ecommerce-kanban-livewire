@@ -14,6 +14,7 @@
 
     @if ( $boards->isEmpty() )
         <x-artisanpack-ec-kb-empty
+            live
             icon="o-view-columns"
             :title="__( 'No boards yet' )"
             :description="__( 'A board groups orders into columns by fulfillment step. Create one to start working orders here.' )"

@@ -21,7 +21,9 @@
         class="w-11/12 max-w-lg"
     >
         @if ( null !== $detail )
-            <div class="flex flex-col gap-6" data-ec-kb-detail="{{ $detail['order_id'] }}" aria-live="polite">
+            <p class="sr-only" role="status" data-ec-kb-detail-announcer>{{ $announcement }}</p>
+
+            <div class="flex flex-col gap-6" data-ec-kb-detail="{{ $detail['order_id'] }}">
                 <div class="flex flex-wrap gap-2">
                     <x-artisanpack-badge :value="$detail['status']" class="badge-neutral" data-ec-kb-detail-status />
                     @if ( null !== $detail['column'] )

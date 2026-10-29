@@ -13,12 +13,14 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\EcommerceKanbanLivewire\Livewire;
 
+use ArtisanPackUI\Ecommerce\Models\KanbanBoard;
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Concerns\AuthorizesKanban;
 use ArtisanPackUI\EcommerceKanbanLivewire\Queries\BoardsQuery;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\AdminLinks;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\BoardUrls;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\LastBoard;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Collection;
 use Livewire\Component;
 
 /**
@@ -35,6 +37,15 @@ use Livewire\Component;
 class BoardPicker extends Component
 {
     use AuthorizesKanban;
+
+    /**
+     * The boards the user can open, once read in this request.
+     *
+     * @since 1.0.0
+     *
+     * @var Collection<int, KanbanBoard>|null
+     */
+    private ?Collection $visibleBoards = null;
 
     /**
      * Mounts the picker, redirecting when there's an obvious board to open.
@@ -54,7 +65,7 @@ class BoardPicker extends Component
         }
 
         $user   = auth()->user();
-        $boards = BoardsQuery::visibleTo( $user );
+        $boards = $this->boards();
         $lastId = LastBoard::id( $user );
         $target = ( null !== $lastId ? $boards->firstWhere( 'id', $lastId ) : null )
             ?? ( 1 === $boards->count() ? $boards->first() : null );
@@ -89,9 +100,21 @@ class BoardPicker extends Component
         $user = auth()->user();
 
         return view( 'ecommerce-kanban::livewire.board-picker', [
-            'boards'         => BoardsQuery::visibleTo( $user ),
+            'boards'         => $this->boards(),
             'lastBoardId'    => LastBoard::id( $user ),
             'createBoardUrl' => AdminLinks::createBoardUrl(),
         ] );
+    }
+
+    /**
+     * The boards the user can open, read once per request.
+     *
+     * @since 1.0.0
+     *
+     * @return Collection<int, KanbanBoard>
+     */
+    private function boards(): Collection
+    {
+        return $this->visibleBoards ??= BoardsQuery::visibleTo( auth()->user() );
     }
 }

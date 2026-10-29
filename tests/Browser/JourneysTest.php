@@ -227,3 +227,42 @@ it( 'shows a move made in another browser (polling fallback)', function (): void
 
     JavaScript::assertNoErrors( $watcher );
 } );
+
+it( 'puts a dropped card back when the board is rate limited', function (): void {
+    config()->set( 'artisanpack.ecommerce.rate_limits.admin.mutate.per_user', 1 );
+
+    $page = visit( $this->boardUrl() )->assertPresent( card( '1001' ) );
+
+    // Loading the board is a read, so the one change allowed is this move.
+    $page->drag( card( '1001' ), cards( 'Ready to ship' ) )
+        ->assertSee( '1 automation ran for order 1001' );
+
+    $page->drag( card( '1002' ), cards( 'Ready to ship' ) )
+        ->assertSee( 'Too many changes in a short time.' )
+        ->wait( 1 )
+        ->assertScript( settled() )
+        ->assertScript( numbersIn( 'To pack' ), '1002,1003' );
+
+    expect( columnOf( '1001' ) )->toBe( 'Ready to ship' )
+        ->and( columnOf( '1002' ) )->toBe( 'To pack' );
+} );
+
+it( 'asks before removing a column moves its cards to an exit column', function (): void {
+    $page = visit( $this->boardUrl() )
+        ->click( '[data-ec-kb-edit-board]' )
+        ->click( '[data-ec-kb-column="' . $this->columns['Packing']->id . '"] [data-ec-kb-delete-column]' )
+        ->assertVisible( '[data-ec-kb-delete-column-move-to]' );
+
+    $page->select( Locators::field( 'ec-kb-delete-column-move-to' ), (string) $this->columns['Cancelled']->id )
+        ->assertVisible( '[data-ec-kb-delete-column-exit]' )
+        ->click( '[data-ec-kb-delete-column-button]' )
+        ->assertSee( 'Confirm that the orders' );
+
+    expect( KanbanColumn::query()->find( $this->columns['Packing']->id ) )->not->toBeNull();
+
+    $page->check( Locators::field( 'ec-kb-delete-column-confirm-exit' ) )
+        ->click( '[data-ec-kb-delete-column-button]' )
+        ->assertNotPresent( '[data-ec-kb-column="' . $this->columns['Packing']->id . '"]' );
+
+    expect( $this->orders['1004']->refresh()->system_status )->toBe( 'cancelled' );
+} );

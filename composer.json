@@ -35,8 +35,7 @@
     "artisanpack-ui/ecommerce": "dev-feature/200-203-kanban-board-events-widget-config-and-columns as 1.2.0",
     "artisanpack-ui/livewire-ui-components": "^2.1",
     "artisanpack-ui/core": "^1.0",
-    "artisanpack-ui/hooks": "^1.2",
-    "artisanpack-ui/security": "^1.0.3|^2.0"
+    "artisanpack-ui/hooks": "^1.2"
   },
   "require-dev": {
     "pestphp/pest": "^4.0",

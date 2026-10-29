@@ -11,8 +11,9 @@
 
     `$card` is the board component's card array (see `CardPresenter`, plus
     `actions` from `CardActions`); `classes` from the
-    `ap.ecommerceKanbanLivewire.cardClasses` filter are added to the card. On a board the column passes the
-    drag-and-drop attributes (`x-drag-item`, `data-drag-label`) through
+    `ap.ecommerceKanbanLivewire.cardClasses` filter are added to the card.
+    On a board the column passes the drag-and-drop attributes
+    (`x-drag-item`, `data-drag-label`) through
     `$attributes`; the explicit `role` keeps livewire-drag-and-drop from
     making the card a button, since it holds the actions menu.
 

@@ -17,7 +17,8 @@
     When automations fire into the column, the header shows how many; the
     count opens the automations panel for the column.
 
-    When `$draggable`, the card list is a livewire-drag-and-drop context in
+    The card list is a named group either way. When `$draggable`, it is
+    also a livewire-drag-and-drop context in
     the `cards` group, so cards move between columns; drops and drag ends
     go to the board's `drop()` / `end()` (see the board view), and
     `$dragMessages` are the translated announcement templates.
@@ -174,6 +175,7 @@
             @else
                 <div
                     class="group flex min-h-16 flex-col gap-2 rounded-box focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                    role="group"
                     aria-label="{{ __( 'Orders in :column', [ 'column' => $column['label'] ] ) }}"
                     data-ec-kb-cards="{{ $column['id'] }}"
                     wire:key="column-{{ $column['id'] }}-cards"
@@ -206,10 +208,11 @@
                     @endif
                 </div>
 
+                {{-- Focus moves to the first card of the new page, so it isn't lost when the button goes. --}}
                 @if ( $column['has_more'] )
                     <x-artisanpack-button
                         class="btn-sm btn-ghost w-full"
-                        wire:click="showMore( {{ $column['id'] }} )"
+                        x-on:click="const shown = {{ count( $column['cards'] ) }}; const list = $el.closest( 'section' ); $wire.showMore( {{ $column['id'] }} ).then( () => setTimeout( () => list.querySelectorAll( '[data-ec-kb-card]' )[ shown ]?.focus(), 50 ) )"
                         spinner="showMore( {{ $column['id'] }} )"
                         :label="__( 'Show more' )"
                         data-ec-kb-show-more

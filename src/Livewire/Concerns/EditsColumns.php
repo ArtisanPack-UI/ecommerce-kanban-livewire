@@ -13,12 +13,14 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Concerns;
 
+use ArtisanPackUI\Ecommerce\Exceptions\EcommerceException;
 use ArtisanPackUI\Ecommerce\Exceptions\KanbanColumnNotEmptyException;
 use ArtisanPackUI\Ecommerce\Exceptions\KanbanOperationException;
 use ArtisanPackUI\Ecommerce\Models\KanbanColumn;
 use ArtisanPackUI\Ecommerce\Models\OrderSubstatus;
 use ArtisanPackUI\Ecommerce\Services\KanbanColumnService;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\AdminLinks;
+use ArtisanPackUI\EcommerceKanbanLivewire\Support\MoveErrors;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\Statuses;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
@@ -28,7 +30,9 @@ use Livewire\Attributes\Locked;
  * headers or with "Move left / right", edit a column's label, color, icon,
  * and WIP limit in place, add a column for a sub-status that isn't on the
  * board yet, and remove a column — refused with the card count while cards
- * remain, unless they are moved to another column first.
+ * remain, unless they are moved to another column first. Moving them into
+ * an exit column (cancelled, refunded, failed) changes each order's status,
+ * so that needs an extra confirmation, as a drop into one does.
  *
  * Every write needs `kanbanBoard.update` and goes through the engine's
  * `KanbanColumnService`, so the rules match the admin and REST, and the
@@ -133,6 +137,16 @@ trait EditsColumns
      * @var mixed
      */
     public mixed $deleteMoveTo = '';
+
+    /**
+     * Whether the user confirmed that removing the column moves its cards
+     * into an exit column, changing each order's status.
+     *
+     * @since 1.0.0
+     *
+     * @var bool
+     */
+    public bool $confirmDeleteExit = false;
 
     /**
      * Turns edit mode on.
@@ -288,6 +302,27 @@ trait EditsColumns
         unset( $this->columns );
 
         $this->success( e( __( 'Column ":column" saved.', [ 'column' => $column->displayLabel() ] ) ) );
+        $this->dispatch( 'ec-kb-focus', selector: '[data-ec-kb-column=\'' . (int) $column->id . '\'] [data-ec-kb-edit-column]' );
+    }
+
+    /**
+     * Closes the column editor without saving, and hands focus back to the
+     * column's "Edit" control (Cancel, Escape, or the backdrop).
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    public function closeColumnDialog(): void
+    {
+        $columnId = $this->editingColumnId;
+
+        $this->columnDialog    = false;
+        $this->editingColumnId = null;
+
+        if ( null !== $columnId ) {
+            $this->dispatch( 'ec-kb-focus', selector: '[data-ec-kb-column=\'' . $columnId . '\'] [data-ec-kb-edit-column]' );
+        }
     }
 
     /**
@@ -304,6 +339,22 @@ trait EditsColumns
 
         $this->newSubstatusId  = null;
         $this->addColumnDialog = true;
+    }
+
+    /**
+     * Closes the "Add column" dialog without adding, and hands focus back to
+     * its button (Cancel, Escape, or the backdrop).
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    public function cancelAddColumn(): void
+    {
+        $this->addColumnDialog = false;
+        $this->newSubstatusId  = null;
+
+        $this->dispatch( 'ec-kb-focus', selector: '[data-ec-kb-add-column]' );
     }
 
     /**
@@ -355,11 +406,13 @@ trait EditsColumns
 
         $this->deletingColumnId       = $columnId;
         $this->deleteMoveTo           = '';
+        $this->confirmDeleteExit      = false;
         $this->confirmingDeleteColumn = true;
     }
 
     /**
-     * Drops the pending removal.
+     * Drops the pending removal and hands focus back to the column's
+     * "Remove" control.
      *
      * @since 1.0.0
      *
@@ -367,8 +420,25 @@ trait EditsColumns
      */
     public function cancelDeleteColumn(): void
     {
-        $this->deletingColumnId       = null;
-        $this->confirmingDeleteColumn = false;
+        $columnId = $this->deletingColumnId;
+
+        $this->resetDeleteColumn();
+
+        if ( null !== $columnId ) {
+            $this->dispatch( 'ec-kb-focus', selector: '[data-ec-kb-column=\'' . $columnId . '\'] [data-ec-kb-delete-column]' );
+        }
+    }
+
+    /**
+     * Asks again for the exit-column confirmation when the target changes.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    public function updatedDeleteMoveTo(): void
+    {
+        $this->confirmDeleteExit = false;
     }
 
     /**
@@ -400,7 +470,15 @@ trait EditsColumns
         if ( null !== $moveTo ) {
             $this->authorizeKanban( 'kanbanCard.move', $this->board );
         }
-        $label  = $column->displayLabel();
+
+        $label = $column->displayLabel();
+
+        // Checked before the token is spent, so confirming can retry it.
+        if ( null !== $moveTo && self::isExitColumn( $moveTo ) && $column->cardCount() > 0 && ! $this->confirmDeleteExit ) {
+            $this->addError( 'confirmDeleteExit', __( 'Confirm that the orders\' status will change before removing the column.' ) );
+
+            return;
+        }
 
         try {
             $deleted = $this->withActionToken( $token, 'delete-column', (int) $column->id, fn (): bool => (bool) app( KanbanColumnService::class )->delete( $column, $moveTo, self::actorId() ) );
@@ -416,16 +494,27 @@ trait EditsColumns
             $this->error( e( __( 'Column ":column" could not be removed: :reason', [ 'column' => $label, 'reason' => $exception->getMessage() ] ) ) );
 
             return;
+        } catch ( EcommerceException $exception ) {
+            // A card the engine won't move into the chosen column (its
+            // status can't change that way, or the column can't hold it).
+            $this->addError( 'deleteMoveTo', MoveErrors::message( MoveErrors::code( $exception ), $moveTo?->displayLabel() ?? '' ) );
+
+            return;
         }
 
-        $this->cancelDeleteColumn();
+        if ( true !== $deleted ) {
+            $this->cancelDeleteColumn();
 
-        if ( true === $deleted ) {
-            $this->collapsed = array_values( array_diff( $this->collapsed, [ (int) $column->id ] ) );
-            unset( $this->limits[ (int) $column->id ], $this->columns );
-
-            $this->success( e( __( 'Column ":column" removed.', [ 'column' => $label ] ) ) );
+            return;
         }
+
+        $this->resetDeleteColumn();
+
+        $this->collapsed = array_values( array_diff( $this->collapsed, [ (int) $column->id ] ) );
+        unset( $this->limits[ (int) $column->id ], $this->columns );
+
+        $this->success( e( __( 'Column ":column" removed.', [ 'column' => $label ] ) ) );
+        $this->dispatch( 'ec-kb-focus', selector: '[data-ec-kb-add-column]' );
     }
 
     /**
@@ -441,6 +530,8 @@ trait EditsColumns
     {
         $deleting = null === $this->deletingColumnId ? null : $this->columns->firstWhere( 'id', $this->deletingColumnId );
         $cards    = null === $deleting ? 0 : (int) ( $counts[ (int) $deleting->id ]['total'] ?? $deleting->cardCount() );
+        $target   = null === $deleting || ! is_numeric( $this->deleteMoveTo ) ? null : $this->editableColumn( (int) $this->deleteMoveTo );
+        $exit     = $cards > 0 && null !== $target && (int) $target->id !== (int) $deleting->id && self::isExitColumn( $target );
 
         return [
             'editing'          => $this->editing,
@@ -451,6 +542,10 @@ trait EditsColumns
                 'label' => $deleting->displayLabel(),
                 'cards' => $cards,
                 'token' => $this->actionToken( 'delete-column', (int) $deleting->id ),
+                'exit'  => ! $exit ? null : [
+                    'column' => $target->displayLabel(),
+                    'status' => Statuses::label( 'system', $target->substatus?->system_status ),
+                ],
             ],
             'moveToColumns'    => null === $deleting ? [] : $this->columns
                 ->reject( static fn ( KanbanColumn $column ): bool => (int) $column->id === (int) $deleting->id )
@@ -501,8 +596,38 @@ trait EditsColumns
     }
 
     /**
+     * Clears the pending removal without moving focus.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    private function resetDeleteColumn(): void
+    {
+        $this->deletingColumnId       = null;
+        $this->deleteMoveTo           = '';
+        $this->confirmDeleteExit      = false;
+        $this->confirmingDeleteColumn = false;
+    }
+
+    /**
+     * Whether moving a card into `$column` changes the whole order's status
+     * (an exit column: cancelled, refunded, failed).
+     *
+     * @since 1.0.0
+     *
+     * @param  KanbanColumn  $column  The column.
+     *
+     * @return bool
+     */
+    private static function isExitColumn( KanbanColumn $column ): bool
+    {
+        return in_array( $column->substatus?->system_status, Statuses::EXIT, true );
+    }
+
+    /**
      * Runs a column write, showing the engine's validation messages on the
-     * component's fields and toasting refusals.
+     * component's fields and toasting refusals (any engine exception).
      *
      * @since 1.0.0
      *
@@ -522,7 +647,7 @@ trait EditsColumns
             }
 
             return false;
-        } catch ( KanbanOperationException $exception ) {
+        } catch ( EcommerceException $exception ) {
             $this->error( e( $exception->getMessage() ) );
 
             return false;

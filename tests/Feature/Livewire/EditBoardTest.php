@@ -302,3 +302,107 @@ it( 'needs kanbanCard.move to move cards out of a removed column, and ignores an
     $component->set( 'deleteMoveTo', $columns[0]->id )->call( 'deleteColumn', $token )->assertForbidden();
     expect( KanbanColumn::query()->find( $columns[1]->id ) )->not->toBeNull();
 } );
+
+it( 'shows why a column can\'t be removed when its cards can\'t move to the chosen column', function (): void {
+    [ $board, $columns ] = makeBoard( [ [ 'cards' => 2, 'label_override' => 'A' ], [ 'cards' => 0, 'label_override' => 'B' ], [ 'cards' => 0, 'label_override' => 'C' ] ] );
+    $columns[0]->substatus->update( [ 'system_status' => 'pending' ] );
+    $columns[1]->substatus->update( [ 'system_status' => 'refunded' ] );
+    $columns[2]->substatus->update( [ 'system_status' => 'pending' ] );
+
+    $component = Livewire::test( Board::class, [ 'board' => $board ] )
+        ->call( 'loadBoard', [] )
+        ->call( 'startEditing' )
+        ->call( 'confirmDeleteColumn', $columns[0]->id );
+
+    $token = $component->viewData( 'deletingColumn' )['token'];
+
+    // Pending orders can't go straight to refunded: the engine refuses, and the dialog says why.
+    $component->set( 'deleteMoveTo', $columns[1]->id )
+        ->set( 'confirmDeleteExit', true )
+        ->call( 'deleteColumn', $token )
+        ->assertHasErrors( 'deleteMoveTo' )
+        ->assertSet( 'confirmingDeleteColumn', true );
+
+    expect( KanbanColumn::query()->find( $columns[0]->id ) )->not->toBeNull()
+        ->and( $columns[0]->cardCount() )->toBe( 2 );
+
+    // The refusal released the token, so a compatible column works with it.
+    $component->set( 'deleteMoveTo', $columns[2]->id )->call( 'deleteColumn', $token )->assertHasNoErrors();
+
+    expect( KanbanColumn::query()->find( $columns[0]->id ) )->toBeNull()
+        ->and( $columns[2]->cardCount() )->toBe( 2 );
+} );
+
+it( 'asks before removing a column moves its cards into an exit column', function (): void {
+    [ $board, $columns ] = editableBoard( [ 2, 0 ] );
+    $columns[1]->substatus->update( [ 'system_status' => 'cancelled' ] );
+
+    $component = Livewire::test( Board::class, [ 'board' => $board ] )
+        ->call( 'loadBoard', [] )
+        ->call( 'startEditing' )
+        ->call( 'confirmDeleteColumn', $columns[0]->id )
+        ->set( 'deleteMoveTo', $columns[1]->id )
+        ->assertSeeHtml( 'data-ec-kb-delete-column-exit' )
+        ->assertSee( 'changes each order' );
+
+    $token = $component->viewData( 'deletingColumn' )['token'];
+
+    $component->call( 'deleteColumn', $token )->assertHasErrors( 'confirmDeleteExit' );
+
+    expect( $columns[0]->cardCount() )->toBe( 2 );
+
+    // Choosing another column asks again.
+    $component->set( 'confirmDeleteExit', true )->set( 'deleteMoveTo', $columns[1]->id )->assertSet( 'confirmDeleteExit', false );
+
+    $component->set( 'confirmDeleteExit', true )->call( 'deleteColumn', $token )->assertHasNoErrors();
+
+    expect( KanbanColumn::query()->find( $columns[0]->id ) )->toBeNull()
+        ->and( $columns[1]->cardCount() )->toBe( 2 );
+} );
+
+it( 'needs no extra confirmation to move a removed column\'s cards into a non-exit column', function (): void {
+    [ $board, $columns ] = editableBoard( [ 1, 0 ] );
+
+    $component = Livewire::test( Board::class, [ 'board' => $board ] )
+        ->call( 'loadBoard', [] )
+        ->call( 'startEditing' )
+        ->call( 'confirmDeleteColumn', $columns[0]->id )
+        ->set( 'deleteMoveTo', $columns[1]->id )
+        ->assertDontSeeHtml( 'data-ec-kb-delete-column-exit' );
+
+    $component->call( 'deleteColumn', $component->viewData( 'deletingColumn' )['token'] )->assertHasNoErrors();
+
+    expect( KanbanColumn::query()->find( $columns[0]->id ) )->toBeNull();
+} );
+
+it( 'hands focus back when an edit-mode dialog is dismissed', function (): void {
+    [ $board, $columns ] = editableBoard();
+    $id                  = $columns[1]->id;
+
+    Livewire::test( Board::class, [ 'board' => $board ] )
+        ->call( 'loadBoard', [] )
+        ->call( 'startEditing' )
+        ->call( 'editColumn', $id )
+        ->call( 'closeColumnDialog' )
+        ->assertSet( 'columnDialog', false )
+        ->assertSet( 'editingColumnId', null )
+        ->assertDispatched( 'ec-kb-focus', selector: "[data-ec-kb-column='{$id}'] [data-ec-kb-edit-column]" )
+        ->call( 'openAddColumn' )
+        ->call( 'cancelAddColumn' )
+        ->assertSet( 'addColumnDialog', false )
+        ->assertDispatched( 'ec-kb-focus', selector: '[data-ec-kb-add-column]' )
+        ->call( 'confirmDeleteColumn', $id )
+        ->call( 'cancelDeleteColumn' )
+        ->assertSet( 'deletingColumnId', null )
+        ->assertDispatched( 'ec-kb-focus', selector: "[data-ec-kb-column='{$id}'] [data-ec-kb-delete-column]" );
+} );
+
+it( 'runs a dialog\'s cancel action when the browser closes it', function (): void {
+    [ $board ] = editableBoard();
+
+    $html = Livewire::test( Board::class, [ 'board' => $board ] )->html();
+
+    foreach ( [ 'closeMoveDialog', 'cancelMove', 'cancelAddOrder', 'cancelRemoveCard', 'closeColumnDialog', 'cancelAddColumn', 'cancelDeleteColumn' ] as $action ) {
+        expect( $html )->toContain( "'" . $action . "'" );
+    }
+} );

@@ -244,3 +244,10 @@ it( 'gives each column an explicit region role, so a draggable column never beco
 
     expect( preg_match_all( '/<section\s[^>]*role="region"\s+aria-labelledby="ec-kb-column-\d+-title"/', $html ) )->toBe( 2 );
 } );
+
+it( 'writes every tone\'s badge class out in full, so Tailwind can find it', function (): void {
+    foreach ( WidgetViews::TONES as $tone ) {
+        expect( $tone['class'] )->toStartWith( 'badge-' )
+            ->and( file_get_contents( dirname( __DIR__, 3 ) . '/src/Support/WidgetViews.php' ) )->toContain( "'" . $tone['class'] . "'" );
+    }
+} );
