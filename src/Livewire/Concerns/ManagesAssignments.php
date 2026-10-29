@@ -117,6 +117,23 @@ trait ManagesAssignments
     }
 
     /**
+     * Closes the "Add order" dialog without adding, and hands focus back to
+     * the header's "Add order" button (Cancel, Escape, or the backdrop).
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    public function cancelAddOrder(): void
+    {
+        $this->addOrderDialog = false;
+        $this->addOrderSearch = '';
+        $this->addOrderId     = null;
+
+        $this->dispatch( 'ec-kb-focus', selector: '[data-ec-kb-add-order]' );
+    }
+
+    /**
      * Clears the picked order when the search changes.
      *
      * @since 1.0.0

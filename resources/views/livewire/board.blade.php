@@ -81,6 +81,8 @@
         recentMoves: {},
         feedback: {},
         feedbackWindow: 15000,
+        moveTimeout: 20000,
+        pendingMoves: {},
         announcement: '',
         remoteMoveMessage: @js( __( 'This card was moved by someone else, so your move was canceled.' ) ),
         read() {
@@ -101,6 +103,18 @@
         },
         init() {
             this.connect();
+            this.watchFailures();
+
+            // The dialogs close on Escape or the backdrop by setting their
+            // property in the browser only; run the matching cancel action so
+            // the server forgets the pending change and focus goes back.
+            this.closeWith( 'moveDialog', 'closeMoveDialog' );
+            this.closeWith( 'confirmingMove', 'cancelMove' );
+            this.closeWith( 'addOrderDialog', 'cancelAddOrder' );
+            this.closeWith( 'confirmingRemove', 'cancelRemoveCard' );
+            this.closeWith( 'columnDialog', 'closeColumnDialog' );
+            this.closeWith( 'addColumnDialog', 'cancelAddColumn' );
+            this.closeWith( 'confirmingDeleteColumn', 'cancelDeleteColumn' );
 
             this.$wire.loadBoard( this.read(), this.visibleColumns() ).then( () => {
                 this.$wire.$watch( 'collapsed', ( ids ) => this.write( ids ) );
@@ -114,6 +128,38 @@
         },
         destroy() {
             this.disconnect();
+        },
+        watchFailures() {
+            // Once per page: tell every board when a Livewire request fails.
+            if ( window.ecommerceKanbanFailureHook || ! window.Livewire ) {
+                return;
+            }
+
+            window.ecommerceKanbanFailureHook = true;
+            window.Livewire.hook( 'request', ( { fail } ) => {
+                fail( ( { status } ) => window.dispatchEvent( new CustomEvent( 'ec-kb-request-failed', { detail: { status } } ) ) );
+            } );
+        },
+        requestFailed() {
+            const pending = Object.values( this.pendingMoves );
+
+            if ( 0 === pending.length ) {
+                return;
+            }
+
+            // The board can't tell which move the failed request carried, so
+            // it puts every pending one back and re-reads the board.
+            pending.forEach( ( revert ) => revert() );
+            this.$wire.$refresh();
+        },
+        closeWith( property, action ) {
+            this.$wire.$watch( property, ( open ) => {
+                // A close the server made (after a save, say) is already
+                // confirmed: only one made here still has to be sent.
+                if ( ! open && false !== this.$wire.__instance?.canonical?.[ property ] ) {
+                    this.$wire[ action ]();
+                }
+            } );
         },
         connect() {
             this.onNetwork    = () => this.updateConnection();
@@ -372,12 +418,28 @@
                 return;
             }
 
-            this.$wire.reorderColumns( detail.toOrderedIds.map( Number ) ).then( ( result ) => {
-                if ( 'rejected' === result ) {
+            let done   = false;
+            const undo = () => {
+                if ( ! done ) {
+                    done = true;
+                    delete this.pendingMoves[ detail.moveId ];
                     window.LivewireDragAndDrop?.revert( detail.moveId );
                     this.$wire.$refresh();
                 }
-            } );
+            };
+
+            this.pendingMoves[ detail.moveId ] = undo;
+
+            this.$wire.reorderColumns( detail.toOrderedIds.map( Number ) )
+                .then( ( result ) => {
+                    if ( 'rejected' === result ) {
+                        return undo();
+                    }
+
+                    done = true;
+                    delete this.pendingMoves[ detail.moveId ];
+                } )
+                .catch( undo );
         },
         focusColumn( detail ) {
             setTimeout( () => {
@@ -392,6 +454,10 @@
         },
         focusCard( orderId ) {
             setTimeout( () => this.card( orderId )?.focus(), 50 );
+        },
+        focusSelector( selector ) {
+            // After the dialog that asked has closed and the board re-rendered.
+            setTimeout( () => this.$root.querySelector( selector )?.focus(), 100 );
         },
         state( orderId, state ) {
             window.dispatchEvent( new CustomEvent( 'ec-kb-card-state', { detail: { orderId: Number( orderId ), state } } ) );
@@ -424,30 +490,64 @@
             const after  = at > 0 ? ids[ at - 1 ] : null;
             const before = at < ids.length - 1 ? ids[ at + 1 ] : null;
             const orderId = Number( detail.itemId );
-            const settle  = () => setTimeout( () => delete this.inFlight[ orderId ], 3000 );
-            const revert  = () => {
-                window.LivewireDragAndDrop?.revert( detail.moveId );
-                this.state( detail.itemId, 'reverting' );
-                setTimeout( () => this.state( detail.itemId, 'idle' ), 2000 );
-            };
+            let done      = false;
+            let watchdog  = null;
+            const finish  = () => {
+                if ( done ) {
+                    return false;
+                }
 
-            this.inFlight[ orderId ] = true;
+                done = true;
+                clearTimeout( watchdog );
+                delete this.pendingMoves[ detail.moveId ];
+                setTimeout( () => delete this.inFlight[ orderId ], 3000 );
+
+                return true;
+            };
+            const revert  = () => {
+                if ( finish() ) {
+                    window.LivewireDragAndDrop?.revert( detail.moveId );
+                    this.state( detail.itemId, 'reverting' );
+                    setTimeout( () => this.state( detail.itemId, 'idle' ), 2000 );
+                }
+            };
+            const accept  = () => finish() && this.state( detail.itemId, 'idle' );
+
+            this.inFlight[ orderId ]          = true;
+            this.pendingMoves[ detail.moveId ] = revert;
             this.markMoved( orderId );
             this.state( detail.itemId, 'moving' );
 
+            // A refused move resolves `rejected`. A failed request (rate
+            // limited, server error) doesn't always settle the call, so
+            // requestFailed() reverts pending moves too, and so does the
+            // watchdog should nothing answer at all.
+            watchdog = setTimeout( () => {
+                revert();
+                this.$wire.$refresh();
+            }, this.moveTimeout );
+
             this.$wire.moveCard( orderId, Number( detail.toContext ), before, after )
-                .then( ( result ) => 'rejected' === result ? revert() : this.state( detail.itemId, 'idle' ) )
-                .catch( revert )
-                .finally( settle );
+                .then( ( result ) => 'rejected' === result ? revert() : accept() )
+                .catch( revert );
         },
     }"
     x-on:ec-kb-focus-card.window="focusCard( $event.detail.orderId )"
+    x-on:ec-kb-focus.window="focusSelector( $event.detail.selector )"
+    x-on:ec-kb-request-failed.window="requestFailed()"
     x-on:ec-kb-focus-column.window="focusColumn( $event.detail )"
     x-on:ec-kb-columns-rendered.window="morphColumns( { columns: $event.detail.columns } )"
     x-on:ec-kb-card-moved.window="markMoved( $event.detail.orderId )"
     x-on:ec-kb-column-visible="queueLazy( $event.detail.columnId )"
 >
     <div class="sr-only" aria-live="assertive" x-text="announcement" data-ec-kb-announcer></div>
+
+    {{-- How many cards the filters leave, announced when it changes. --}}
+    <p class="sr-only" role="status" data-ec-kb-filter-status>
+        @if ( $activeFilters > 0 && $this->loaded )
+            {{ trans_choice( ':count order matches the filters.|:count orders match the filters.', $matchingCards, [ 'count' => $matchingCards ] ) }}
+        @endif
+    </p>
 
     <div class="flex flex-wrap items-center justify-between gap-2">
         <div class="flex items-center gap-2">
@@ -479,7 +579,7 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
-            <x-artisanpack-ec-kb-connection />
+            <x-artisanpack-ec-kb-connection :seconds="$realtime['poll']" />
 
             @foreach ( $toolbar as $action )
                 @if ( null !== $action['url'] && null !== $action['event'] )
@@ -586,6 +686,12 @@
         </x-artisanpack-drawer>
     </div>
 
+    @unless ( $board->is_active )
+        <x-artisanpack-alert icon="o-eye-slash" class="alert-warning" data-ec-kb-inactive-notice>
+            {{ __( 'This board is switched off. Only people who can edit it see it.' ) }}
+        </x-artisanpack-alert>
+    @endunless
+
     @if ( $editing )
         <x-artisanpack-alert icon="o-pencil-square" class="alert-info" data-ec-kb-editing-notice>
             {{ __( 'Editing the board. Drag column headers or use the arrows to reorder columns; changes save as you make them.' ) }}
@@ -594,6 +700,7 @@
 
     @if ( [] === $columns && ! $editing )
         <x-artisanpack-ec-kb-empty
+            live
             icon="o-view-columns"
             :title="__( 'This board has no columns' )"
             :description="__( 'Add columns to the board in its settings to place orders on it.' )"
@@ -676,12 +783,13 @@
                     :label="__( 'After' )"
                     :options="$moveCards"
                     :placeholder="__( 'Choose a card' )"
+                    :hint="$moveCardsTruncated ? __( 'Showing the first :count cards. Use Top or Bottom, or drag, for cards further down.', [ 'count' => count( $moveCards ) ] ) : null"
                     data-ec-kb-move-after
                 />
             @endif
 
             <x-slot:actions>
-                <x-artisanpack-button :label="__( 'Cancel' )" x-on:click="$wire.moveDialog = false" />
+                <x-artisanpack-button :label="__( 'Cancel' )" wire:click="closeMoveDialog" />
                 <x-artisanpack-button type="submit" color="primary" :label="__( 'Move' )" spinner="submitMove" data-ec-kb-move-submit />
             </x-slot:actions>
         </x-artisanpack-form>
@@ -736,7 +844,7 @@
                 />
 
                 <x-slot:actions>
-                    <x-artisanpack-button :label="__( 'Cancel' )" x-on:click="$wire.addOrderDialog = false" />
+                    <x-artisanpack-button :label="__( 'Cancel' )" wire:click="cancelAddOrder" />
                     <x-artisanpack-button type="submit" color="primary" :label="__( 'Add to board' )" spinner="submitAddOrder" data-ec-kb-add-order-submit />
                 </x-slot:actions>
             </x-artisanpack-form>
@@ -791,7 +899,7 @@
                 />
 
                 <x-slot:actions>
-                    <x-artisanpack-button :label="__( 'Cancel' )" x-on:click="$wire.columnDialog = false" />
+                    <x-artisanpack-button :label="__( 'Cancel' )" wire:click="closeColumnDialog" />
                     <x-artisanpack-button type="submit" color="primary" :label="__( 'Save' )" spinner="saveColumn" data-ec-kb-column-save />
                 </x-slot:actions>
             </x-artisanpack-form>
@@ -813,7 +921,7 @@
                 @endif
 
                 <x-slot:actions>
-                    <x-artisanpack-button :label="__( 'Cancel' )" x-on:click="$wire.addColumnDialog = false" />
+                    <x-artisanpack-button :label="__( 'Cancel' )" wire:click="cancelAddColumn" />
                     @if ( [] !== $substatusOptions )
                         <x-artisanpack-button type="submit" color="primary" :label="__( 'Add column' )" spinner="addColumn" data-ec-kb-add-column-submit />
                     @endif
@@ -830,12 +938,26 @@
 
                         <x-artisanpack-select
                             id="ec-kb-delete-column-move-to"
-                            wire:model="deleteMoveTo"
+                            wire:model.live="deleteMoveTo"
                             :label="__( 'Move the cards to' )"
                             :options="$moveToColumns"
                             :placeholder="__( 'Choose a column' )"
                             data-ec-kb-delete-column-move-to
                         />
+
+                        {{-- An exit column changes every moved order's status, so it is confirmed, as a drop into one is. --}}
+                        @if ( null !== $deletingColumn['exit'] )
+                            <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning" data-ec-kb-delete-column-exit>
+                                {{ trans_choice( 'Moving :count order to :column changes its status to :status on every board it is on.|Moving :count orders to :column changes each order\'s status to :status on every board it is on.', $deletingColumn['cards'], [ 'count' => $deletingColumn['cards'], 'column' => $deletingColumn['exit']['column'], 'status' => $deletingColumn['exit']['status'] ] ) }}
+                            </x-artisanpack-alert>
+
+                            <x-artisanpack-checkbox
+                                id="ec-kb-delete-column-confirm-exit"
+                                wire:model="confirmDeleteExit"
+                                :label="__( 'I understand' )"
+                                data-ec-kb-delete-column-confirm-exit
+                            />
+                        @endif
                     @else
                         <p>{{ __( 'Automations that move cards into this column are removed with it.' ) }}</p>
                     @endif
@@ -843,7 +965,7 @@
             @endif
 
             <x-slot:actions>
-                <x-artisanpack-button :label="__( 'Cancel' )" wire:click="cancelDeleteColumn" />
+                <x-artisanpack-button :label="__( 'Cancel' )" wire:click="cancelDeleteColumn" data-ec-kb-cancel-delete-column />
                 @if ( null !== $deletingColumn )
                     <x-artisanpack-button color="error" :label="__( 'Remove column' )" wire:click="deleteColumn( {{ \Illuminate\Support\Js::from( $deletingColumn['token'] ) }} )" spinner="deleteColumn" data-ec-kb-delete-column-button />
                 @endif

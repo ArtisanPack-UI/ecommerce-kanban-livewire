@@ -10,7 +10,23 @@
 
     @since      1.0.0
 --}}
-<div data-ec-kb-automations-panel>
+<div
+    data-ec-kb-automations-panel
+    x-data="{
+        focusFirst( selectors ) {
+            setTimeout( () => {
+                for ( const selector of selectors ) {
+                    const element = this.$root.querySelector( selector );
+
+                    if ( element ) {
+                        return element.focus();
+                    }
+                }
+            }, 100 );
+        },
+    }"
+    x-on:ec-kb-focus-automations.window="focusFirst( $event.detail.selectors )"
+>
     <x-artisanpack-drawer
         wire:model.live="open"
         right
@@ -31,7 +47,7 @@
 
                 @foreach ( $groups as $group )
                     <section class="flex flex-col gap-2" aria-labelledby="ec-kb-automations-{{ $group['key'] }}" data-ec-kb-automation-group="{{ $group['key'] }}">
-                        <h3 id="ec-kb-automations-{{ $group['key'] }}" @class( [ 'font-semibold', 'sr-only' => null === $group['heading'] ] )>{{ $group['heading'] ?? __( 'Automations' ) }}</h3>
+                        <h3 id="ec-kb-automations-{{ $group['key'] }}" tabindex="-1" data-ec-kb-automations-heading @class( [ 'font-semibold focus:outline-none', 'sr-only' => null === $group['heading'] ] )>{{ $group['heading'] ?? __( 'Automations' ) }}</h3>
 
                         @if ( [] === $group['rows'] )
                             <p class="text-sm text-base-content/70" data-ec-kb-automations-empty>{{ $group['empty'] }}</p>
@@ -52,19 +68,18 @@
                                                 <p class="text-xs text-base-content/70">{{ $row['conditions'] }}</p>
                                             </div>
 
-                                            @unless ( $canUpdate )
-                                                <x-artisanpack-badge :value="$row['active'] ? __( 'On' ) : __( 'Off' )" :class="$row['active'] ? 'badge-sm badge-success' : 'badge-sm badge-ghost'" data-ec-kb-automation-state />
-                                            @endunless
+                                            <x-artisanpack-badge :value="$row['active'] ? __( 'On' ) : __( 'Off' )" :class="$row['active'] ? 'badge-sm badge-success' : 'badge-sm badge-ghost'" data-ec-kb-automation-state />
                                         </div>
 
                                         @if ( $canUpdate )
                                             <div class="flex flex-wrap items-center justify-between gap-2">
+                                                {{-- The accessible name starts with the visible label (SC 2.5.3). --}}
                                                 <x-artisanpack-toggle
                                                     id="ec-kb-automation-{{ $group['key'] }}-{{ $row['id'] }}-active"
-                                                    :label="$row['active'] ? __( 'On' ) : __( 'Off' )"
+                                                    :label="__( 'Active' )"
                                                     :checked="$row['active']"
-                                                    wire:click="toggleActive( {{ $row['id'] }} )"
-                                                    aria-label="{{ __( 'Run :name', [ 'name' => $name ] ) }}"
+                                                    wire:change="setActive( {{ $row['id'] }}, $event.target.checked )"
+                                                    aria-label="{{ __( 'Active: :name', [ 'name' => $name ] ) }}"
                                                     data-ec-kb-automation-toggle
                                                 />
 
@@ -99,11 +114,21 @@
                 @endforeach
 
                 @if ( null !== $deleting )
-                    <div class="flex flex-col gap-3 rounded-box border border-error p-3" role="alertdialog" aria-labelledby="ec-kb-delete-automation-title" data-ec-kb-confirm-delete-automation>
+                    {{-- Takes focus when it appears; Escape cancels it rather than closing the drawer. --}}
+                    <div
+                        class="flex flex-col gap-3 rounded-box border border-error p-3"
+                        role="alertdialog"
+                        aria-labelledby="ec-kb-delete-automation-title"
+                        aria-describedby="ec-kb-delete-automation-description"
+                        tabindex="-1"
+                        x-init="$nextTick( () => $el.querySelector( '[data-ec-kb-cancel-delete-automation]' )?.focus() )"
+                        x-on:keydown.escape.stop.prevent="$wire.cancelDelete()"
+                        data-ec-kb-confirm-delete-automation
+                    >
                         <p id="ec-kb-delete-automation-title" class="font-semibold">{{ __( 'Delete the automation :name?', [ 'name' => __( ':trigger, :from to :to', [ 'trigger' => $deleting['trigger'], 'from' => $deleting['from'], 'to' => $deleting['to'] ] ) ] ) }}</p>
-                        <p class="text-sm">{{ __( 'It stops running right away. This cannot be undone.' ) }}</p>
+                        <p id="ec-kb-delete-automation-description" class="text-sm">{{ __( 'It stops running right away. This cannot be undone.' ) }}</p>
                         <div class="flex justify-end gap-2">
-                            <x-artisanpack-button variant="ghost" size="sm" :label="__( 'Cancel' )" wire:click="cancelDelete" />
+                            <x-artisanpack-button variant="ghost" size="sm" :label="__( 'Cancel' )" wire:click="cancelDelete" data-ec-kb-cancel-delete-automation />
                             <x-artisanpack-button size="sm" color="error" :label="__( 'Delete automation' )" wire:click="deleteAutomation( {{ \Illuminate\Support\Js::from( $deleting['token'] ) }} )" spinner="deleteAutomation" data-ec-kb-delete-automation-button />
                         </div>
                     </div>

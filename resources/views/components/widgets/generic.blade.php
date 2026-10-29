@@ -30,7 +30,7 @@
 @if ( '' !== $value )
     <{{ $tag }}
         @if ( null !== $href ) href="{{ $href }}" @endif
-        @class( [ 'badge badge-sm gap-1 whitespace-nowrap', 'badge-' . $tone['color'] => 'neutral' !== $tone['color'], 'badge-outline' => 'neutral' === $tone['color'], 'tooltip' => null !== $tooltip, 'link link-hover' => null !== $href ] )
+        @class( [ 'badge badge-sm gap-1 whitespace-nowrap', $tone['class'], 'tooltip' => null !== $tooltip, 'link link-hover' => null !== $href ] )
         @if ( null !== $tooltip ) data-tip="{{ $tooltip }}" @endif
         data-ec-kb-widget="{{ $widget['key'] ?? '' }}"
         data-ec-kb-tone="{{ $widget['tone'] ?? 'neutral' }}"

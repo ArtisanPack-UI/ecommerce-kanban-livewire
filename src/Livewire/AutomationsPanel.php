@@ -39,7 +39,8 @@ use Livewire\Component;
  *
  * Anyone who can view the board can read the list. With
  * `kanbanBoard.update` an automation can be switched on or off and deleted
- * (confirmed, once per token); "Add" and "Edit" link to the admin's
+ * (confirmed, once per token; the confirmation takes focus and hands it
+ * back); "Add" and "Edit" link to the admin's
  * automation forms when the admin is installed, and without it the panel
  * is list and toggle only (spec open question 1). Changes tell the board to
  * re-render its column badges and are broadcast as a board config change.
@@ -147,15 +148,17 @@ class AutomationsPanel extends Component
     }
 
     /**
-     * Switches an automation on or off.
+     * Switches an automation on or off. Setting the state it already has
+     * changes nothing, so a repeated or late request can't flip it back.
      *
      * @since 1.0.0
      *
-     * @param  int  $automationId  The automation.
+     * @param  int   $automationId  The automation.
+     * @param  bool  $active        Whether it should run.
      *
      * @return void
      */
-    public function toggleActive( int $automationId ): void
+    public function setActive( int $automationId, bool $active ): void
     {
         $board = $this->board();
 
@@ -163,15 +166,15 @@ class AutomationsPanel extends Component
 
         $automation = $this->automation( $automationId );
 
-        if ( null === $automation ) {
+        if ( null === $automation || (bool) $automation->is_active === $active ) {
             return;
         }
 
-        $automation->is_active = ! $automation->is_active;
+        $automation->is_active = $active;
         $automation->save();
 
         $this->changed( $board );
-        $this->success( $automation->is_active ? __( 'Automation switched on.' ) : __( 'Automation switched off.' ) );
+        $this->success( e( $active ? __( 'Automation switched on.' ) : __( 'Automation switched off.' ) ) );
     }
 
     /**
@@ -199,7 +202,13 @@ class AutomationsPanel extends Component
      */
     public function cancelDelete(): void
     {
+        $automationId = $this->deletingId;
+
         $this->deletingId = null;
+
+        if ( null !== $automationId ) {
+            $this->dispatch( 'ec-kb-focus-automations', selectors: [ '[data-ec-kb-automation=\'' . $automationId . '\'] [data-ec-kb-delete-automation]' ] );
+        }
     }
 
     /**
@@ -229,7 +238,8 @@ class AutomationsPanel extends Component
 
         if ( true === $deleted ) {
             $this->changed( $board );
-            $this->success( __( 'Automation deleted.' ) );
+            $this->success( e( __( 'Automation deleted.' ) ) );
+            $this->dispatch( 'ec-kb-focus-automations', selectors: [ '[data-ec-kb-automation-toggle]', '[data-ec-kb-add-automation]', '[data-ec-kb-automations-heading]' ] );
         }
     }
 

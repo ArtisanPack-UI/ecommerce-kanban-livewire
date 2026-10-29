@@ -183,3 +183,26 @@ it( 'keeps filters when re-rendering a column', function (): void {
 
     expect( $html )->toContain( 'Order KEEP-1' )->not->toContain( 'Order HIDE-1' );
 } );
+
+it( 'names a read-only board\'s card lists as groups', function (): void {
+    denyAbilities( [ 'kanbanCard.move' ] );
+    [ $board, $columns ] = makeBoard( [ 1 ] );
+
+    Livewire::test( Board::class, [ 'board' => $board ] )
+        ->call( 'loadBoard', [] )
+        ->assertDontSeeHtml( 'x-drag-context' )
+        ->assertSeeHtml( 'role="group"' . "\n" . '                    aria-label="Orders in ' );
+} );
+
+it( 'doesn\'t make each empty column a live region, and announces how many cards match the filters', function (): void {
+    [ $board, $columns ] = makeBoard( [ 0, 0 ] );
+
+    $component = Livewire::test( Board::class, [ 'board' => $board ] )->call( 'loadBoard', [] );
+
+    expect( $component->html() )->toContain( 'data-ec-kb-empty-column' )
+        ->and( $component->html() )->not->toMatch( '/role="status"[^>]*data-ec-kb-empty-column|data-ec-kb-empty-column[^>]*role="status"/' );
+
+    addCard( $columns[0], [ 'order_number' => 'MATCH-1' ] );
+
+    $component->set( 'search', 'MATCH' )->assertSee( '1 order matches the filters.' );
+} );

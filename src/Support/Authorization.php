@@ -14,6 +14,7 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\EcommerceKanbanLivewire\Support;
 
 use ArtisanPackUI\Ecommerce\Auth\EcommerceAuthorizer;
+use ArtisanPackUI\Ecommerce\Models\KanbanBoard;
 use Illuminate\Contracts\Auth\Authenticatable;
 
 /**
@@ -48,5 +49,22 @@ final class Authorization
         }
 
         return app( EcommerceAuthorizer::class )->allows( $user, $parts[0], $parts[1], $subject );
+    }
+
+    /**
+     * Whether `$user` may open `$board`: they hold `kanbanBoard.view`, and a
+     * switched-off board opens only for people who can edit it.
+     *
+     * @since 1.0.0
+     *
+     * @param  Authenticatable|null  $user   The user.
+     * @param  KanbanBoard           $board  The board.
+     *
+     * @return bool
+     */
+    public static function canOpenBoard( ?Authenticatable $user, KanbanBoard $board ): bool
+    {
+        return self::allows( $user, 'kanbanBoard.view', $board )
+            && ( (bool) $board->is_active || self::allows( $user, 'kanbanBoard.update', $board ) );
     }
 }

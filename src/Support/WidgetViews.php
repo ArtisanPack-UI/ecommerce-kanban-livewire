@@ -61,18 +61,20 @@ final class WidgetViews
     public const GENERIC = EcommerceKanbanLivewireServiceProvider::VIEW_NAMESPACE . '::components.widgets.generic';
 
     /**
-     * Badge colour and the icon that repeats each tone without colour.
+     * Badge colour, its badge class, and the icon that repeats each tone
+     * without colour. The classes are written out in full so Tailwind finds
+     * them in this file (it can't see a class built from parts).
      *
      * @since 1.0.0
      *
-     * @var array<string, array{color: string, icon: string|null}>
+     * @var array<string, array{color: string, class: string, icon: string|null}>
      */
     public const TONES = [
-        'neutral' => [ 'color' => 'neutral', 'icon' => null ],
-        'success' => [ 'color' => 'success', 'icon' => 'o-check-circle' ],
-        'warning' => [ 'color' => 'warning', 'icon' => 'o-exclamation-triangle' ],
-        'danger'  => [ 'color' => 'error', 'icon' => 'o-exclamation-circle' ],
-        'info'    => [ 'color' => 'info', 'icon' => 'o-information-circle' ],
+        'neutral' => [ 'color' => 'neutral', 'class' => 'badge-outline', 'icon' => null ],
+        'success' => [ 'color' => 'success', 'class' => 'badge-success', 'icon' => 'o-check-circle' ],
+        'warning' => [ 'color' => 'warning', 'class' => 'badge-warning', 'icon' => 'o-exclamation-triangle' ],
+        'danger'  => [ 'color' => 'error', 'class' => 'badge-error', 'icon' => 'o-exclamation-circle' ],
+        'info'    => [ 'color' => 'info', 'class' => 'badge-info', 'icon' => 'o-information-circle' ],
     ];
 
     /**
@@ -113,13 +115,13 @@ final class WidgetViews
     }
 
     /**
-     * The badge colour and tone icon for a payload's tone.
+     * The badge colour, class, and tone icon for a payload's tone.
      *
      * @since 1.0.0
      *
      * @param  string|null  $tone  Payload tone.
      *
-     * @return array{color: string, icon: string|null, text: string|null}
+     * @return array{color: string, class: string, icon: string|null, text: string|null}
      */
     public static function tone( ?string $tone ): array
     {

@@ -124,3 +124,9 @@ it( 'is denied for guests', function (): void {
 
     Livewire::test( BoardPicker::class )->assertForbidden();
 } );
+
+it( 'announces that there are no boards', function (): void {
+    Livewire::test( BoardPicker::class, [ 'pick' => true ] )
+        ->assertSeeHtml( 'data-ec-kb-no-boards' )
+        ->assertSeeHtml( 'role="status"' );
+} );

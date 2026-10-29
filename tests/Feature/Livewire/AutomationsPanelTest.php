@@ -120,7 +120,7 @@ it( 'lets viewers read the list without switching or deleting', function (): voi
         ->assertDontSeeHtml( 'data-ec-kb-automation-toggle' )
         ->assertDontSeeHtml( 'data-ec-kb-delete-automation' );
 
-    $component->call( 'toggleActive', $automations['email']->id )->assertForbidden();
+    $component->call( 'setActive', $automations['email']->id, false )->assertForbidden();
     Livewire::test( AutomationsPanel::class, [ 'boardId' => $board->id ] )->call( 'confirmDelete', $automations['email']->id )->assertForbidden();
     Livewire::test( AutomationsPanel::class, [ 'boardId' => $board->id ] )->call( 'deleteAutomation', 'token' )->assertForbidden();
 
@@ -140,13 +140,13 @@ it( 'switches an automation on and off and tells the board', function (): void {
 
     $component = Livewire::test( AutomationsPanel::class, [ 'boardId' => $board->id ] )
         ->call( 'openFor', null )
-        ->call( 'toggleActive', $automations['email']->id )
+        ->call( 'setActive', $automations['email']->id, false )
         ->assertDispatched( 'ec-kb-board-changed' );
 
     expect( $automations['email']->fresh()->is_active )->toBeFalse()
         ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Automation switched off.' );
 
-    $component->call( 'toggleActive', $automations['email']->id );
+    $component->call( 'setActive', $automations['email']->id, true );
 
     expect( $automations['email']->fresh()->is_active )->toBeTrue()
         ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Automation switched on.' );
@@ -154,12 +154,52 @@ it( 'switches an automation on and off and tells the board', function (): void {
     Event::assertDispatched( KanbanBoardConfigChanged::class, fn ( KanbanBoardConfigChanged $event ): bool => (int) $event->board->id === (int) $board->id && KanbanBoardConfigChanged::BOARD_UPDATED === $event->change );
 } );
 
+it( 'sets the state rather than flipping it, so a repeated request changes nothing', function (): void {
+    [ $board, , $automations ] = automatedBoard();
+    Event::fake( [ KanbanBoardConfigChanged::class ] );
+
+    Livewire::test( AutomationsPanel::class, [ 'boardId' => $board->id ] )
+        ->call( 'openFor', null )
+        ->call( 'setActive', $automations['email']->id, false )
+        ->call( 'setActive', $automations['email']->id, false );
+
+    expect( $automations['email']->fresh()->is_active )->toBeFalse();
+
+    Event::assertDispatchedTimes( KanbanBoardConfigChanged::class, 1 );
+} );
+
+it( 'names the switch after its visible label and shows the state in text', function (): void {
+    [ $board ] = automatedBoard();
+
+    Livewire::test( AutomationsPanel::class, [ 'boardId' => $board->id ] )
+        ->call( 'openFor', null )
+        ->assertSee( 'Active' )
+        ->assertSeeHtml( 'aria-label="Active: ' )
+        ->assertSeeHtml( 'data-ec-kb-automation-state' )
+        ->assertDontSeeHtml( 'aria-label="Run ' );
+} );
+
+it( 'hands focus back to the row when a delete is cancelled, and moves it on after a delete', function (): void {
+    [ $board, , $automations ] = automatedBoard();
+
+    $component = Livewire::test( AutomationsPanel::class, [ 'boardId' => $board->id ] )
+        ->call( 'openFor', null )
+        ->call( 'confirmDelete', $automations['email']->id )
+        ->assertSeeHtml( 'data-ec-kb-cancel-delete-automation' )
+        ->call( 'cancelDelete' )
+        ->assertDispatched( 'ec-kb-focus-automations', selectors: [ "[data-ec-kb-automation='" . $automations['email']->id . "'] [data-ec-kb-delete-automation]" ] );
+
+    $token = $component->call( 'confirmDelete', $automations['email']->id )->viewData( 'deleting' )['token'];
+
+    $component->call( 'deleteAutomation', $token )->assertDispatched( 'ec-kb-focus-automations' );
+} );
+
 it( 'leaves automations on other boards alone', function (): void {
     [ $board ]   = automatedBoard();
     [ , , $own ] = automatedBoard();
 
     Livewire::test( AutomationsPanel::class, [ 'boardId' => $board->id ] )
-        ->call( 'toggleActive', $own['email']->id )
+        ->call( 'setActive', $own['email']->id, false )
         ->call( 'confirmDelete', $own['email']->id )
         ->assertSet( 'deletingId', null );
 

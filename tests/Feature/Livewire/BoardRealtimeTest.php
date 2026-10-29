@@ -48,8 +48,12 @@ it( 'renders the connection indicator', function (): void {
     Livewire::test( Board::class, [ 'board' => $board ] )
         ->assertSeeHtml( 'data-ec-kb-connection' )
         ->assertSee( 'Live' )
-        ->assertSee( 'Updates every few seconds' )
+        ->assertSee( 'Updates every 30 seconds' )
         ->assertSee( 'Offline' );
+
+    config()->set( 'artisanpack.ecommerce-kanban-livewire.realtime.poll_interval', 1 );
+
+    Livewire::test( Board::class, [ 'board' => $board ] )->assertSee( 'Updates every 1 second' );
 } );
 
 it( 'shows a card added elsewhere when a board event arrives', function (): void {

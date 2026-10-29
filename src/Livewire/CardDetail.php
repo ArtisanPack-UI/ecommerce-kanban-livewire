@@ -103,6 +103,26 @@ class CardDetail extends Component
     public mixed $addBoardColumnId = '';
 
     /**
+     * The open card's order, status, and column at the last render, so a
+     * change can be announced.
+     *
+     * @since 1.0.0
+     *
+     * @var string|null
+     */
+    #[Locked]
+    public ?string $announcedState = null;
+
+    /**
+     * The board, once read in this request.
+     *
+     * @since 1.0.0
+     *
+     * @var KanbanBoard|null
+     */
+    private ?KanbanBoard $boardModel = null;
+
+    /**
      * Mounts the slide-out, opening the card named in the URL.
      *
      * @since 1.0.0
@@ -331,15 +351,15 @@ class CardDetail extends Component
      */
     public function render(): View
     {
+        $user   = auth()->user();
         $order  = $this->open && is_numeric( $this->orderId ) ? $this->loadOrder( (int) $this->orderId, false ) : null;
         $board  = $this->board();
-        $detail = null === $order ? null : CardDetailPresenter::present( $order, $board );
-
-        $user   = auth()->user();
+        $detail = null === $order ? null : CardDetailPresenter::present( $order, $board, $user );
         $boards = null === $order ? [] : $this->assignableBoards( $order );
 
         return view( 'ecommerce-kanban::livewire.card-detail', [
             'detail'       => $detail,
+            'announcement' => $this->announcement( $detail ),
             'canMove'      => null !== $detail && Authorization::allows( $user, 'kanbanCard.move', $board ),
             'canRemove'    => null !== $detail && Authorization::allows( $user, 'kanbanBoard.update', $board ),
             'addBoards'    => $boards,
@@ -378,7 +398,40 @@ class CardDetail extends Component
     }
 
     /**
-     * The board.
+     * What to announce about the open card: its new status and column when
+     * either changed since the last render of the same card, else nothing.
+     * Only the change is read out, not the whole drawer.
+     *
+     * @since 1.0.0
+     *
+     * @param  array<string, mixed>|null  $detail  The presented order.
+     *
+     * @return string
+     */
+    private function announcement( ?array $detail ): string
+    {
+        if ( null === $detail ) {
+            $this->announcedState = null;
+
+            return '';
+        }
+
+        $state    = $detail['order_id'] . '|' . $detail['status'] . '|' . ( $detail['column'] ?? '' );
+        $previous = $this->announcedState;
+
+        $this->announcedState = $state;
+
+        if ( null === $previous || $previous === $state || ! str_starts_with( $previous, $detail['order_id'] . '|' ) ) {
+            return '';
+        }
+
+        return null === $detail['column']
+            ? __( 'Order :number is now :status.', [ 'number' => $detail['number'], 'status' => $detail['status'] ] )
+            : __( 'Order :number is now :status in :column.', [ 'number' => $detail['number'], 'status' => $detail['status'], 'column' => $detail['column'] ] );
+    }
+
+    /**
+     * The board, read once per request.
      *
      * @since 1.0.0
      *
@@ -386,7 +439,7 @@ class CardDetail extends Component
      */
     private function board(): KanbanBoard
     {
-        return KanbanBoard::query()->findOrFail( $this->boardId );
+        return $this->boardModel ??= KanbanBoard::query()->findOrFail( $this->boardId );
     }
 
     /**

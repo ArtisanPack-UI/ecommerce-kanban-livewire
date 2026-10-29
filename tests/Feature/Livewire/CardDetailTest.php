@@ -215,3 +215,38 @@ it( 'describes the engine automation timeline entries in words', function ( stri
     'failed'        => [ 'kanban.automation_failed', [ 'trigger_key' => 'gone' ], 'Automation failed: Unavailable trigger (gone)' ],
     'field updated' => [ 'kanban.order_field_updated', [ 'field' => 'meta.priority' ], 'Order field meta.priority updated' ],
 ] );
+
+it( 'lists only the other boards the viewer can see', function (): void {
+    [ $board, $order ] = detailOrder();
+
+    Illuminate\Support\Facades\Gate::define( 'ecommerce.kanbanBoard.view', static fn ( $user, $subject = null ): bool => ! ( $subject instanceof ArtisanPackUI\Ecommerce\Models\KanbanBoard && 'Shipping' === $subject->name ) );
+
+    $detail = CardDetailPresenter::present( $order->load( 'items' ), $board, auth()->user() );
+
+    expect( $detail['boards'] )->toBe( [] );
+
+    Livewire::test( CardDetail::class, [ 'boardId' => $board->id ] )
+        ->call( 'show', $order->id )
+        ->assertDontSee( 'Shipping: Awaiting label' )
+        ->assertSee( 'This order is on no other board.' );
+} );
+
+it( 'announces only a change of status or column, not the whole drawer', function (): void {
+    [ $board, $order ] = detailOrder();
+
+    $component = Livewire::test( CardDetail::class, [ 'boardId' => $board->id ] )
+        ->call( 'show', $order->id )
+        ->assertSeeHtml( 'data-ec-kb-detail-announcer' )
+        ->assertDontSeeHtml( 'aria-live="polite"' );
+
+    expect( $component->viewData( 'announcement' ) )->toBe( '' );
+
+    $component->call( 'cardUpdated', $order->id );
+
+    expect( $component->viewData( 'announcement' ) )->toBe( '' );
+
+    $order->update( [ 'system_status' => 'complete' ] );
+    $component->call( 'cardUpdated', $order->id );
+
+    expect( $component->viewData( 'announcement' ) )->toBe( 'Order 1042 is now Complete in Printing.' );
+} );

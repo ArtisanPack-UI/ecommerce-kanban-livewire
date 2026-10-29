@@ -21,7 +21,7 @@ const PER_COLUMN_QUERIES    = 3;
 const COLUMN_PAGE_QUERIES   = 15;
 const CARD_RERENDER_QUERIES = 6;
 const IDLE_POLL_QUERIES     = 6;
-const SLIDE_OUT_QUERIES     = 19;
+const SLIDE_OUT_QUERIES     = 18;
 
 beforeEach( function (): void {
     grantAbilities( [ 'kanbanBoard.viewAny', 'kanbanBoard.view', 'kanbanCard.move', 'kanbanBoard.update', 'order.view' ] );

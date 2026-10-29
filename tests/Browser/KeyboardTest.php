@@ -106,3 +106,61 @@ it( 'keeps focused controls clear of the sticky header (SC 2.4.11)', function ()
             JS )
         ->assertScript( 'document.querySelector( "[data-ec-kb-edit-board]" ).getBoundingClientRect().top >= document.querySelector( "header" ).getBoundingClientRect().bottom' );
 } );
+
+it( 'returns focus to the card when a confirmation is dismissed with Escape', function (): void {
+    $card = '[data-ec-kb-card="' . $this->orders['1001']->id . '"]';
+
+    visit( $this->boardUrl() )
+        ->assertPresent( $card )
+        ->click( Locators::role( 'Actions for order 1001' ) )
+        ->click( $card . ' [data-ec-kb-action="remove"]' )
+        ->assertVisible( '[data-ec-kb-remove-button]' )
+        ->keys( 'html > body', 'Escape' )
+        ->wait( 0.5 )
+        ->assertMissing( '[data-ec-kb-remove-button]' )
+        ->assertScript( keyboardFocused( $card ) );
+} );
+
+it( 'returns focus to the column control when an edit-mode dialog is dismissed with Escape', function (): void {
+    $edit = '[data-ec-kb-column="' . $this->columns['Packing']->id . '"] [data-ec-kb-edit-column]';
+
+    visit( $this->boardUrl() )
+        ->click( '[data-ec-kb-edit-board]' )
+        ->click( $edit )
+        ->assertVisible( '[data-ec-kb-column-save]' )
+        ->keys( 'html > body', 'Escape' )
+        ->wait( 0.5 )
+        ->assertMissing( '[data-ec-kb-column-save]' )
+        ->assertScript( keyboardFocused( $edit ) );
+} );
+
+it( 'moves focus into the automation delete confirmation and back out of it', function (): void {
+    $delete = '[data-ec-kb-automation] [data-ec-kb-delete-automation]';
+
+    visit( $this->boardUrl() )
+        ->click( '[data-ec-kb-automations]' )
+        ->assertVisible( $delete )
+        ->click( $delete )
+        ->assertVisible( '[data-ec-kb-confirm-delete-automation]' )
+        ->wait( 0.3 )
+        ->assertScript( keyboardFocused( '[data-ec-kb-cancel-delete-automation]' ) )
+        ->keys( '[data-ec-kb-cancel-delete-automation]', 'Escape' )
+        ->wait( 0.5 )
+        ->assertNotPresent( '[data-ec-kb-confirm-delete-automation]' )
+        ->assertVisible( '[data-ec-kb-automations-panel] [data-ec-kb-automation-toggle]' )
+        ->assertScript( keyboardFocused( $delete ) );
+} );
+
+it( 'moves focus to the first new card after "Show more"', function (): void {
+    config()->set( 'artisanpack.ecommerce-kanban-livewire.cards.per_column', 2 );
+
+    $third = '[data-ec-kb-card="' . $this->orders['1003']->id . '"]';
+
+    visit( $this->boardUrl() )
+        ->assertVisible( '[data-ec-kb-show-more]' )
+        ->keys( '[data-ec-kb-show-more]', 'Enter' )
+        ->assertVisible( $third )
+        ->wait( 0.3 )
+        ->assertNotPresent( '[data-ec-kb-show-more]' )
+        ->assertScript( keyboardFocused( $third ) );
+} );

@@ -275,3 +275,15 @@ it( 'lists columns only for boards the user may add the order to', function (): 
         ->set( 'addBoardId', $inactive->id )
         ->assertDontSee( 'Secret column' );
 } );
+
+it( 'hands focus back to "Add order" when the dialog is closed without adding', function (): void {
+    [ $board ] = makeBoard( [ 0 ] );
+
+    Livewire::test( Board::class, [ 'board' => $board ] )
+        ->call( 'openAddOrder' )
+        ->set( 'addOrderSearch', '10' )
+        ->call( 'cancelAddOrder' )
+        ->assertSet( 'addOrderDialog', false )
+        ->assertSet( 'addOrderSearch', '' )
+        ->assertDispatched( 'ec-kb-focus', selector: '[data-ec-kb-add-order]' );
+} );

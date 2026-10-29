@@ -121,7 +121,8 @@ class Board extends Component
     public array $limits = [];
 
     /**
-     * Mounts the board and remembers it as the user's last board.
+     * Mounts the board and remembers it as the user's last board. A
+     * switched-off board is a 404 for anyone who can't edit it.
      *
      * @since 1.0.0
      *
@@ -141,9 +142,13 @@ class Board extends Component
 
         $this->authorizeKanban( 'kanbanBoard.view', $board );
 
+        abort_unless( Authorization::canOpenBoard( auth()->user(), $board ), 404 );
+
         $this->boardId = (int) $board->id;
 
-        LastBoard::remember( auth()->user(), $board );
+        if ( $board->is_active ) {
+            LastBoard::remember( auth()->user(), $board );
+        }
     }
 
     /**
@@ -156,6 +161,8 @@ class Board extends Component
     public function hydrate(): void
     {
         $this->authorizeKanban( 'kanbanBoard.view', $this->board );
+
+        abort_unless( Authorization::canOpenBoard( auth()->user(), $this->board ), 404 );
     }
 
     /**
@@ -251,16 +258,17 @@ class Board extends Component
         doAction( Hooks::BOARD_RENDERED, $board, $columns, $user );
 
         return view( 'ecommerce-kanban::livewire.board', [
-            'board'        => $board,
-            'columns'      => $columns,
-            'toolbar'      => ( new BoardToolbar( $board, $user ) )->actions(),
-            'boards'       => BoardsQuery::visibleTo( $user ),
-            'pickerUrl'    => BoardUrls::picker(),
-            'storageKey'   => 'ecommerce-kanban.collapsed.' . $board->id,
-            'canMove'      => $this->cardsDraggable(),
-            'canEdit'      => Authorization::allows( $user, 'kanbanBoard.update', $board ),
-            'dragMessages' => self::dragMessages(),
-            'realtime'     => $this->realtimeData(),
+            'board'         => $board,
+            'columns'       => $columns,
+            'toolbar'       => ( new BoardToolbar( $board, $user ) )->actions(),
+            'boards'        => BoardsQuery::visibleTo( $user ),
+            'pickerUrl'     => BoardUrls::picker(),
+            'storageKey'    => 'ecommerce-kanban.collapsed.' . $board->id,
+            'canMove'       => $this->cardsDraggable(),
+            'canEdit'       => Authorization::allows( $user, 'kanbanBoard.update', $board ),
+            'dragMessages'  => self::dragMessages(),
+            'realtime'      => $this->realtimeData(),
+            'matchingCards' => array_sum( array_column( $counts, 'count' ) ),
             ...$this->filterBarData(),
             ...$this->moveDialogData( $counts ),
             ...$this->confirmMoveData(),

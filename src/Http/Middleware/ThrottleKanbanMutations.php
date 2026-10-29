@@ -13,6 +13,7 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\EcommerceKanbanLivewire\Http\Middleware;
 
+use ArtisanPackUI\EcommerceKanbanLivewire\EcommerceKanbanLivewireServiceProvider;
 use Closure;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -29,10 +30,12 @@ use Symfony\Component\HttpFoundation\Response;
  * Registered on the board routes as `ecommerce-kanban.throttle` and as
  * Livewire persistent middleware, so it re-runs on every update request from
  * a board page. Page loads are not counted, and neither are updates that only
- * read: no property updates beyond {@see self::READ_PROPERTIES}, and only
- * calls listed in {@see self::READ_CALLS} (loading the board or a column,
- * collapsing a column, paging, polling, real-time refreshes, and automation
- * feedback).
+ * read: no property updates beyond {@see self::READ_PROPERTIES} (the filter
+ * bar, searches, and dialogs opening and closing), and only calls listed in
+ * {@see self::READ_CALLS} (loading the board or a column, collapsing a
+ * column, paging, polling, real-time refreshes, automation feedback,
+ * searching, and opening or closing a dialog). Those lists only apply to
+ * this package's components; any other component's update is a change.
  *
  * Over the limit it answers 429 with `Retry-After` and a JSON body
  * (`message`, `retry_after`); the page turns that into a toast. The response
@@ -82,18 +85,61 @@ class ThrottleKanbanMutations
         'refreshCards',
         'boardEvent',
         'automationFeedback',
+        'searchCustomers',
+        'searchProducts',
+        'clearFilters',
+        'openMoveDialog',
+        'closeMoveDialog',
+        'cancelMove',
+        'openAddOrder',
+        'cancelAddOrder',
+        'confirmRemoveCard',
+        'cancelRemoveCard',
+        'editColumn',
+        'closeColumnDialog',
+        'openAddColumn',
+        'cancelAddColumn',
+        'confirmDeleteColumn',
+        'cancelDeleteColumn',
+        'openFor',
+        'show',
+        'close',
+        'cancelDelete',
     ];
 
     /**
-     * Properties the page sets for itself rather than the user, so a request
-     * whose only updates are these still counts as a read. The board sends
-     * `liveFeedback` with its next request when its connection changes.
+     * Properties whose updates only change what the page shows, so a request
+     * whose only updates are these still counts as a read: the board's
+     * connection state (`liveFeedback`, sent when it changes), the filter
+     * bar, the "Add order" search, and whether a dialog is open. Matched on
+     * the first segment of the property path (`extraFilters.foo`).
      *
      * @since 1.0.0
      *
      * @var array<int, string>
      */
-    public const READ_PROPERTIES = [ 'liveFeedback' ];
+    public const READ_PROPERTIES = [
+        'liveFeedback',
+        'search',
+        'customerId',
+        'tags',
+        'productIds',
+        'placedFrom',
+        'placedTo',
+        'stale',
+        'paymentStatus',
+        'fulfillmentStatus',
+        'extraFilters',
+        'addOrderSearch',
+        'moveDialog',
+        'confirmingMove',
+        'addOrderDialog',
+        'confirmingRemove',
+        'columnDialog',
+        'addColumnDialog',
+        'confirmingDeleteColumn',
+        'open',
+    ];
 
     /**
      * @since 1.0.0
@@ -118,7 +164,13 @@ class ThrottleKanbanMutations
      */
     public function handle( Request $request, Closure $next ): Response
     {
-        if ( ! self::isLivewireUpdate() || self::onlyReads( $request ) ) {
+        if ( ! self::isLivewireUpdate() ) {
+            return $next( $request );
+        }
+
+        $update = self::updateRequest( $request );
+
+        if ( self::onlyReads( $update ) ) {
             return $next( $request );
         }
 
@@ -128,7 +180,7 @@ class ThrottleKanbanMutations
             return $next( $request );
         }
 
-        foreach ( self::limits( $definition( $request ) ) as $limit ) {
+        foreach ( self::limits( $definition( $update ) ) as $limit ) {
             $key = self::LIMITER . ':' . $limit->key;
 
             if ( $this->limiter->tooManyAttempts( $key, $limit->maxAttempts ) ) {
@@ -158,10 +210,36 @@ class ThrottleKanbanMutations
     }
 
     /**
-     * Whether every component in the update only reads: it sends no property
-     * updates beyond {@see self::READ_PROPERTIES}, and every call it makes is one of {@see self::READ_CALLS}. A
-     * commit with no calls at all is a read too: it is how Livewire 3 sends
-     * `wire:poll` and `$refresh`.
+     * The request that carries the Livewire update's payload.
+     *
+     * As persistent middleware this runs on a GET copy of the update request
+     * that Livewire makes with the page's path, and that copy's input holds
+     * none of the update's JSON body. The update request itself is still
+     * the application's current request, so its payload is read from there.
+     *
+     * @since 1.0.0
+     *
+     * @param  Request  $request  The request the middleware was given.
+     *
+     * @return Request
+     */
+    public static function updateRequest( Request $request ): Request
+    {
+        if ( is_array( $request->input( 'components' ) ) ) {
+            return $request;
+        }
+
+        $current = app( 'request' );
+
+        return $current instanceof Request && is_array( $current->input( 'components' ) ) ? $current : $request;
+    }
+
+    /**
+     * Whether every component in the update only reads: it is one of this
+     * package's components, it sends no property updates beyond
+     * {@see self::READ_PROPERTIES}, and every call it makes is one of
+     * {@see self::READ_CALLS}. A commit with no calls at all is a read too:
+     * it is how Livewire 3 sends `wire:poll` and `$refresh`.
      *
      * @since 1.0.0
      *
@@ -178,7 +256,13 @@ class ThrottleKanbanMutations
         }
 
         foreach ( $components as $component ) {
-            if ( ! is_array( $component ) || [] !== array_diff( array_keys( (array) ( $component['updates'] ?? [] ) ), self::READ_PROPERTIES ) ) {
+            if ( ! is_array( $component ) || ! self::isPackageComponent( $component ) ) {
+                return false;
+            }
+
+            $properties = array_map( static fn ( mixed $path ): string => explode( '.', (string) $path, 2 )[0], array_keys( (array) ( $component['updates'] ?? [] ) ) );
+
+            if ( [] !== array_diff( $properties, self::READ_PROPERTIES ) ) {
                 return false;
             }
 
@@ -217,6 +301,25 @@ class ThrottleKanbanMutations
             429,
             [ 'Retry-After' => (string) $retryAfter ],
         );
+    }
+
+    /**
+     * Whether a component in a Livewire update is one of this package's, by
+     * the name in its snapshot.
+     *
+     * @since 1.0.0
+     *
+     * @param  array<string, mixed>  $component  The component's part of the update.
+     *
+     * @return bool
+     */
+    private static function isPackageComponent( array $component ): bool
+    {
+        $snapshot = $component['snapshot'] ?? null;
+        $snapshot = is_string( $snapshot ) ? json_decode( $snapshot, true ) : $snapshot;
+        $name     = is_array( $snapshot ) ? ( $snapshot['memo']['name'] ?? null ) : null;
+
+        return is_string( $name ) && array_key_exists( $name, EcommerceKanbanLivewireServiceProvider::LIVEWIRE_COMPONENTS );
     }
 
     /**
