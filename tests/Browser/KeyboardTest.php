@@ -65,8 +65,10 @@ it( 'opens a card\'s actions and the "Move to…" dialog from the keyboard', fun
     visit( $this->boardUrl() )
         ->assertPresent( '[data-ec-kb-card]' )
         ->keys( $trigger, [ 'Enter' ] )
-        ->assertVisible( '[data-ec-kb-card="' . $this->orders['1001']->id . '"] [data-ec-kb-action="move"]' )
-        ->keys( '[data-ec-kb-card="' . $this->orders['1001']->id . '"] [data-ec-kb-action="move"]', [ 'Enter' ] )
+        ->assertVisible( Locators::menuItem( 'move' ) )
+        // The menu keeps focus and highlights its items: Open first, then Move to….
+        ->assertScript( 'document.activeElement?.getAttribute( "role" )', 'menu' )
+        ->keys( '[role="menu"]:visible', [ 'ArrowDown', 'Enter' ] )
         ->assertVisible( '[data-ec-kb-move-submit]' );
 } );
 
@@ -113,7 +115,7 @@ it( 'returns focus to the card when a confirmation is dismissed with Escape', fu
     visit( $this->boardUrl() )
         ->assertPresent( $card )
         ->click( Locators::role( 'Actions for order 1001' ) )
-        ->click( $card . ' [data-ec-kb-action="remove"]' )
+        ->click( Locators::menuItem( 'remove' ) )
         ->assertVisible( '[data-ec-kb-remove-button]' )
         ->keys( 'html > body', 'Escape' )
         ->wait( 0.5 )
@@ -147,7 +149,7 @@ it( 'moves focus into the automation delete confirmation and back out of it', fu
         ->keys( '[data-ec-kb-cancel-delete-automation]', 'Escape' )
         ->wait( 0.5 )
         ->assertNotPresent( '[data-ec-kb-confirm-delete-automation]' )
-        ->assertVisible( '[data-ec-kb-automations-panel] [data-ec-kb-automation-toggle]' )
+        ->assertVisible( '.ec-kb-automations-drawer [data-ec-kb-automation-toggle]' )
         ->assertScript( keyboardFocused( $delete ) );
 } );
 

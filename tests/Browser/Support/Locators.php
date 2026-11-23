@@ -57,4 +57,19 @@ final class Locators
     {
         return 'internal:role=' . $role . '[name=' . json_encode( $name, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . 's]';
     }
+
+    /**
+     * The open menu's item for card action `$key`. The design system's
+     * DropdownMenu renders its items in a layer at the end of `<body>`, not
+     * inside the card, and every card has one, so only the visible item (the
+     * open menu's) matches.
+     *
+     * @param  string  $key  The action key (`open`, `move`, `remove`, …).
+     *
+     * @return string
+     */
+    public static function menuItem( string $key ): string
+    {
+        return '[data-ec-kb-action="' . $key . '"]:visible';
+    }
 }

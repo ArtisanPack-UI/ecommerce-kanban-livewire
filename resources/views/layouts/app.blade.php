@@ -6,10 +6,14 @@
     text), a `content` section, and `styles` / `scripts` stacks, so a page
     extends whichever layout is resolved without a branch of its own.
 
-    The package ships no CSS build. The host's Vite entries (filterable with
-    `ap.ecommerceKanbanLivewire.layout.viteEntries`) are loaded when a Vite
+    The package ships no CSS build. The design system's CSS and behavior
+    engine come from the host's Vite entries (filterable with
+    `ap.ecommerceKanbanLivewire.layout.viteEntries`), loaded when a Vite
     build or dev server is present; the host adds this package's views to its
-    Tailwind `@source` list (see `php artisan ecommerce-kanban:install`).
+    Tailwind `@source` list (see `php artisan ecommerce-kanban:install`). The
+    board's own token-only styles are inlined (see partials/styles), and
+    `@apuiThemeScript` applies the light or dark choice before the first
+    paint.
 
     Publish with `php artisan vendor:publish --tag=ecommerce-kanban-views`.
 
@@ -22,45 +26,44 @@
     $ecommerceKanbanPickerUrl = \ArtisanPackUI\EcommerceKanbanLivewire\Support\BoardUrls::picker();
 @endphp
 <!DOCTYPE html>
-{{-- The scroll padding keeps a focused control from scrolling under the sticky header (WCAG 2.2 SC 2.4.11). It is inline because the theme toggle replaces the root's classes. --}}
+{{-- The scroll padding keeps a focused control from scrolling under the sticky header (WCAG 2.2 SC 2.4.11). --}}
 <html lang="{{ str_replace( '_', '-', app()->getLocale() ) }}" style="scroll-padding-top: 5rem">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield( 'title', __( 'Kanban' ) ) &middot; {{ config( 'app.name' ) }}</title>
+    @apuiThemeScript
     @include( 'ecommerce-kanban::partials.vite-assets' )
+    @include( 'ecommerce-kanban::partials.styles' )
     @livewireStyles
     @stack( 'styles' )
 </head>
-<body class="min-h-screen font-sans antialiased bg-base-200">
-    <a href="#ecommerce-kanban-content" class="sr-only focus:not-sr-only focus:absolute focus:start-2 focus:top-2 focus:z-50 btn btn-sm">
+<body class="ec-kb-page antialiased">
+    <a href="#ecommerce-kanban-content" class="apui-button sr-only focus:not-sr-only focus:absolute focus:start-2 focus:top-2 focus:z-50" data-variant="solid" data-color="primary" data-size="sm">
         {{ __( 'Skip to content' ) }}
     </a>
 
-    {{-- The header sticks, not the nav: a sticky element can't leave its parent, and the header is only as tall as the nav. --}}
-    <header class="sticky top-0 z-30">
-        <x-artisanpack-nav full-width>
-            <x-slot:brand>
-                @if ( null !== $ecommerceKanbanPickerUrl )
-                    <a href="{{ $ecommerceKanbanPickerUrl }}" class="font-bold">{{ __( 'Kanban' ) }}</a>
-                @else
-                    <span class="font-bold">{{ __( 'Kanban' ) }}</span>
-                @endif
-            </x-slot:brand>
+    <x-artisanpack-navbar :label="__( 'Kanban' )">
+        <x-slot:brand>
+            @if ( null !== $ecommerceKanbanPickerUrl )
+                <a href="{{ $ecommerceKanbanPickerUrl }}" class="font-bold">{{ __( 'Kanban' ) }}</a>
+            @else
+                <span class="font-bold">{{ __( 'Kanban' ) }}</span>
+            @endif
+        </x-slot:brand>
 
-            <x-slot:actions>
-                @yield( 'header' )
-                <x-artisanpack-theme-toggle aria-label="{{ __( 'Toggle dark mode' ) }}" />
-            </x-slot:actions>
-        </x-artisanpack-nav>
-    </header>
+        <x-slot:actions>
+            @yield( 'header' )
+            <x-artisanpack-theme-toggle variant="icon" />
+        </x-slot:actions>
+    </x-artisanpack-navbar>
 
     <main id="ecommerce-kanban-content" class="w-full p-4">
         @yield( 'content' )
     </main>
 
-    <x-artisanpack-toast />
+    <x-artisanpack-toaster />
 
     @livewireScripts
     @include( 'ecommerce-kanban::partials.rate-limit-notice' )

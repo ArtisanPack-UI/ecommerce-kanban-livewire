@@ -232,7 +232,7 @@ trait MovesCards
         $column = $this->cardColumn( $orderId );
 
         if ( null === $column ) {
-            $this->error( e( MoveErrors::message( 'not-on-board', '' ) ) );
+            $this->error( MoveErrors::message( 'not-on-board', '' ) );
 
             return;
         }
@@ -492,8 +492,7 @@ trait MovesCards
     {
         doAction( Hooks::CARD_MOVE_FAILED, $code, $order, $column, $this->board, auth()->user() );
 
-        // The toast renders its title as HTML; column labels are admin-entered.
-        $this->error( e( MoveErrors::message( $code, $column?->displayLabel() ?? '' ) ) );
+        $this->error( MoveErrors::message( $code, $column?->displayLabel() ?? '' ) );
         $this->skipRender();
 
         return self::REJECTED;

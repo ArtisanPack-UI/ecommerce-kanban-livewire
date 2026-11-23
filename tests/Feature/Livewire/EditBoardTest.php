@@ -278,7 +278,7 @@ it( 'edits the color with the color picker', function (): void {
         ->call( 'startEditing' )
         ->call( 'editColumn', $columns[0]->id )
         ->assertSee( 'Color' )
-        ->assertSeeHtml( 'type="color"' )
+        ->assertSeeHtml( 'apui-color-picker' )
         ->set( 'columnForm.color_override', '#10b981' )
         ->call( 'saveColumn' )
         ->assertHasNoErrors();

@@ -202,7 +202,7 @@ jobs:
     name: Browser (Livewire ${{ matrix.livewire }})
 
     # The board journeys, keyboard checks, and accessibility checks in
-    # tests/Browser, against the workbench asset bundle (Tailwind + daisyUI
+    # tests/Browser, against the workbench asset bundle (Tailwind + the design system
     # and livewire-drag-and-drop) on a seeded demo board.
     strategy:
       fail-fast: false

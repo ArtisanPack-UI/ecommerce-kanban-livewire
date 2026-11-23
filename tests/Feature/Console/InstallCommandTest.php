@@ -41,6 +41,19 @@ it( 'prints the Tailwind sources and the drag-and-drop install and import with t
         ->assertSuccessful();
 } );
 
+it( 'prints the design-system setup: the component library installer, or the packages, stylesheet and script lines', function (): void {
+    $command = $this->artisan( 'ecommerce-kanban:install' )
+        ->expectsOutputToContain( InstallCommand::DESIGN_SYSTEM_INSTALL )
+        ->expectsOutputToContain( 'npm install --save-dev ' . InstallCommand::DESIGN_SYSTEM_PACKAGES )
+        ->expectsOutputToContain( '@apuiThemeScript' );
+
+    foreach ( [ ...InstallCommand::DESIGN_SYSTEM_STYLES, ...InstallCommand::DESIGN_SYSTEM_SCRIPT ] as $line ) {
+        $command->expectsOutputToContain( $line );
+    }
+
+    $command->assertSuccessful();
+} );
+
 it( 'never edits the host stylesheet or script', function (): void {
     File::ensureDirectoryExists( resource_path( 'css' ) );
     File::ensureDirectoryExists( resource_path( 'js' ) );

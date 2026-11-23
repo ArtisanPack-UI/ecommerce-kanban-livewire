@@ -258,7 +258,7 @@ class CardDetail extends Component
         try {
             $routes->assign( $order, $target, $column, is_numeric( $actor ) ? (int) $actor : null );
         } catch ( EcommerceException $exception ) {
-            $this->error( e( MoveErrors::message( MoveErrors::code( $exception ), $label ) ) );
+            $this->error( MoveErrors::message( MoveErrors::code( $exception ), $label ) );
 
             return;
         }
@@ -266,7 +266,7 @@ class CardDetail extends Component
         $this->addBoardId       = '';
         $this->addBoardColumnId = '';
 
-        $this->success( e( __( 'Order :number added to :board.', [ 'number' => $order->order_number, 'board' => $target->name ] ) ) );
+        $this->success( __( 'Order :number added to :board.', [ 'number' => $order->order_number, 'board' => $target->name ] ) );
     }
 
     /**
@@ -460,7 +460,7 @@ class CardDetail extends Component
 
         if ( ! $onBoard ) {
             if ( $notify ) {
-                $this->error( e( __( 'This order is not on this board.' ) ) );
+                $this->error( __( 'This order is not on this board.' ) );
             }
 
             return null;
@@ -468,7 +468,7 @@ class CardDetail extends Component
 
         if ( ! Authorization::allows( auth()->user(), 'order.view', $order ) ) {
             if ( $notify ) {
-                $this->error( e( __( 'You are not allowed to view this order.' ) ) );
+                $this->error( __( 'You are not allowed to view this order.' ) );
             }
 
             return null;

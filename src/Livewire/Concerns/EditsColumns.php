@@ -190,7 +190,7 @@ trait EditsColumns
         try {
             app( KanbanColumnService::class )->reorder( $this->board, array_values( $columnIds ), self::actorId() );
         } catch ( KanbanOperationException ) {
-            $this->error( e( __( 'The columns changed while you were editing. The board has been refreshed.' ) ) );
+            $this->error( __( 'The columns changed while you were editing. The board has been refreshed.' ) );
             $this->skipRender();
 
             return self::REJECTED;
@@ -301,7 +301,7 @@ trait EditsColumns
         $this->editingColumnId = null;
         unset( $this->columns );
 
-        $this->success( e( __( 'Column ":column" saved.', [ 'column' => $column->displayLabel() ] ) ) );
+        $this->success( __( 'Column ":column" saved.', [ 'column' => $column->displayLabel() ] ) );
         $this->dispatch( 'ec-kb-focus', selector: '[data-ec-kb-column=\'' . (int) $column->id . '\'] [data-ec-kb-edit-column]' );
     }
 
@@ -382,7 +382,7 @@ trait EditsColumns
         $this->addColumnDialog = false;
         unset( $this->columns );
 
-        $this->success( e( __( 'Column ":column" added.', [ 'column' => $column?->displayLabel() ?? '' ] ) ) );
+        $this->success( __( 'Column ":column" added.', [ 'column' => $column?->displayLabel() ?? '' ] ) );
     }
 
     /**
@@ -491,7 +491,7 @@ trait EditsColumns
 
             return;
         } catch ( KanbanOperationException $exception ) {
-            $this->error( e( __( 'Column ":column" could not be removed: :reason', [ 'column' => $label, 'reason' => $exception->getMessage() ] ) ) );
+            $this->error( __( 'Column ":column" could not be removed: :reason', [ 'column' => $label, 'reason' => $exception->getMessage() ] ) );
 
             return;
         } catch ( EcommerceException $exception ) {
@@ -513,7 +513,7 @@ trait EditsColumns
         $this->collapsed = array_values( array_diff( $this->collapsed, [ (int) $column->id ] ) );
         unset( $this->limits[ (int) $column->id ], $this->columns );
 
-        $this->success( e( __( 'Column ":column" removed.', [ 'column' => $label ] ) ) );
+        $this->success( __( 'Column ":column" removed.', [ 'column' => $label ] ) );
         $this->dispatch( 'ec-kb-focus', selector: '[data-ec-kb-add-column]' );
     }
 
@@ -648,7 +648,7 @@ trait EditsColumns
 
             return false;
         } catch ( EcommerceException $exception ) {
-            $this->error( e( $exception->getMessage() ) );
+            $this->error( $exception->getMessage() );
 
             return false;
         }

@@ -24,32 +24,24 @@ final class Accessibility
      * @var array<int, array{0: string, 1: string}>
      */
     public const LIBRARY_ISSUES = [
-        // ArtisanPack-UI/livewire-ui-components#117: the search input of
-        // `x-artisanpack-choices` / `x-artisanpack-choices-offline` has no
-        // label (the field label is a <legend> it isn't linked to).
-        [ 'label', '[x-ref="searchInput"]' ],
-        // ArtisanPack-UI/livewire-ui-components#117: `x-artisanpack-select`
-        // labels with a <legend>, so the control itself has no accessible
-        // name.
-        [ 'select-name', 'fieldset' ],
-        // ArtisanPack-UI/livewire-ui-components#117: the native colour input
-        // of `x-artisanpack-colorpicker` has no label.
-        [ 'label', 'input[type="color"]' ],
-        // ArtisanPack-UI/livewire-ui-components#117: the drawer's
-        // `drawer-toggle` checkbox is unlabelled.
-        [ 'label', '.drawer > input.drawer-toggle' ],
-        // ArtisanPack-UI/livewire-ui-components#117: `x-artisanpack-dropdown`
-        // menus put a <div> between the <ul> and its <li>s, and give items
-        // role="menuitem" without a role="menu" parent.
-        [ 'list', '.menu' ],
-        [ 'listitem', '.menu' ],
-        [ 'aria-required-children', '.menu' ],
-        [ 'aria-required-parent', '.menu' ],
-        // ArtisanPack-UI/livewire-ui-components#135: the modal's and drawer's
-        // icon-only close buttons have no accessible name. (The board's own
-        // buttons never use `btn-circle`.)
-        [ 'button-name', '.btn-circle' ],
+        // ArtisanPack-UI/livewire-ui-components#164: the 3.0 Drawer's panel
+        // is an <aside> with role="dialog", a role axe doesn't allow on
+        // <aside>.
+        [ 'aria-allowed-role', '[data-scope="drawer"][data-part="content"]' ],
+        // ArtisanPack-UI/livewire-ui-components#168: once the ColorPicker starts, its
+        // label's `for` points at the machine's hidden input, so the visible
+        // text field has no label.
+        [ 'label', '[data-scope="color-picker"][data-part="control"]' ],
+        [ 'label-title-only', '[data-scope="color-picker"][data-part="control"]' ],
     ];
+
+    /**
+     * The open dialog or drawer panel: a modal one hides the rest of the
+     * page from assistive technology, so only it is checked.
+     *
+     * @var string
+     */
+    public const OPEN_OVERLAY = ':is([data-scope="dialog"], [data-scope="drawer"])[data-part="content"][data-state="open"]';
 
     /**
      * JavaScript: whether every finite CSS animation and transition on the
@@ -64,37 +56,31 @@ final class Accessibility
         JS;
 
     /**
-     * JavaScript: whether every open drawer has finished sliding and fading
-     * in, so axe sees its final colours.
-     *
-     * @var string
-     */
-    public const DRAWERS_SETTLED = <<<'JS'
-        Array.from( document.querySelectorAll( '.drawer-toggle:checked ~ .drawer-side' ) ).every( ( side ) => getComputedStyle( side ).opacity === '1' && Array.from( side.children ).every( ( panel ) => [ 'none', '0%', '0px' ].includes( getComputedStyle( panel ).translate ) ) )
-        JS;
-
-    /**
      * Asserts the page has no accessibility violations beyond the known
      * library ones.
      *
-     * @param  object  $page  The page (a Pest browser webpage).
+     * A modal dialog or drawer hides the rest of the page from assistive
+     * technology, so pass `$within` (the open panel) to check only that.
+     *
+     * @param  object       $page    The page (a Pest browser webpage).
+     * @param  string|null  $within  A selector to check only that part of the page.
      *
      * @return object
      */
-    public static function assertAccessible( object $page ): object
+    public static function assertAccessible( object $page, ?string $within = null ): object
     {
         $page->assertScript( 'document.readyState', 'complete' );
-        $page->assertScript( self::DRAWERS_SETTLED );
         $page->assertScript( self::ANIMATIONS_SETTLED );
 
         $ignored = json_encode( self::LIBRARY_ISSUES );
+        $context = null === $within ? 'document' : 'document.querySelector( ' . json_encode( $within ) . ' )';
 
         /** @var array<int, array{id: string, impact: string|null, help: string, nodes: array<int, string>}> $violations */
         $violations = (array) $page->script( <<<JS
             async () => {
                 const ignored = {$ignored};
                 // target-size (WCAG 2.2 SC 2.5.8, 24px) is off by default in axe 4.x.
-                const { violations } = await window.axe.run( document, { rules: { 'target-size': { enabled: true } } } );
+                const { violations } = await window.axe.run( {$context}, { rules: { 'target-size': { enabled: true } } } );
 
                 return violations
                     .map( ( violation ) => ( {

@@ -1,0 +1,553 @@
+/*
+ * The kanban board's own styles: the token-only pieces the ArtisanPack UI
+ * design system has no component for (the card, the column, the compact
+ * empty state, the filter bar). Every color, radius and size is an
+ * `--apui-*` token, so light, dark and high-contrast themes follow the
+ * page's `data-theme`, and logical properties keep right-to-left layouts
+ * right. Inlined by `partials/styles` (KanbanStyles), so a host needs no
+ * build step for it. Not in a layer: it sits on top of the design system's
+ * `apui` layer.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage EcommerceKanbanLivewire
+ *
+ * @since      2.0.0
+ */
+
+/* Helpers for the screens still to be rebuilt on the design system. */
+.ec-kb-muted {
+	color: var(--apui-text-muted);
+}
+
+.ec-kb-error-text {
+	color: var(--apui-color-error-text);
+}
+
+.ec-kb-outline-list {
+	border: var(--apui-border-width) solid var(--apui-border-muted);
+	border-radius: var(--apui-radius-md);
+}
+
+.ec-kb-outline-list > * + * {
+	border-block-start: var(--apui-border-width) solid var(--apui-border-muted);
+}
+
+.ec-kb-danger-zone {
+	border: var(--apui-border-width) solid var(--apui-color-error-border);
+	border-radius: var(--apui-radius-md);
+}
+
+.ec-kb-text-link {
+	color: var(--apui-color-primary-text);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.ec-kb-text-link:hover {
+	text-decoration-thickness: 2px;
+}
+
+.ec-kb-focus-ring:focus-visible,
+.ec-kb-card:focus-visible,
+.ec-kb-column-cards:focus-visible,
+.ec-kb-strip:focus-visible {
+	outline: var(--apui-focus-ring-width) solid transparent;
+	box-shadow:
+		0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+		0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+}
+
+/* The page and the board strip. */
+.ec-kb-page {
+	min-block-size: 100vh;
+	background: var(--apui-surface-page);
+	color: var(--apui-text-default);
+	font-family: var(--apui-font-family-sans);
+}
+
+.ec-kb-strip {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--apui-space-4);
+	overflow-x: auto;
+	padding-block-end: var(--apui-space-4);
+	border-radius: var(--apui-radius-lg);
+	scroll-snap-type: x mandatory;
+}
+
+@media (min-width: 768px) {
+	.ec-kb-strip {
+		scroll-snap-type: none;
+	}
+}
+
+/* Card (#44). */
+.ec-kb-card {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	box-sizing: border-box;
+	padding: 12px;
+	border: var(--apui-border-width) solid var(--apui-border-muted);
+	border-radius: var(--apui-radius-md);
+	background: var(--apui-surface-raised);
+	color: var(--apui-text-default);
+	font-family: var(--apui-font-family-sans);
+	/* Only opacity and the edge: livewire-drag-and-drop moves its floating copy with transform. */
+	transition:
+		opacity var(--apui-motion-duration-fast) var(--apui-motion-ease-standard),
+		border-color var(--apui-motion-duration-fast) var(--apui-motion-ease-standard),
+		box-shadow var(--apui-motion-duration-fast) var(--apui-motion-ease-standard);
+}
+
+.ec-kb-card[data-ec-kb-draggable] {
+	cursor: grab;
+}
+
+.ec-kb-card[data-ec-kb-draggable]:active {
+	cursor: grabbing;
+}
+
+.ec-kb-card[data-ec-kb-state='moving'] {
+	opacity: 0.64;
+}
+
+.ec-kb-card[data-ec-kb-state='reverting'] {
+	border-color: var(--apui-color-error);
+	box-shadow: 0 0 0 var(--apui-border-width) var(--apui-color-error);
+}
+
+.ec-kb-card-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.ec-kb-card-summary {
+	display: grid;
+	gap: 2px;
+	min-inline-size: 0;
+}
+
+.ec-kb-card-summary > p {
+	margin: 0;
+}
+
+.ec-kb-card-order {
+	font-size: var(--apui-type-label-md-font-size);
+	font-weight: var(--apui-font-weight-medium);
+	line-height: var(--apui-type-label-md-line-height);
+}
+
+.ec-kb-card-number {
+	font-family: var(--apui-font-family-mono);
+}
+
+.ec-kb-card-customer {
+	overflow: hidden;
+	font-size: var(--apui-type-body-sm-font-size);
+	line-height: var(--apui-type-body-sm-line-height);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.ec-kb-card-date {
+	color: var(--apui-text-muted);
+	font-size: var(--apui-type-caption-font-size);
+	line-height: var(--apui-type-caption-line-height);
+}
+
+.ec-kb-card-widgets {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.ec-kb-card-state {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin: 0;
+	color: var(--apui-text-muted);
+	font-size: var(--apui-type-caption-font-size);
+	line-height: var(--apui-type-caption-line-height);
+}
+
+.ec-kb-card-state[data-ec-kb-tone='error'] {
+	color: var(--apui-color-error-text);
+}
+
+.ec-kb-card-state svg {
+	flex: none;
+	inline-size: var(--apui-icon-size-sm);
+	block-size: var(--apui-icon-size-sm);
+}
+
+/*
+ * The actions trigger is the DropdownMenu's own Button, which is always an
+ * outline button with a chevron; the card shows it as a ghost, icon-only xs
+ * button.
+ */
+.ec-kb-card-actions-trigger.apui-button {
+	--apui-_h: var(--apui-control-height-xs);
+	--apui-_border: transparent;
+
+	flex: none;
+	inline-size: var(--apui-_h);
+	padding-inline: 0;
+	background-color: transparent;
+	color: var(--apui-text-default);
+}
+
+.ec-kb-card-actions-trigger [data-part='iconEnd'] {
+	display: none;
+}
+
+.ec-kb-card-actions-trigger svg {
+	inline-size: var(--apui-icon-size-sm);
+	block-size: var(--apui-icon-size-sm);
+}
+
+.ec-kb-spinner {
+	display: inline-block;
+	flex: none;
+	inline-size: 12px;
+	block-size: 12px;
+	box-sizing: border-box;
+	border: 2px solid var(--apui-border-default);
+	border-block-start-color: var(--apui-color-primary);
+	border-radius: var(--apui-radius-full);
+	animation: ec-kb-spin 0.8s linear infinite;
+}
+
+@keyframes ec-kb-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/* Column (#46). */
+.ec-kb-column {
+	position: relative;
+	display: flex;
+	flex: none;
+	flex-direction: column;
+	box-sizing: border-box;
+	inline-size: 304px;
+	max-inline-size: 85vw;
+	border: var(--apui-border-width) solid var(--apui-border-muted);
+	border-radius: var(--apui-radius-lg);
+	background: var(--apui-surface-default);
+	color: var(--apui-text-default);
+	scroll-snap-align: start;
+}
+
+.ec-kb-column[data-ec-kb-collapsed] {
+	inline-size: 56px;
+}
+
+.ec-kb-column-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	box-sizing: border-box;
+	min-block-size: 48px;
+	padding-block: 8px;
+	padding-inline: 8px 10px;
+}
+
+.ec-kb-column[data-ec-kb-collapsed] .ec-kb-column-header {
+	flex-direction: column;
+	padding-inline: 0;
+}
+
+.ec-kb-column-dot {
+	flex: none;
+	inline-size: 10px;
+	block-size: 10px;
+	border-radius: var(--apui-radius-full);
+	background: var(--ec-kb-column-color, var(--apui-border-strong));
+}
+
+.ec-kb-column-icon {
+	flex: none;
+	inline-size: var(--apui-icon-size-sm);
+	block-size: var(--apui-icon-size-sm);
+	color: var(--apui-text-muted);
+}
+
+.ec-kb-column-title {
+	flex: 1;
+	min-inline-size: 0;
+	margin: 0;
+	overflow: hidden;
+	font-size: var(--apui-type-label-md-font-size);
+	font-weight: var(--apui-font-weight-semibold);
+	line-height: var(--apui-type-label-md-line-height);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.ec-kb-column[data-ec-kb-collapsed] .ec-kb-column-title {
+	flex: none;
+	overflow: visible;
+	writing-mode: vertical-rl;
+}
+
+.ec-kb-column-matching {
+	color: var(--apui-text-muted);
+	font-size: var(--apui-type-caption-font-size);
+	line-height: var(--apui-type-caption-line-height);
+	white-space: nowrap;
+}
+
+.ec-kb-column-tools {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px;
+	padding: 0 10px 8px;
+	border-block-end: var(--apui-border-width) solid var(--apui-border-muted);
+}
+
+.ec-kb-column[data-ec-kb-collapsed] .ec-kb-column-tools {
+	flex-direction: column;
+	padding-inline: 0;
+}
+
+.ec-kb-column-body {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 0 10px 10px;
+}
+
+.ec-kb-column-body[hidden] {
+	display: none;
+}
+
+.ec-kb-column-cards {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	min-block-size: 64px;
+	border-radius: var(--apui-radius-md);
+}
+
+/* The compact empty state is the drop target hint until a card lands. */
+.ec-kb-column-cards:has([data-ec-kb-card]) > [data-ec-kb-empty-column] {
+	display: none;
+}
+
+.ec-kb-column-loading {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.ec-kb-column-loading .apui-skeleton {
+	display: block;
+	inline-size: 100%;
+	block-size: 92px;
+	border-radius: var(--apui-radius-md);
+}
+
+.ec-kb-column-more.apui-button {
+	inline-size: 100%;
+}
+
+/* Empty state (#45): the full one sits in a Card; the compact one in a column. */
+.ec-kb-empty-card {
+	inline-size: 100%;
+}
+
+.ec-kb-empty[data-ec-kb-compact] {
+	display: grid;
+	justify-items: center;
+	gap: 6px;
+	box-sizing: border-box;
+	padding: 24px 12px;
+	border: var(--apui-border-width) dashed var(--apui-border-default);
+	border-radius: var(--apui-radius-md);
+	color: var(--apui-text-muted);
+	font-size: var(--apui-type-body-sm-font-size);
+	line-height: var(--apui-type-body-sm-line-height);
+	text-align: center;
+}
+
+.ec-kb-empty[data-ec-kb-compact] > .apui-icon {
+	color: var(--apui-text-subtle);
+}
+
+.ec-kb-empty[data-ec-kb-compact] > p {
+	margin: 0;
+}
+
+/* Filter bar (#47). */
+.ec-kb-filters > [data-scope='card'][data-part='body'] {
+	padding: 12px 16px;
+}
+
+.ec-kb-filters-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: 12px 16px;
+}
+
+.ec-kb-filters-row > * {
+	flex: 1 1 10rem;
+	min-inline-size: 0;
+}
+
+.ec-kb-filters-row > .ec-kb-filters-search {
+	flex-grow: 2;
+	flex-basis: 14rem;
+}
+
+.ec-kb-filters-row > .ec-kb-filters-more {
+	flex: none;
+	align-self: flex-end;
+}
+
+.ec-kb-filters-extra {
+	margin-block-start: 12px;
+	padding-block-start: 12px;
+	border-block-start: var(--apui-border-width) solid var(--apui-border-muted);
+}
+
+.ec-kb-filters-extra[hidden] {
+	display: none;
+}
+
+.ec-kb-filters-toggles {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px 24px;
+	margin-block-start: 12px;
+}
+
+.ec-kb-filters-footer {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px 16px;
+	margin-block-start: 12px;
+}
+
+.ec-kb-filters-summary {
+	margin: 0;
+	color: var(--apui-text-muted);
+	font-size: var(--apui-type-body-sm-font-size);
+	line-height: var(--apui-type-body-sm-line-height);
+}
+
+/* In the drawer the fields stack, with the two dates side by side. */
+.ec-kb-filters-stack {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.ec-kb-filters-dates {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12px;
+}
+
+.ec-kb-filter-count {
+	display: inline-grid;
+	place-items: center;
+	min-inline-size: 20px;
+	block-size: 20px;
+	box-sizing: border-box;
+	padding-inline: 6px;
+	border-radius: var(--apui-radius-full);
+	background: var(--apui-color-primary-soft);
+	color: var(--apui-color-primary-soft-foreground);
+	font-size: var(--apui-type-caption-font-size);
+	font-weight: var(--apui-font-weight-semibold);
+	line-height: 1;
+}
+
+.ec-kb-filters-drawer.apui-drawer {
+	inline-size: min(340px, 100%);
+}
+
+@media (min-width: 768px) {
+	.ec-kb-below-md {
+		display: none;
+	}
+}
+
+@media (max-width: 767.98px) {
+	.ec-kb-from-md {
+		display: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ec-kb-card {
+		transition: none;
+	}
+
+	.ec-kb-spinner {
+		animation-duration: 2.4s;
+	}
+}
+
+/* Card widgets: a linked badge underlines on hover and shows the focus ring. */
+.ec-kb-widget-link,
+.ec-kb-widget-tip {
+	display: inline-flex;
+	border-radius: var(--apui-radius-full);
+	color: inherit;
+	text-decoration: none;
+}
+
+.ec-kb-widget-link:hover [data-part='label'] {
+	text-decoration: underline;
+}
+
+.ec-kb-widget-link:focus-visible {
+	outline: var(--apui-focus-ring-width) solid transparent;
+	box-shadow:
+		0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+		0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+}
+
+/* How the board keeps up with changes made elsewhere. */
+.ec-kb-connection {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	color: var(--apui-text-muted);
+	font-size: var(--apui-type-caption-font-size);
+	line-height: var(--apui-type-caption-line-height);
+}
+
+.ec-kb-connection-dot {
+	inline-size: 8px;
+	block-size: 8px;
+	border-radius: var(--apui-radius-full);
+	background: var(--apui-border-strong);
+}
+
+[data-ec-kb-connection-state='live'] > .ec-kb-connection-dot {
+	background: var(--apui-color-success);
+}
+
+[data-ec-kb-connection-state='polling'] > .ec-kb-connection-dot {
+	background: var(--apui-color-warning);
+}
+
+[data-ec-kb-connection-state='offline'] > .ec-kb-connection-dot {
+	background: var(--apui-color-error);
+}
