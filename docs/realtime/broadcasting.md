@@ -1,5 +1,6 @@
 ---
 title: Broadcasting with Echo
+menu_order: 10
 ---
 
 # Broadcasting with Echo
@@ -52,7 +53,7 @@ window.Echo = new Echo( {
 
 For Pusher Channels, set `BROADCAST_CONNECTION=pusher` and your Pusher credentials, and configure Echo with `broadcaster: 'pusher'`. Any broadcaster Laravel supports works. See Laravel's [broadcasting documentation](https://laravel.com/docs/broadcasting).
 
-Make sure the script that sets `window.Echo` loads on the board pages: it is part of your main script, which the standalone layout loads (see [Front-End Setup](Installation-Front-End#which-entries-the-board-loads)). Rebuild your assets afterwards.
+Make sure the script that sets `window.Echo` loads on the board pages: it is part of your main script, which the standalone layout loads (see [Front-End Setup](../installation/front-end.md#which-entries-the-board-loads)). Rebuild your assets afterwards.
 
 ## 3. Run the services
 
@@ -82,7 +83,7 @@ When a board loads with `realtime.enabled` on, the engine's flag on, and `window
 | `card-updated` | Re-renders just those cards, batched so each card re-renders once. With a filter set, the whole board re-renders, since the change may show or hide the card. |
 | `automation-fired`, `automation-failed` | Collected for cards this browser moved, then shown as one toast to the mover |
 
-The board watches the Echo connection. When it drops, or the channel refuses the subscription, the board polls until the connection is back. See [Polling Fallback](Realtime-Polling).
+The board watches the Echo connection. When it drops, or the channel refuses the subscription, the board polls until the connection is back. See [Polling Fallback](polling.md).
 
 ## Troubleshooting
 

@@ -1,5 +1,6 @@
 ---
 title: Embedding Components
+menu_order: 50
 ---
 
 # Embedding Components
@@ -47,7 +48,7 @@ Route::get( 'staff/boards/{board}', FulfillmentBoardController::class )
     ->name( 'staff.boards.show' );
 ```
 
-Add `ecommerce-kanban.throttle` to every route that embeds the board. The limiter is registered as Livewire persistent middleware, so Livewire re-runs it on the board's updates, but only for pages whose route has it. See [Rate limits](Advanced#rate-limits).
+Add `ecommerce-kanban.throttle` to every route that embeds the board. The limiter is registered as Livewire persistent middleware, so Livewire re-runs it on the board's updates, but only for pages whose route has it. See [Rate limits](../advanced.md#rate-limits).
 
 Embed the component in the view:
 
@@ -55,7 +56,7 @@ Embed the component in the view:
 <livewire:artisanpack-ecommerce-kanban-board :board="$board" />
 ```
 
-The page needs what the package's layouts provide (see [Layouts](Installation-Layouts#the-layout-contract)): your Tailwind build and main script (with drag-and-drop and, for live boards, Echo), Livewire's assets, `<x-artisanpack-toast />`, and `@include( 'ecommerce-kanban::partials.rate-limit-notice' )` after `@livewireScripts`.
+The page needs what the package's layouts provide (see [Layouts](../installation/layouts.md#the-layout-contract)): your Tailwind build and main script (with drag-and-drop and, for live boards, Echo), Livewire's assets, `<x-artisanpack-toast />`, and `@include( 'ecommerce-kanban::partials.rate-limit-notice' )` after `@livewireScripts`.
 
 ## Pointing links at your routes
 
@@ -77,7 +78,7 @@ addFilter( 'ap.ecommerceKanbanLivewire.pickerUrl', function ( ?string $url ): ?s
 
 ## Deep links
 
-The board reads its state from the query string on any page it is embedded in: `?card={order}` opens a card, and the filter keys (`q`, `customer`, `tags`, `products`, `from`, `to`, `stale`, `payment`, `fulfillment`, `f`) set the filters. See [Filters](Usage-Filters).
+The board reads its state from the query string on any page it is embedded in: `?card={order}` opens a card, and the filter keys (`q`, `customer`, `tags`, `products`, `from`, `to`, `stale`, `payment`, `fulfillment`, `f`) set the filters. See [Filters](../usage/filters.md).
 
 ## Middleware
 

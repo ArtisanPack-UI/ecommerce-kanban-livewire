@@ -1,5 +1,6 @@
 ---
 title: Board Picker
+menu_order: 10
 ---
 
 # Board Picker

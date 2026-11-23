@@ -1,5 +1,6 @@
 ---
 title: Localization
+menu_order: 55
 ---
 
 # Localization
@@ -57,7 +58,7 @@ Order, payment, and fulfillment status names are in this package's catalogues. W
 
 ## Right-to-left languages
 
-The standalone layout does not set `dir`. For a right-to-left locale, render the board in a layout of your own that sets `dir="rtl"` on `<html>`. See [Layouts](Installation-Layouts).
+The standalone layout does not set `dir`. For a right-to-left locale, render the board in a layout of your own that sets `dir="rtl"` on `<html>`. See [Layouts](installation/layouts.md).
 
 ## Translation lint
 

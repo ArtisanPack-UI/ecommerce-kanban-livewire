@@ -1,5 +1,7 @@
 ---
 title: Artisan Commands
+menu_order: 20
+redirect_from: advanced/artisan-commands
 ---
 
 # Artisan Commands
@@ -29,6 +31,6 @@ It never edits your stylesheet or script, the checks only warn, and it is safe t
 | `php artisan ecommerce:audit-order-status` | Report cards whose sub-status is outside the order's status chain. Scheduled daily by the engine. |
 | `php artisan ecommerce:prune-idempotency-records` | Clear old idempotency rows, including the board's spent action tokens. Scheduled hourly by the engine. |
 | `php artisan ecommerce:verify-satellite` | Run the engine's contract suites against a satellite (such as this package) and write a verification report |
-| `vendor/bin/testbench ecommerce:lint:translations` | Check translations in this package. See [Localization](Localization). |
+| `vendor/bin/testbench ecommerce:lint:translations` | Check translations in this package. See [Localization](../localization.md). |
 
 The engine's scheduled commands need Laravel's scheduler running (`php artisan schedule:run` every minute). Turn the engine's schedule off with `artisanpack.ecommerce.schedule.enabled`, or change a task's cron expression in `artisanpack.ecommerce.schedule.tasks`.

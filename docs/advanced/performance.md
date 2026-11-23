@@ -1,5 +1,6 @@
 ---
 title: Performance
+menu_order: 30
 ---
 
 # Performance
@@ -43,7 +44,7 @@ A 1,000-card board with five columns loads in 24 queries (9 + 5 × 3) and render
 
 ## Polling cost
 
-A poll compares a fingerprint of each column's cards with the last poll, in one query of a few narrow columns per card, and renders nothing when nothing changed. Lengthen `realtime.poll_interval` on stores with many open boards, or turn on broadcasting so boards don't poll at all. See [Real-Time Updates](Realtime).
+A poll compares a fingerprint of each column's cards with the last poll, in one query of a few narrow columns per card, and renders nothing when nothing changed. Lengthen `realtime.poll_interval` on stores with many open boards, or turn on broadcasting so boards don't poll at all. See [Real-Time Updates](../realtime.md).
 
 ## Writing extensions
 

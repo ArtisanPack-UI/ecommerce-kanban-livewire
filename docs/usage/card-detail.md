@@ -1,5 +1,6 @@
 ---
 title: Card Detail
+menu_order: 40
 ---
 
 # Card Detail
@@ -24,7 +25,7 @@ Opening a card needs `order.view`, and the order must be on the board. Otherwise
 
 | Action | Needs | Does |
 | --- | --- | --- |
-| **Move to…** | `kanbanCard.move` | Closes the drawer and opens the board's [Move to… dialog](Usage-Moving-Cards#move-to) for the card |
+| **Move to…** | `kanbanCard.move` | Closes the drawer and opens the board's [Move to… dialog](moving-cards.md#move-to) for the card |
 | **Remove from board** | `kanbanBoard.update` | Closes the drawer and asks before taking the order off this board |
 | **Open in admin** | The ecommerce admin installed | Opens the order's admin screen |
 | **Add to another board** | `kanbanBoard.update` | Puts the order on another active board, in a chosen column or the board's entry column ("Entry column (automatic)") |
@@ -42,4 +43,4 @@ Both go through the engine's `KanbanRoutingService`, so its hooks fire and other
 
 ## Staying current
 
-An open slide-out re-renders when its order changes elsewhere: a live `card-updated` event, a poll, or a board event. When the order's status or column changes, screen readers hear just that ("Order 1042 is now Complete in Shipped"), not the whole drawer. See [Real-Time Updates](Realtime).
+An open slide-out re-renders when its order changes elsewhere: a live `card-updated` event, a poll, or a board event. When the order's status or column changes, screen readers hear just that ("Order 1042 is now Complete in Shipped"), not the whole drawer. See [Real-Time Updates](../realtime.md).

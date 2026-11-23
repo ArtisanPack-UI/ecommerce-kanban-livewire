@@ -1,5 +1,6 @@
 ---
 title: Filter Controls
+menu_order: 40
 ---
 
 # Filter Controls
@@ -63,4 +64,4 @@ Because the board reads every card through the engine's card query, the filter a
 
 ## In the URL
 
-Satellite values live in the query string under `f`, for example `?f[gift]=1&f[carrier]=ups`, so a filtered board stays a shareable link. Values for keys no control declares are ignored. See [Filters](Usage-Filters).
+Satellite values live in the query string under `f`, for example `?f[gift]=1&f[carrier]=ups`, so a filtered board stays a shareable link. Values for keys no control declares are ignored. See [Filters](../usage/filters.md).

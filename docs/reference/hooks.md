@@ -1,8 +1,10 @@
 ---
-title: Hooks Reference
+title: Hooks
+menu_order: 10
+redirect_from: extending/hooks-reference
 ---
 
-# Hooks Reference
+# Hooks
 
 Every seam a satellite or host can use to change the board without publishing views. Filters and actions use the `artisanpack-ui/hooks` helpers. Register everything from a service provider's `boot()`. The names are constants on `ArtisanPackUI\EcommerceKanbanLivewire\Support\Hooks`.
 
@@ -12,9 +14,9 @@ Filters receive the value as the first argument and must return it; every extra 
 
 | Hook | Constant | Type | When it runs | Arguments | Return |
 | --- | --- | --- | --- | --- | --- |
-| `ap.ecommerceKanbanLivewire.cardActions` | `CARD_ACTIONS` | filter | Building each card's actions menu | `array $actions`, `Order $order`, `KanbanColumn $column`, `KanbanBoard $board` | Actions: `key`, `label`, optional `icon` and `ability`, and a `url`, an `event`, or both. The core actions are `open`, `move`, and `remove`. See [Card and Toolbar Actions](Extending-Card-Actions). |
+| `ap.ecommerceKanbanLivewire.cardActions` | `CARD_ACTIONS` | filter | Building each card's actions menu | `array $actions`, `Order $order`, `KanbanColumn $column`, `KanbanBoard $board` | Actions: `key`, `label`, optional `icon` and `ability`, and a `url`, an `event`, or both. The core actions are `open`, `move`, and `remove`. See [Card and Toolbar Actions](../extending/card-actions.md). |
 | `ap.ecommerceKanbanLivewire.cardClasses` | `CARD_CLASSES` | filter | Rendering each card | `array $classes`, `Order $order`, `KanbanColumn $column`, `KanbanBoard $board` | Extra CSS classes on the card. Strings only; split on whitespace; repeats dropped. Add the classes to your Tailwind sources. |
-| `ap.ecommerceKanbanLivewire.widgetView` | `WIDGET_VIEW` | filter | Rendering each widget on a card | `?string $view` (null), `string $key`, `array $payload` | A Blade view name for this widget key, or the value unchanged. A view that doesn't exist falls back to the generic view. See [Card Widgets](Extending-Card-Widgets). |
+| `ap.ecommerceKanbanLivewire.widgetView` | `WIDGET_VIEW` | filter | Rendering each widget on a card | `?string $view` (null), `string $key`, `array $payload` | A Blade view name for this widget key, or the value unchanged. A view that doesn't exist falls back to the generic view. See [Card Widgets](../extending/card-widgets.md). |
 
 ```php
 use ArtisanPackUI\Ecommerce\Models\Order;
@@ -29,12 +31,12 @@ addFilter( 'ap.ecommerceKanbanLivewire.cardClasses', function ( array $classes, 
 
 | Hook | Constant | Type | When it runs | Arguments | Return |
 | --- | --- | --- | --- | --- | --- |
-| `ap.ecommerceKanbanLivewire.boardToolbar` | `BOARD_TOOLBAR` | filter | Rendering the board header | `array $actions` (empty), `KanbanBoard $board`, `?Authenticatable $user` | Header buttons, in the card action shape. Events are dispatched with `{ boardId }`. See [Card and Toolbar Actions](Extending-Card-Actions#toolbar-actions). |
-| `ap.ecommerceKanbanLivewire.filters` | `FILTERS` | filter | Building the filter bar | `array $controls` (empty), `KanbanBoard $board` | Extra controls: `key`, `label`, `type` (`toggle`, `select`, or `text`), and `options` for `select`. Pair with the engine's `ap.ecommerce.kanban.cardQuery`. See [Filter Controls](Extending-Filter-Controls). |
+| `ap.ecommerceKanbanLivewire.boardToolbar` | `BOARD_TOOLBAR` | filter | Rendering the board header | `array $actions` (empty), `KanbanBoard $board`, `?Authenticatable $user` | Header buttons, in the card action shape. Events are dispatched with `{ boardId }`. See [Card and Toolbar Actions](../extending/card-actions.md#toolbar-actions). |
+| `ap.ecommerceKanbanLivewire.filters` | `FILTERS` | filter | Building the filter bar | `array $controls` (empty), `KanbanBoard $board` | Extra controls: `key`, `label`, `type` (`toggle`, `select`, or `text`), and `options` for `select`. Pair with the engine's `ap.ecommerce.kanban.cardQuery`. See [Filter Controls](../extending/filter-controls.md). |
 | `ap.ecommerceKanbanLivewire.boardRendered` | `BOARD_RENDERED` | action | After each board render | `KanbanBoard $board`, `array $columns` (what the board shows: labels, counts, and the presented cards), `?Authenticatable $user` | — |
 | `ap.ecommerceKanbanLivewire.cardMoveFailed` | `CARD_MOVE_FAILED` | action | When the board refuses a move, or the engine rejects it | `string $code`, `?Order $order`, `?KanbanColumn $column`, `KanbanBoard $board`, `?Authenticatable $user` | — |
 
-`$code` is one of `wip-limit-reached`, `invalid-status-transition`, `incompatible-column`, `move-rejected`, `not-on-board`, `column-not-on-board`, `no-entry-column`, or `unknown`. See [Moving Cards](Usage-Moving-Cards#why-a-move-is-refused).
+`$code` is one of `wip-limit-reached`, `invalid-status-transition`, `incompatible-column`, `move-rejected`, `not-on-board`, `column-not-on-board`, `no-entry-column`, or `unknown`. See [Moving Cards](../usage/moving-cards.md#why-a-move-is-refused).
 
 ```php
 use ArtisanPackUI\Ecommerce\Models\KanbanBoard;
@@ -60,9 +62,9 @@ addAction( 'ap.ecommerceKanbanLivewire.cardMoveFailed', function ( string $code,
 | --- | --- | --- | --- | --- | --- |
 | `ap.ecommerceKanbanLivewire.boardUrl` | `BOARD_URL` | filter | Building a link to a board (switcher, picker, card "Open", automation toasts) | `?string $url` (the package route, or null when routes are off), `KanbanBoard $board`, `array $query` (for example `[ 'card' => 1004 ]`) | The board's URL, or null for none |
 | `ap.ecommerceKanbanLivewire.pickerUrl` | `PICKER_URL` | filter | Building the link to the board picker | `?string $url` (the package route with `?pick=1`, or null) | The picker's URL, or null for none |
-| `ap.ecommerceKanbanLivewire.layout.viteEntries` | `VITE_ENTRIES` | filter | Loading assets in the standalone layout and under cms-framework's layout | `array $entries` (`[ 'resources/css/app.css', 'resources/js/app.js' ]`) | Vite entries; an empty array loads nothing. See [Front-End Setup](Installation-Front-End#which-entries-the-board-loads). |
+| `ap.ecommerceKanbanLivewire.layout.viteEntries` | `VITE_ENTRIES` | filter | Loading assets in the standalone layout and under cms-framework's layout | `array $entries` (`[ 'resources/css/app.css', 'resources/js/app.js' ]`) | Vite entries; an empty array loads nothing. See [Front-End Setup](../installation/front-end.md#which-entries-the-board-loads). |
 
-Use the URL filters when you serve the board from your own routes. See [Embedding Components](Extending-Embedding-Components).
+Use the URL filters when you serve the board from your own routes. See [Embedding Components](../extending/embedding-components.md).
 
 ## Livewire events
 

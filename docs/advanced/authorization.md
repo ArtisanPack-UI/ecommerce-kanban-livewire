@@ -1,5 +1,6 @@
 ---
 title: Authorization
+menu_order: 10
 ---
 
 # Authorization
@@ -55,4 +56,4 @@ A guest is sent to sign in by the `auth` middleware in `board.middleware`.
 
 ## Extensions
 
-Hooks run only after the board has been authorized. An extension's action that changes data must check its own ability when it runs: hiding a menu item from a user doesn't stop them dispatching its event. Use `ArtisanPackUI\EcommerceKanbanLivewire\Support\Authorization::allows( $user, 'order.update', $order )`, which takes `{resource}.{action}` (an `ecommerce.` prefix is allowed) and denies a malformed ability. See [Card and Toolbar Actions](Extending-Card-Actions).
+Hooks run only after the board has been authorized. An extension's action that changes data must check its own ability when it runs: hiding a menu item from a user doesn't stop them dispatching its event. Use `ArtisanPackUI\EcommerceKanbanLivewire\Support\Authorization::allows( $user, 'order.update', $order )`, which takes `{resource}.{action}` (an `ecommerce.` prefix is allowed) and denies a malformed ability. See [Card and Toolbar Actions](../extending/card-actions.md).

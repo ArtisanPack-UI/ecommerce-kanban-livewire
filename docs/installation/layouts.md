@@ -1,5 +1,6 @@
 ---
 title: Layouts
+menu_order: 40
 ---
 
 # Layouts
@@ -34,7 +35,7 @@ cms-framework's admin layout loads none of the host's assets, so under it each p
 - `<html lang>` set from the app locale, and `scroll-padding-top` so a focused control never scrolls under the sticky header;
 - a "Skip to content" link;
 - a sticky header with "Kanban" linking to the board picker, an optional `header` section for your own buttons, and the theme toggle;
-- your Vite entries (see [Front-End Setup](Installation-Front-End#which-entries-the-board-loads)), `@livewireStyles`, `@livewireScripts`, the `styles` and `scripts` stacks, the toast container, and the rate-limit notice.
+- your Vite entries (see [Front-End Setup](front-end.md#which-entries-the-board-loads)), `@livewireStyles`, `@livewireScripts`, the `styles` and `scripts` stacks, the toast container, and the rate-limit notice.
 
 The page title is the page's `title` section followed by `· {app.name}`.
 

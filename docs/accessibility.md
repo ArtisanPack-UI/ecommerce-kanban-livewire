@@ -1,5 +1,6 @@
 ---
 title: Accessibility
+menu_order: 50
 ---
 
 # Accessibility
@@ -60,7 +61,7 @@ The board targets **WCAG 2.2 AA**. Everything staff do on it (choosing a board, 
 
 ## How it is tested
 
-The browser suite (see [Browser Tests](Advanced-Browser-Tests)) drives the board in Chromium against a seeded demo board:
+The browser suite (see [CONTRIBUTING.md](https://github.com/ArtisanPack-UI/ecommerce-kanban-livewire/blob/main/CONTRIBUTING.md#browser-tests)) drives the board in Chromium against a seeded demo board:
 
 - **axe on every screen and dialog.** `tests/Browser/AccessibilityTest.php` runs every axe rule, with `target-size` (WCAG 2.2, 24px) turned on, on:
   - the board picker;
@@ -97,7 +98,7 @@ Each is excluded from the automated check by axe rule and selector in `Accessibi
 
 The board uses daisyUI theme colors (`base-content`, `primary`, `warning`, `error`, and so on). If you use your own theme, keep text colors at 4.5:1 against the backgrounds they sit on, including `base-content` at 70% opacity for secondary text.
 
-If the board renders in your own layout (see [Layouts](Installation-Layouts)), its header, skip link, and scroll padding are yours: provide a skip link to the content, set `<html lang>`, and if your header is sticky or fixed, give the page enough `scroll-padding-top` that a focused card never sits under it.
+If the board renders in your own layout (see [Layouts](installation/layouts.md)), its header, skip link, and scroll padding are yours: provide a skip link to the content, set `<html lang>`, and if your header is sticky or fixed, give the page enough `scroll-padding-top` that a focused card never sits under it.
 
 ## Reporting an issue
 

@@ -1,5 +1,6 @@
 ---
 title: Getting Started
+menu_order: 10
 ---
 
 # Getting Started
@@ -19,7 +20,7 @@ The service provider is auto-discovered. The install command:
 - prints the Tailwind `@source` lines, the drag-and-drop install command, and the import line;
 - reports the engine version, how many active boards there are (and how to create one), and whether real-time sync is set up.
 
-Nothing it checks stops the install. See [Installation](Installation).
+Nothing it checks stops the install. See [Installation](installation.md).
 
 ## 2. Add the board to your front end
 
@@ -46,7 +47,7 @@ Then build:
 npm run build
 ```
 
-See [Front-End Setup](Installation-Front-End) for the full entry, including daisyUI.
+See [Front-End Setup](installation/front-end.md) for the full entry, including daisyUI.
 
 ## 3. Grant access
 
@@ -58,7 +59,7 @@ use Illuminate\Support\Facades\Gate;
 Gate::define( 'ecommerce.admin', fn ( $user ): bool => $user->is_admin );
 ```
 
-Or grant only what the board needs: `ecommerce.kanbanBoard.viewAny` and `ecommerce.kanbanBoard.view` to see boards, `ecommerce.kanbanCard.move` to move cards, `ecommerce.kanbanBoard.update` to edit, and `ecommerce.order.view` for the card slide-out. See [Authorization](Advanced-Authorization).
+Or grant only what the board needs: `ecommerce.kanbanBoard.viewAny` and `ecommerce.kanbanBoard.view` to see boards, `ecommerce.kanbanCard.move` to move cards, `ecommerce.kanbanBoard.update` to edit, and `ecommerce.order.view` for the card slide-out. See [Authorization](advanced/authorization.md).
 
 ## 4. Create a board (or seed a demo store)
 
@@ -74,12 +75,12 @@ Do not run it against a live store.
 
 Open `/ecommerce-kanban`. The prefix is `board.route_prefix` in the config. The picker sends you straight to your last board, or to the only board when there is one. From there you can drag cards, filter, open a card, and, with `kanbanBoard.update`, edit the board.
 
-The board stays in step with other people's changes by polling every 30 seconds. To make it live, turn on engine broadcasting and set up Laravel Echo. See [Real-Time Updates](Realtime).
+The board stays in step with other people's changes by polling every 30 seconds. To make it live, turn on engine broadcasting and set up Laravel Echo. See [Real-Time Updates](realtime.md).
 
 ## Next steps
 
-- [Configuration](Installation-Configuration) — every config key
-- [Layouts](Installation-Layouts) — render the board inside your admin's layout
-- [Real-Time Updates](Realtime) — Reverb or Pusher with Echo
-- [Usage](Usage) — what staff can do on the board
-- [Extending](Extending) — hooks, card actions, widgets, and embedding
+- [Configuration](installation/configuration.md) — every config key
+- [Layouts](installation/layouts.md) — render the board inside your admin's layout
+- [Real-Time Updates](realtime.md) — Reverb or Pusher with Echo
+- [Usage](usage.md) — what staff can do on the board
+- [Extending](extending.md) — hooks, card actions, widgets, and embedding

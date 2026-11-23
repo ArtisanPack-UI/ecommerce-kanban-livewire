@@ -1,5 +1,6 @@
 ---
 title: Card Widgets
+menu_order: 30
 ---
 
 # Card Widgets
@@ -16,7 +17,7 @@ use ArtisanPackUI\Ecommerce\Registries\KanbanCardWidgetRegistry;
 app( KanbanCardWidgetRegistry::class )->register( 'print-status', PrintStatusWidget::class );
 ```
 
-A widget that takes settings also implements `ConfigurableKanbanCardWidget` and declares a `configSchema()`. The board's widget picker then shows a form for its `text`, `textarea`, `number`, `boolean`, and `select` fields. See [Editing the Board](Usage-Editing-The-Board#card-widgets).
+A widget that takes settings also implements `ConfigurableKanbanCardWidget` and declares a `configSchema()`. The board's widget picker then shows a form for its `text`, `textarea`, `number`, `boolean`, and `select` fields. See [Editing the Board](../usage/editing-the-board.md#card-widgets).
 
 Registered widgets appear in the widget picker with their label and provider. The engine's kanban documentation covers the contract, the payload, and its contract test.
 
@@ -69,4 +70,4 @@ The view receives `$widget`, the payload array:
 
 ## Styling whole cards
 
-To style the card rather than a widget, use `ap.ecommerceKanbanLivewire.cardClasses`. See [Hooks Reference](Extending-Hooks-Reference#cards).
+To style the card rather than a widget, use `ap.ecommerceKanbanLivewire.cardClasses`. See [Hooks](../reference/hooks.md#cards).

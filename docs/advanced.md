@@ -1,21 +1,20 @@
 ---
-title: Advanced Overview
+title: Advanced
+menu_order: 80
 ---
 
 # Advanced
 
-Access control, commands, internals, and contributor tooling.
+Access control, internals, and how the board keeps destructive actions from running twice. The Artisan commands are in the [reference](reference/commands.md). Running the package's own test suites is covered in [CONTRIBUTING.md](https://github.com/ArtisanPack-UI/ecommerce-kanban-livewire/blob/main/CONTRIBUTING.md).
 
 ## In this section
 
-- [Authorization](Advanced-Authorization) - The abilities each screen and action needs
-- [Artisan Commands](Advanced-Artisan-Commands) - `ecommerce-kanban:install` and the engine commands a store uses with the board
-- [Performance](Advanced-Performance) - Lazy columns, partial re-renders, and query budgets
-- [Browser Tests](Advanced-Browser-Tests) - Running and writing the Playwright browser suite
+- [Authorization](advanced/authorization.md) - The abilities each screen and action needs
+- [Performance](advanced/performance.md) - Lazy columns, partial re-renders, and query budgets
 
 ## How a request flows
 
-```
+```text
 Route → BoardScreenController (checks the ability, returns a page view)
           → page view  @extends( $ecommerceKanbanLayout )
               → <livewire:artisanpack-ecommerce-kanban-board-picker />
@@ -61,4 +60,4 @@ Removing a card from a board, removing a column, and deleting an automation carr
 
 ## Registering routes yourself
 
-Set `board.routes_enabled` to `false` and register the routes in your own route file, or embed the components on your own pages. See [Embedding Components](Extending-Embedding-Components). `routes/web.php` in the package is the reference.
+Set `board.routes_enabled` to `false` and register the routes in your own route file, or embed the components on your own pages. See [Embedding Components](extending/embedding-components.md). `routes/web.php` in the package is the reference.

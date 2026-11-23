@@ -1,5 +1,6 @@
 ---
-title: Real-Time Overview
+title: Real-Time Updates
+menu_order: 40
 ---
 
 # Real-Time Updates
@@ -13,8 +14,8 @@ Both re-render only what changed: the columns a move touched, or the cards an or
 
 ## In this section
 
-- [Broadcasting with Echo](Realtime-Broadcasting) - Turning on engine broadcasts, Reverb or Pusher, and Echo
-- [Polling Fallback](Realtime-Polling) - How polling works and how to tune or turn it off
+- [Broadcasting with Echo](realtime/broadcasting.md) - Turning on engine broadcasts, Reverb or Pusher, and Echo
+- [Polling Fallback](realtime/polling.md) - How polling works and how to tune or turn it off
 
 ## Which mode a board uses
 
@@ -45,6 +46,6 @@ The board header shows which mode applies, in text:
 - **Your own moves don't bounce.** The board ignores the broadcast of a move you made while it is still in flight.
 - **A drag in progress is protected.** When someone else moves the card you are dragging, your drag is canceled and the board says so: "This card was moved by someone else, so your move was canceled."
 - **The card slide-out stays current.** An open slide-out re-renders when its order changes.
-- **Automation results reach the mover.** The person who moved a card gets one toast naming the automations that ran or failed. See [Automations](Usage-Automations#feedback-after-a-move).
+- **Automation results reach the mover.** The person who moved a card gets one toast naming the automations that ran or failed. See [Automations](usage/automations.md#feedback-after-a-move).
 
 `php artisan ecommerce-kanban:install` reports which mode new boards will use and what is missing for live updates.
