@@ -5,6 +5,7 @@ declare( strict_types=1 );
 use ArtisanPackUI\EcommerceKanbanLivewire\EcommerceKanbanLivewireServiceProvider;
 use ArtisanPackUI\EcommerceKanbanLivewire\Http\Controllers\BoardScreenController;
 use ArtisanPackUI\EcommerceKanbanLivewire\Http\Middleware\ThrottleKanbanMutations;
+use ArtisanPackUI\EcommerceKanbanLivewire\Support\Hooks;
 use Illuminate\Support\Facades\Route;
 use Livewire\Mechanisms\PersistentMiddleware\PersistentMiddleware;
 
@@ -92,9 +93,26 @@ it( 'frames the standalone layout with a skip link first, the Navbar brand, and 
         ->and( $body )->toContain( 'class="apui-navbar ec-kb-standalone-nav"' )
         ->and( $body )->toContain( 'class="ec-kb-brand"' )
         ->and( $body )->toMatch( '/apui-icon-tile ec-kb-brand-mark/' )
+        ->and( $body )->toMatch( '/<a href="[^"]+" class="ec-kb-brand" data-ec-kb-brand>\s*<span\s+class="apui-icon apui-icon-tile ec-kb-brand-mark"[^>]*\saria-hidden="true"\s*><svg [^>]*stroke="currentColor"[^>]*data-ec-kb-brand-glyph><path d="M7\.5 6\.5v9M12 6\.5v4\.5M16\.5 6\.5v11"\/><\/svg>\s*<\/span>\s*<span>Kanban<\/span>\s*<\/a>/' )
+        ->and( (string) strstr( (string) strstr( $body, '<nav' ), '</nav>', true ) )->not->toContain( 'heroicon' )
         ->and( $body )->toContain( 'aria-label="Switch to dark theme"' )
         ->and( $body )->toContain( '<main id="ecommerce-kanban-content" class="ec-kb-standalone-main" tabindex="-1">' )
         ->and( (string) strstr( $body, '<main', true ) )->not->toMatch( '/class="(?:[^"]*\s)?(sr-only|focus:\S*|antialiased|p-4|w-full|font-bold)(?:\s[^"]*)?"/' );
+} );
+
+it( 'draws the brand glyph in an unlinked brand when there is no picker URL', function (): void {
+    grantAbilities( [ 'kanbanBoard.viewAny', 'kanbanBoard.view' ] );
+    [ $board ] = makeBoard( [ 0 ], [ 'name' => 'Production' ] );
+
+    addFilter( Hooks::PICKER_URL, fn (): ?string => null );
+
+    $body = (string) strstr( $this->actingAs( makeUser() )
+        ->get( route( 'artisanpack.ecommerce.kanban.boards.show', [ 'board' => $board->id ] ) )
+        ->assertOk()
+        ->getContent(), '<body' );
+
+    expect( $body )->toMatch( '/<span class="ec-kb-brand" data-ec-kb-brand>\s*<span\s+class="apui-icon apui-icon-tile ec-kb-brand-mark"[^>]*\saria-hidden="true"\s*><svg [^>]*data-ec-kb-brand-glyph>.*?<\/svg>\s*<\/span>\s*<span>Kanban<\/span>\s*<\/span>/s' )
+        ->and( $body )->not->toMatch( '/<a [^>]*class="ec-kb-brand"/' );
 } );
 
 it( 'renders the picker page', function (): void {

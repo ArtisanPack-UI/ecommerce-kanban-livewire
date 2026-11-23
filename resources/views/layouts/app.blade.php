@@ -49,12 +49,12 @@
         <x-slot:brand>
             @if ( null !== $ecommerceKanbanPickerUrl )
                 <a href="{{ $ecommerceKanbanPickerUrl }}" class="ec-kb-brand" data-ec-kb-brand>
-                    <x-artisanpack-icon name="o-view-columns" variant="tile" class="ec-kb-brand-mark" />
+                    <x-artisanpack-icon variant="tile" class="ec-kb-brand-mark">@include( 'ecommerce-kanban::partials.brand-glyph' )</x-artisanpack-icon>
                     <span>{{ __( 'Kanban' ) }}</span>
                 </a>
             @else
                 <span class="ec-kb-brand" data-ec-kb-brand>
-                    <x-artisanpack-icon name="o-view-columns" variant="tile" class="ec-kb-brand-mark" />
+                    <x-artisanpack-icon variant="tile" class="ec-kb-brand-mark">@include( 'ecommerce-kanban::partials.brand-glyph' )</x-artisanpack-icon>
                     <span>{{ __( 'Kanban' ) }}</span>
                 </span>
             @endif
