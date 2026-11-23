@@ -314,7 +314,50 @@ a.ec-kb-brand:focus-visible {
 }
 
 .ec-kb-card[data-ec-kb-state='moving'] {
-	opacity: 0.64;
+	/*
+	 * While the move request runs (F8): the sunken surface and a dashed edge
+	 * in the primary color, at full opacity so the muted text keeps AA
+	 * contrast; the spinner and "Moving…" say it in text.
+	 */
+	border-style: dashed;
+	border-color: var(--apui-color-primary);
+	background: var(--apui-surface-sunken);
+	box-shadow: none;
+}
+
+/*
+ * Drag and drop (F5). A picked-up card (keyboard or pointer) gets a
+ * primary edge and ring, so a keyboard user sees it is held; the column a
+ * card would land in gets the soft primary surface, and one that refuses
+ * it (at its WIP limit) a dashed error outline. The WIP badge says why in
+ * text. livewire-drag-and-drop draws its drop line in
+ * `--drag-indicator-color`, set to the primary token here.
+ */
+.ec-kb-card[data-dragging] {
+	border-color: var(--apui-color-primary);
+	box-shadow:
+		0 0 0 var(--apui-border-width) var(--apui-color-primary),
+		var(--apui-elevation-raised);
+}
+
+.ec-kb-strip,
+.ec-kb-column-cards,
+.ec-kb-widget-list {
+	--drag-indicator-color: var(--apui-color-primary);
+}
+
+.ec-kb-column-cards[data-drag-over] {
+	background: var(--apui-color-primary-soft);
+}
+
+.ec-kb-column-cards[data-drag-disallowed] {
+	outline: var(--apui-border-width) dashed var(--apui-color-error);
+	outline-offset: 2px;
+}
+
+.ec-kb-column[data-dragging] {
+	border-color: var(--apui-color-primary);
+	box-shadow: 0 0 0 var(--apui-border-width) var(--apui-color-primary);
 }
 
 .ec-kb-card[data-ec-kb-state='reverting'] {
@@ -404,9 +447,18 @@ a.ec-kb-brand:focus-visible {
 
 	flex: none;
 	inline-size: var(--apui-_h);
+	/* Never under the 24px target size (SC 2.5.8), even at compact density (F17). */
+	min-inline-size: 24px;
+	min-block-size: 24px;
 	padding-inline: 0;
 	background-color: transparent;
 	color: var(--apui-text-default);
+}
+
+/* The column header's xs buttons (collapse, automations count): 24px at least, as above (F17). */
+.ec-kb-column-header .apui-button {
+	min-inline-size: 24px;
+	min-block-size: 24px;
 }
 
 .ec-kb-card-actions-trigger [data-part='iconEnd'] {
@@ -1069,7 +1121,9 @@ a.ec-kb-brand:focus-visible {
 }
 
 .ec-kb-widget-row[data-dragging] {
-	opacity: 0.4;
+	/* Held, not dimmed: opacity would take the row's text below AA contrast. */
+	border-color: var(--apui-color-primary);
+	box-shadow: 0 0 0 var(--apui-border-width) var(--apui-color-primary);
 }
 
 .ec-kb-widget-row-head {
@@ -1109,7 +1163,19 @@ a.ec-kb-brand:focus-visible {
 	gap: 4px;
 }
 
+.ec-kb-widget-errors {
+	display: grid;
+	gap: 4px;
+	border-radius: var(--apui-radius-sm);
+}
+
+.ec-kb-widget-errors:focus-visible {
+	outline: var(--apui-focus-ring-width) solid var(--apui-focus-ring-color);
+	outline-offset: var(--apui-focus-ring-offset);
+}
+
 .ec-kb-widget-error {
+	margin: 0;
 	color: var(--apui-color-error-text);
 	font-size: var(--apui-type-body-sm-font-size);
 	line-height: var(--apui-type-body-sm-line-height);

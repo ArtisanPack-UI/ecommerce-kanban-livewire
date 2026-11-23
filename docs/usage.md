@@ -29,7 +29,7 @@ A board shows its columns left to right. Each column is one order sub-status on 
 
 Each card shows the order number, the customer, the placed date, and the column's widgets (total, item count, shipping method, days in column, and so on), with an actions menu: **Open**, **Move to…**, **Remove from board**, and anything satellites add.
 
-A column shows its first `cards.per_column` cards (25 by default). **Show more** adds the same number again.
+A column shows its first `cards.per_column` cards (25 by default). **Show more** adds the same number again, up to 500 cards per column (`Board::MAX_CARDS_PER_COLUMN`); then the button goes away. Use the filters to find a card further down.
 
 The header holds the board name and switcher, the connection indicator, toolbar buttons from satellites, **Automations**, and, with `kanbanBoard.update`, **Add order** and **Edit board**.
 

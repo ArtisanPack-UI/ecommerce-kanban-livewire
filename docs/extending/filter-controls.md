@@ -62,6 +62,8 @@ addFilter( 'ap.ecommerce.kanban.cardQuery', function ( Builder $query, KanbanCar
 
 Because the board reads every card through the engine's card query, the filter applies to column counts, "Show more" paging, polls, and live card refreshes alike.
 
+The same `cardQuery` filter also runs with the filter bar cleared to decide which cards the viewer may see at all, and the board enforces that on moves, removes, the slide-out, the filter options, and the widget preview. A filter that reads only `$filters->extra` (as above) narrows nothing when the bar is cleared, so it stays a plain display filter. A filter that narrows the cards unconditionally, for example by the user's warehouse, hides those cards everywhere. See [Restricting which cards people see](../usage/filters.md#restricting-which-cards-people-see).
+
 ## In the URL
 
 Satellite values live in the query string under `f`, for example `?f[gift]=1&f[carrier]=ups`, so a filtered board stays a shareable link. Values for keys no control declares are ignored. See [Filters](../usage/filters.md).

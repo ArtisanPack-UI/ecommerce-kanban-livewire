@@ -14,6 +14,7 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\EcommerceKanbanLivewire\Http\Middleware;
 
 use ArtisanPackUI\EcommerceKanbanLivewire\EcommerceKanbanLivewireServiceProvider;
+use ArtisanPackUI\EcommerceKanbanLivewire\Support\CardActions;
 use Closure;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -34,8 +35,11 @@ use Symfony\Component\HttpFoundation\Response;
  * bar, searches, and dialogs opening and closing), and only calls listed in
  * {@see self::READ_CALLS} (loading the board or a column, collapsing a
  * column, paging, polling, real-time refreshes, automation feedback,
- * searching, and opening or closing a dialog). Those lists only apply to
- * this package's components; any other component's update is a change.
+ * searching, and opening or closing a dialog). Livewire sends event
+ * listeners as `__dispatch` calls; one whose event is in
+ * {@see self::READ_EVENTS} is matched as the listener method it runs, and
+ * any other event counts. Those lists only apply to this package's
+ * components; any other component's update is a change.
  *
  * Over the limit it answers 429 with `Retry-After` and a JSON body
  * (`message`, `retry_after`); the page turns that into a toast. The response
@@ -105,6 +109,31 @@ class ThrottleKanbanMutations
         'show',
         'close',
         'cancelDelete',
+        'cardUpdated',
+        'boardRefreshed',
+        'boardChanged',
+    ];
+
+    /**
+     * The package's own listener events, mapped to the read-only method each
+     * one runs. Livewire sends a listener as a `__dispatch` call with the
+     * event name as its first parameter, so such a call is matched against
+     * {@see self::READ_CALLS} as this method; an event not listed here (a
+     * satellite's card-action event, say) is counted.
+     *
+     * @since 2.0.0
+     *
+     * @var array<string, string>
+     */
+    public const READ_EVENTS = [
+        CardActions::OPEN_EVENT   => 'show',
+        CardActions::MOVE_EVENT   => 'openMoveDialog',
+        CardActions::REMOVE_EVENT => 'confirmRemoveCard',
+        'ec-kb-edit-widgets'      => 'openFor',
+        'ec-kb-edit-automations'  => 'openFor',
+        'ec-kb-card-updated'      => 'cardUpdated',
+        'ec-kb-board-refreshed'   => 'boardRefreshed',
+        'ec-kb-board-changed'     => 'boardChanged',
     ];
 
     /**
@@ -244,6 +273,7 @@ class ThrottleKanbanMutations
      * it is how Livewire 3 sends `wire:poll` and `$refresh`.
      *
      * @since 1.0.0
+     * @since 2.0.0 Matches `__dispatch` calls by their event ({@see self::READ_EVENTS}).
      *
      * @param  Request  $request  The Livewire update request.
      *
@@ -269,7 +299,7 @@ class ThrottleKanbanMutations
             }
 
             foreach ( (array) ( $component['calls'] ?? [] ) as $call ) {
-                if ( ! is_array( $call ) || ! in_array( $call['method'] ?? null, self::READ_CALLS, true ) ) {
+                if ( ! is_array( $call ) || ! in_array( self::calledMethod( $call ), self::READ_CALLS, true ) ) {
                     return false;
                 }
             }
@@ -322,6 +352,30 @@ class ThrottleKanbanMutations
         $name     = is_array( $snapshot ) ? ( $snapshot['memo']['name'] ?? null ) : null;
 
         return is_string( $name ) && array_key_exists( $name, EcommerceKanbanLivewireServiceProvider::LIVEWIRE_COMPONENTS );
+    }
+
+    /**
+     * The method a call runs: its own name, or for a `__dispatch` call the
+     * listener mapped to its event in {@see self::READ_EVENTS} (null for an
+     * unknown event or a malformed call).
+     *
+     * @since 2.0.0
+     *
+     * @param  array<string, mixed>  $call  One entry of a component's `calls`.
+     *
+     * @return string|null
+     */
+    private static function calledMethod( array $call ): ?string
+    {
+        $method = $call['method'] ?? null;
+
+        if ( '__dispatch' !== $method ) {
+            return is_string( $method ) ? $method : null;
+        }
+
+        $event = is_array( $call['params'] ?? null ) ? ( $call['params'][0] ?? null ) : null;
+
+        return is_string( $event ) ? ( self::READ_EVENTS[ $event ] ?? null ) : null;
     }
 
     /**

@@ -11,7 +11,7 @@ Everything you need to install the board and wire it into your application.
 
 - [Requirements](installation/requirements.md) - PHP, Laravel, Livewire, the engine, npm packages, and optional packages
 - [Configuration](installation/configuration.md) - Every configuration key
-- [Front-End Setup](installation/front-end.md) - Tailwind sources, daisyUI, and the drag-and-drop import
+- [Front-End Setup](installation/front-end.md) - The design system, optional Tailwind sources, and the drag-and-drop import
 - [Layouts](installation/layouts.md) - Which layout the board pages use, and how to use your own
 
 ## Install via Composer
@@ -31,11 +31,12 @@ php artisan ecommerce-kanban:install
 It:
 
 1. Publishes the config to `config/artisanpack/ecommerce-kanban-livewire.php` (tag `ecommerce-kanban-config`). A file you already published is kept; `--force` overwrites it.
-2. Prints the Tailwind `@source` lines to add to your main stylesheet. See [Front-End Setup](installation/front-end.md).
-3. Prints the drag-and-drop install command (`npm install @artisanpack-ui/livewire-drag-and-drop@^2.1.0`) and the line to add to your main script (`import '@artisanpack-ui/livewire-drag-and-drop';`).
-4. Reports the installed `artisanpack-ui/ecommerce` version and warns when it is older than 1.2.0.
-5. Counts the active boards. With none, it says where to create one: the ecommerce admin's board list (when the admin is installed) and the engine's REST route (`POST /api/ecommerce/v1/kanban/boards`).
-6. Reports whether real-time sync can work: the engine's `artisanpack.ecommerce.kanban.broadcast` flag and the default broadcaster. When either is missing, it says that boards will poll instead and what to turn on. See [Real-Time Updates](realtime.md).
+2. Prints the design-system setup: `php artisan livewire-ui-components:install --assets=bundler` (skip it if your app already loads the design system), or the packages to install by hand (`npm install --save-dev @artisanpack-ui/css@^1 @artisanpack-ui/behavior@^1`), the stylesheet lines (`@layer theme, base, apui, components, utilities;`, needed only with Tailwind, and `@import '@artisanpack-ui/css';`), the lines that register the behavior engine as an Alpine plugin, and a reminder to put `@apuiThemeScript` in your layout's `<head>` before `@vite`.
+3. Prints the board's Tailwind `@source` lines, marked optional: add them only if your app builds with Tailwind and you want it to scan the board. See [Front-End Setup](installation/front-end.md).
+4. Prints the drag-and-drop install command (`npm install @artisanpack-ui/livewire-drag-and-drop@^2.1.0`) and the line to add to your main script (`import '@artisanpack-ui/livewire-drag-and-drop';`).
+5. Reports the installed `artisanpack-ui/ecommerce` version and warns when it is older than 1.2.0.
+6. Counts the active boards. With none, it says where to create one: the ecommerce admin's board list (when the admin is installed) and the engine's REST route (`POST /api/ecommerce/v1/kanban/boards`).
+7. Reports whether real-time sync can work: the engine's `artisanpack.ecommerce.kanban.broadcast` flag and the default broadcaster. When either is missing, it says that boards will poll instead and what to turn on. See [Real-Time Updates](realtime.md).
 
 The command never edits your stylesheet or script, and the checks only warn. See [Artisan Commands](reference/commands.md).
 
@@ -84,3 +85,4 @@ The board registers itself with the engine's `SatelliteRegistry`. It owns no tab
 - [Layouts](installation/layouts.md) — render the board inside your admin
 - [Configuration](installation/configuration.md) — every key you can tune
 - [Real-Time Updates](realtime.md) — live boards with Echo
+- [Upgrading](upgrading.md) — moving from 1.x to 2.0

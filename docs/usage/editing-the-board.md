@@ -33,7 +33,7 @@ The column editor ("Edit column: Packing") has:
 | --- | --- |
 | Label | Use the sub-status name |
 | Color | Use the sub-status color (`#RRGGBB`) |
-| Icon | Use the sub-status icon. An icon name such as `o-truck`. |
+| Icon | Use the sub-status icon. An icon name: a livewire-ui-components 3.0 registry (Lucide) icon such as `truck`, or a Heroicon such as `o-truck`. A name in both sets renders the registry icon; a name that doesn't resolve shows no icon. |
 | WIP limit | Have no limit. Otherwise the most cards the column may hold, at least 1. |
 
 The color is only drawn as the column's top border. Column text never sits on it, so any color stays readable.

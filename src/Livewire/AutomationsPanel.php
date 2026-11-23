@@ -99,7 +99,17 @@ class AutomationsPanel extends Component
     public ?int $deletingId = null;
 
     /**
+     * The board, once read in this request.
+     *
+     * @since 2.0.0
+     *
+     * @var KanbanBoard|null
+     */
+    private ?KanbanBoard $boardModel = null;
+
+    /**
      * @since 1.0.0
+     * @since 2.0.0 A switched-off board is a 404 for anyone who can't edit it.
      *
      * @param  int  $boardId  The board's id.
      *
@@ -110,18 +120,23 @@ class AutomationsPanel extends Component
         $this->boardId = $boardId;
 
         $this->authorizeKanban( 'kanbanBoard.view', $this->board() );
+
+        abort_unless( Authorization::canOpenBoard( auth()->user(), $this->board() ), 404 );
     }
 
     /**
      * Re-checks access to the board on every update.
      *
      * @since 1.0.0
+     * @since 2.0.0 A switched-off board is a 404 for anyone who can't edit it.
      *
      * @return void
      */
     public function hydrate(): void
     {
         $this->authorizeKanban( 'kanbanBoard.view', $this->board() );
+
+        abort_unless( Authorization::canOpenBoard( auth()->user(), $this->board() ), 404 );
     }
 
     /**
@@ -375,15 +390,16 @@ class AutomationsPanel extends Component
     }
 
     /**
-     * The board.
+     * The board, read once per request.
      *
      * @since 1.0.0
+     * @since 2.0.0 Read once per request.
      *
      * @return KanbanBoard
      */
     private function board(): KanbanBoard
     {
-        return KanbanBoard::query()->findOrFail( $this->boardId );
+        return $this->boardModel ??= KanbanBoard::query()->findOrFail( $this->boardId );
     }
 
     /**

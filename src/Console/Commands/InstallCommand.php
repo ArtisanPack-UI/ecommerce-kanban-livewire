@@ -25,8 +25,10 @@ use Throwable;
  * checks what the board needs (spec §4.3, §5.5, §7.7, D11).
  *
  * The package ships no CSS or JS build and never edits the host's files: the
- * host adds the package views to its Tailwind sources and imports
- * `@artisanpack-ui/livewire-drag-and-drop` itself.
+ * host loads the ArtisanPack UI design system and imports
+ * `@artisanpack-ui/livewire-drag-and-drop` itself. Tailwind CSS isn't
+ * required; a host that uses it may add the package views to its sources,
+ * which the command offers as an optional step.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceKanbanLivewire
@@ -36,9 +38,12 @@ use Throwable;
 class InstallCommand extends Command
 {
     /**
-     * The Tailwind `@source` lines a host adds to its main stylesheet.
+     * The Tailwind `@source` lines a host that uses Tailwind may add to its
+     * main stylesheet. Optional: the board renders with the design system
+     * alone.
      *
      * @since 1.0.0
+     * @since 2.0.0 Optional; printed as an optional step.
      *
      * @var array<int, string>
      */
@@ -67,8 +72,9 @@ class InstallCommand extends Command
     public const DESIGN_SYSTEM_PACKAGES = '@artisanpack-ui/css@^1 @artisanpack-ui/behavior@^1';
 
     /**
-     * The main-stylesheet lines that load the design system: the layer order
-     * goes before `@import 'tailwindcss';`, the import after it.
+     * The main-stylesheet lines that load the design system. In a stylesheet
+     * that also imports Tailwind, the layer order goes before
+     * `@import 'tailwindcss';` and the design-system import after it.
      *
      * @since 2.0.0
      *
@@ -186,10 +192,11 @@ class InstallCommand extends Command
     }
 
     /**
-     * Prints the design-system setup, then the stylesheet and script lines
-     * the host adds.
+     * Prints the design-system setup, the optional Tailwind `@source` lines,
+     * and the drag-and-drop install and script line the host adds.
      *
      * @since 1.0.0
+     * @since 2.0.0 Prints the design-system setup; the Tailwind lines are optional.
      *
      * @return void
      */
@@ -208,7 +215,7 @@ class InstallCommand extends Command
         }
 
         $this->newLine();
-        $this->components->info( __( 'Add these lines to your main stylesheet (e.g. resources/css/app.css):' ) );
+        $this->components->info( __( 'Optional, only if your app uses Tailwind CSS (the board doesn\'t need it): add these lines to your main stylesheet (e.g. resources/css/app.css) so Tailwind scans the board\'s classes:' ) );
 
         foreach ( self::TAILWIND_SOURCES as $source ) {
             $this->line( '    ' . $source );

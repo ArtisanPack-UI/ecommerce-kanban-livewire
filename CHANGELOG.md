@@ -2,6 +2,101 @@
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-XX
+
+A major release that moves the board onto the ArtisanPack UI design system through `artisanpack-ui/livewire-ui-components` 3.0. daisyUI is no longer used, and Tailwind CSS is now optional. Every screen is rebuilt from the v2 designs, and the board ships five more languages. The engine contract is unchanged: 2.0 still runs on `artisanpack-ui/ecommerce` 1.2 or later. See [Upgrading](docs/upgrading.md).
+
+### Requirements
+
+- PHP 8.3+, Laravel 12 or 13, Livewire 3.6+ or 4 (unchanged).
+- `artisanpack-ui/ecommerce` `^1.2` (unchanged).
+- **`artisanpack-ui/livewire-ui-components` `^3.0`** (was `^2.1`).
+- **The ArtisanPack UI design system in the host's front-end build:** `@artisanpack-ui/css` `^1` and `@artisanpack-ui/behavior` `^1` (the behavior engine registered as an Alpine plugin), and `@apuiThemeScript` in the layout `<head>`. daisyUI is no longer needed.
+- **Tailwind CSS is optional.** The board's views use only the package's `ec-kb-*` classes and the design system's own classes, so the board renders with the design system alone. Hosts that build with Tailwind 4 keep the `@layer` line and may add the board's `@source` lines.
+- `@artisanpack-ui/livewire-drag-and-drop` `^2.1` (unchanged).
+- If `artisanpack-ui/ecommerce-admin-livewire` is installed, it must be 2.0 or later.
+
+### Breaking changes
+
+- **livewire-ui-components 3.0 and the design system replace daisyUI** (#43). Run `php artisan livewire-ui-components:install --assets=bundler`, or add `@artisanpack-ui/css` and `@artisanpack-ui/behavior` by hand: `@import '@artisanpack-ui/css';` in the main stylesheet, the behavior engine registered as an Alpine plugin, and `@apuiThemeScript` before `@vite`. With Tailwind, put `@layer theme, base, apui, components, utilities;` first, before `@import 'tailwindcss';`. Remove the `@plugin "daisyui"` block and the `~5.0` daisyUI pin if nothing else uses them. `php artisan ecommerce-kanban:install` prints every line, with the Tailwind `@source` lines marked optional.
+- **Layouts need `<x-artisanpack-toaster />`** instead of `<x-artisanpack-toast />`. In livewire-ui-components 3.0 `toast` is a single static toast, so a layout that keeps it shows no board toasts at all. Custom layouts also need `@apuiThemeScript`.
+- **Every view is rebuilt** (#44–#56). Markup, CSS classes, and component usage changed in every package view: the card, column, WIP badge, connection status, empty state, generic widget, filter bar, board, move dialogs, edit mode and column dialogs, card slide-out, automations panel, widget picker, board picker, and standalone layout. The board's own styles moved into `resources/css/kanban.css`, inlined once per page by the new `ecommerce-kanban::partials.styles` (with the Vite CSP nonce; the board includes it itself), and use `ec-kb-*` classes on the design system's tokens instead of Tailwind/daisyUI utilities. **Views published from 1.x no longer match. Delete `resources/views/vendor/ecommerce-kanban` and publish again if you still need overrides.**
+- **Toasts are plain text.** livewire-ui-components 3.0's toaster renders text, not HTML. The board no longer escapes toast titles and descriptions itself, and the automation-failure toast no longer carries an "Open order :number" link.
+- **`WidgetViews::TONES` entries no longer have a `class` key** (the daisyUI `badge-*` class), and `WidgetViews::tone()` returns `{ color, icon, text }` only. It now takes an optional widget key. The `danger` tone icon is `o-x-circle` (was `o-exclamation-circle`).
+- **Choice controls read the 3.0 option shape.** Options from `ap.ecommerceKanbanLivewire.filters` and the board's own lists are mapped from `id`/`name`/`hint` to `value`/`label`/`description` by the new `Support\ControlOptions`. The 2.x keys still work, and 3.0 keys win.
+- **`cardClasses` classes are no longer Tailwind/daisyUI color utilities by default.** daisyUI colors such as `border-l-warning` are gone. Return your own class names and style them with the design tokens (`var(--apui-color-warning)`), or use Tailwind utilities if your app builds with Tailwind.
+- **`ap.ecommerce.kanban.cardQuery` is now a visibility boundary.** A card the host's or a satellite's `cardQuery` filter hides was only left out of the column lists in 1.x; it could still be moved, removed, or opened by id. 2.0 enforces the filter on every card path through the new `Queries\VisibleCards` (read with the filter bar cleared): drag moves, reorders and "Move to…" are refused (`not-on-board`), "Remove from board" is refused, the slide-out doesn't open it (from the card, an `ec-kb-open-card` event, or `?card=`), and it is left out of the Customer, Products, and Tags filter options, the widget picker's preview, the board picker's `cards_count`, and the count "Show more" uses. Column totals and WIP badges still count hidden cards, because the engine enforces WIP limits against every card, so the numbers show but no hidden card's content does. A filter that narrows cards unconditionally (for example by warehouse) now hides those cards everywhere; a filter that only reads `$filters->extra` is unaffected. See [Filters](docs/usage/filters.md#restricting-which-cards-people-see).
+- **Translation strings changed.** Removed: ":board: :column", "Editing the board. Drag column headers or use the arrows to reorder columns; changes save as you make them.", "Open order :number", "Order :number — :email", "This board is switched off. Only people who can edit it see it.", and "Toggle dark mode" (the livewire-ui-components 3.0 theme toggle brings its own label). Several German strings changed to match the engine ("Fulfillment" → "Abwicklung", "Tax" → "USt.", "You are not allowed to do that." → "Das dürfen Sie nicht."), and the German catalogue now uses "Sie" throughout. Re-check published overrides in `lang/vendor/ecommerce-kanban`.
+
+### Added
+
+- Brazilian Portuguese (`pt_BR`), Japanese (`ja`), Simplified Chinese (`zh_CN`), Italian (`it`) and Arabic (`ar`) catalogues, with locale plural rules (one form for ja/zh_CN, six for ar) (#34–#38).
+- Right-to-left support: the standalone layout sets `dir="rtl"` for RTL locales (ar, he, fa, ur, …), and the board's styles and the design system's directional icons mirror with it.
+- `php artisan ecommerce-kanban:install` prints the design-system setup (the component library's installer, or the npm packages, stylesheet lines, Alpine plugin lines and the `@apuiThemeScript` reminder) before the board's own lines.
+- Filter bar: a "More filters" row for placed dates, payment and fulfillment status, stale cards and satellite controls, which opens by itself when any of them is set and shows a count. "N of M orders shown". Customer and product comboboxes search on the server as you type (#47).
+- Cards and the slide-out show payment and fulfillment status as tone badges (`Statuses::tone()`), tags in the info color, and tone icons so status is never shown by color alone (#44, #48, #49).
+- The card slide-out's "Recent activity" is a Timeline with an icon and color per event type (`CardDetailPresenter::MARKERS`) (#49).
+- "Add order" results and the "after a card" list in the move dialog show the customer's name, plus the total and placed date for "Add order" (#54, #55).
+- Empty states for first use (no boards), a switched-off board and empty columns (`x-artisanpack-ec-kb-empty` gains a `firstUse` prop) (#45, #53).
+- Collapsed columns show as a narrow vertical strip with the label and count. Column color is a dot in the header (#46).
+- The widget picker's preview says which card it uses (#51).
+- The standalone layout's brand tile uses the design's kanban glyph (#52, #59).
+- `Support\ControlOptions`, `Support\KanbanStyles`, `Statuses::tone()`, `CardDetailPresenter::marker()`, `WidgetViews::TAG_KEYS`.
+- Documentation: [Upgrading](docs/upgrading.md), a [PHP API](docs/reference/php-api.md) reference, and notes on Content Security Policy and on `ap.ecommerce.kanban.cardQuery` as a visibility boundary.
+
+### Changed
+
+- Every screen rebuilt on livewire-ui-components 3.0 from the v2 designs (#33, #42–#56): Dialog for the move, confirm, add-order and column dialogs; Drawer for the slide-out, automations panel and phone filters; DropdownMenu for card actions and the board switcher; Combobox, Select, RadioGroup, DatePicker, ColorPicker, Toggle, Timeline, PageHeader, Navbar and Toaster elsewhere.
+- The rate-limit notice dispatches the design system's `toast` browser event (`{ title, description, color: 'warning' }`).
+- `ThrottleKanbanMutations` treats the new `customerSearch` and `productSearch` updates as reads.
+- The browser workbench builds Tailwind with the design system instead of daisyUI. The axe exclusions now cover only livewire-ui-components#164 (Drawer `<aside role="dialog">`) and #168 (ColorPicker label).
+- Documentation moved to the org docs standard: Overview, FAQ, Troubleshooting, a Reference section (Hooks and Commands moved from `extending/hooks-reference.md` and `advanced/artisan-commands.md`, with redirects), and browser-test docs moved to CONTRIBUTING.md (#40).
+- CI and the docs lint also run on pushes to `release/**` branches.
+- The package reports version `2.0.0` to the engine's satellite registry (`EcommerceKanbanLivewireServiceProvider::VERSION`).
+- Card action keys are unique: the first action per key wins, and a satellite action keyed `open`, `move`, or `remove` can't replace the built-in one (`ActionList::normalize()` takes a `$preferred` map).
+- Icon names from livewire-ui-components 3.0's icon registry (its Lucide set) work for column, sub-status, widget, and action icons. A name in both the registry and Heroicons renders the registry icon (`Icons::name()`).
+- "Show more" stops at 500 cards per column (`Board::MAX_CARDS_PER_COLUMN`).
+- The slide-out's "Recent activity" names boards by name, and only boards the viewer may view; others, and deleted boards, show as "Added to another board" / "Removed from another board" (`CardDetailPresenter::timeline()` takes the viewer).
+- The customer filter offers and searches only customers of cards the viewer may see (see the `cardQuery` change above). Board viewers with `kanbanBoard.view` still see those customers' emails.
+- `BoardsQuery::visibleTo()` takes `$withCounts`, so callers that don't show counts skip the count queries.
+- `Board::dragMessages()` takes a `$kind` (`cards`, `columns`, or `widgets`).
+- The install command prints the board's Tailwind `@source` lines as an optional step, for apps that use Tailwind.
+- Fewer repeated queries per request: the board's filters are built once while their values don't change, the automations panel and widget picker read their board once per request, and the slide-out eager-loads sub-statuses (its query budget drops from 18 to 17).
+- The board sets `dir="rtl"` on its own root for right-to-left locales (`KanbanStyles::textDirection()`, `KanbanStyles::RTL_LANGUAGES`), so it lays out and drags right to left in host layouts that don't set `dir`. Its dialogs and drawers still follow the page's `dir`.
+- The board inlines its own stylesheet once per page, so a page that embeds `<livewire:artisanpack-ecommerce-kanban-board>` needs no `partials.styles` include.
+- The "Move to…" dialog's description reads "Choose a column and where the order goes in it." 
+
+### Fixed
+
+- JSON translations load in `register()` instead of `boot()`, so a provider that calls `__()` while booting before this one no longer leaves every board string in English (#39, #41).
+- German strings shared with the engine now match the engine's wording (#41).
+- **Rate limiting:** Livewire event dispatches whose listener only reads (opening a card, "Move to…", the "Remove from board" confirmation, opening the widget picker or automations panel, and the board's real-time and poll refreshes) no longer count against `ecommerce.admin.mutate` (`ThrottleKanbanMutations::READ_EVENTS`). A satellite's own events still count.
+- An exit-column move of an order that isn't on the board is refused straight away (`not-on-board`) instead of first asking to confirm, and the confirmation no longer shows the number of an order from another board.
+- The card slide-out, automations panel, and widget picker answer 404 on a switched-off board for viewers who can't edit it, as the board itself does.
+- Adding an order that is already on the board (from "Add order" or the slide-out's "Add to another board") shows an info toast, "Order :number is already on :board.", instead of a misleading "added" toast. "Add to another board" refuses a column from a different board instead of quietly using the entry column.
+- The slide-out's timeline no longer names boards the viewer can't view.
+- A test now fails when `en.json` has a key no source file uses, or the source uses a key missing from it.
+- Card actions with both a URL and an event open the URL in a new tab on Ctrl, Cmd, Shift, or Alt-click again, as in 1.0 (Cmd-click on macOS, where Ctrl-click opens the context menu); a plain click dispatches the event.
+- **Right to left:** keyboard drag moves cards and edit-mode columns in the reading direction, and the "Move undone" icon mirrors.
+- **Accessibility:**
+  - Widget-picker rows keep list semantics instead of becoming `role="button"` around form controls.
+  - Drag instructions and announcements in the widget picker and for edit-mode columns are translated and name widgets and columns instead of cards (`Board::dragMessages( $kind )`).
+  - Connection changes ("Live", "Offline") and "Add order" results (including none) are announced through persistent status regions, and "Live" no longer shows before Alpine starts.
+  - Cards no longer carry their own live region for "Moving…" / "Move undone".
+  - The moving-card state keeps full opacity, so its text stays at WCAG AA contrast, and shows a dashed edge, a sunken surface and a spinner.
+  - New styles for a held card and for allowed and refused drop targets; the drop indicator uses the primary token instead of a hard-coded blue.
+  - Card action triggers keep a 24px minimum target in compact density.
+  - Widget-row errors in the widget picker are alerts tied to their control, and focus moves to the first one after a failed save.
+  - The widget picker's preview card is no longer a tab stop and ignores board events.
+- Single-card and single-column refreshes no longer render tooltip and menu ids that duplicate ones already on the board.
+- An automation toggle goes back to its real state after a refused or failed request.
+- The Customer and Products filter comboboxes keep searching and accept a pick after the first search on Livewire 4 (worked around a livewire-ui-components 3.0 Combobox re-init).
+- The browser test suite no longer hangs.
+
+### Known issues
+
+- In right-to-left locales, dragging a column header with a pointer in edit mode drops it at the start of the board (a livewire-drag-and-drop issue). Keyboard moves and the "Move left" / "Move right" buttons work.
+
 ## [1.0.0] - 2026-10-29
 
 The first release of the Livewire order board for the ArtisanPack UI ecommerce

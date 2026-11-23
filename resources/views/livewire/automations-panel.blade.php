@@ -9,6 +9,12 @@
     Toggle, Button, and the Alert markup as an `alertdialog` for the inline
     delete confirmation (the Alert component fixes its own role).
 
+    A toggle's `checked` property is the user's, and morph only updates its
+    `checked` attribute, so a refused or failed `setActive()` would leave the
+    switch flipped while the badge says otherwise (F12). Each toggle resets
+    itself to the rendered state once its request settles, and every toggle
+    does when a Livewire request fails (`ec-kb-request-failed`).
+
     @package    ArtisanPack_UI
     @subpackage EcommerceKanbanLivewire
 
@@ -31,8 +37,14 @@
                 }
             }, 100 );
         },
+        syncToggles() {
+            document.querySelectorAll( '.ec-kb-automations-drawer .ec-kb-automation-controls input[type=checkbox]' ).forEach( ( toggle ) => {
+                toggle.checked = toggle.defaultChecked;
+            } );
+        },
     }"
     x-on:ec-kb-focus-automations.window="focusFirst( $event.detail.selectors )"
+    x-on:ec-kb-request-failed.window="syncToggles()"
 >
     <x-artisanpack-drawer
         wire:model.live="open"
@@ -84,7 +96,7 @@
                                                     size="sm"
                                                     :label="__( 'Active' )"
                                                     :checked="$row['active']"
-                                                    wire:change="setActive( {{ $row['id'] }}, $event.target.checked )"
+                                                    x-on:change="const toggle = $event.target; $wire.setActive( {{ (int) $row['id'] }}, toggle.checked ).then( () => $nextTick( () => toggle.checked = toggle.defaultChecked ) )"
                                                     aria-label="{{ __( 'Active: :name', [ 'name' => $name ] ) }}"
                                                     data-ec-kb-automation-toggle
                                                 />

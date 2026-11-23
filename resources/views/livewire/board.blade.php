@@ -49,7 +49,25 @@
 
     In "Edit board" mode the column strip is an outer drag context (group
     `columns`): a header drop calls `reorderColumns()` and is reverted when
-    refused. Cards don't drag in edit mode.
+    refused. Cards don't drag in edit mode. The strip's announcements talk
+    about columns (`dragMessages( 'columns' )`), not cards.
+
+    Right to left (F1, F11): for a right-to-left locale the board sets
+    `dir="rtl"` on its own root (`KanbanStyles::textDirection()`), so it
+    mirrors even in a host layout without `dir`. livewire-drag-and-drop's
+    arrow keys ignore direction, so `init()` swaps ArrowLeft and ArrowRight
+    through its global `configure()` while the board is right to left (and
+    puts them back otherwise): the "next" column sits to the left there.
+
+    Card menus (B7): `select` carries only the chosen value, so the board
+    records, once per page, when the last pointer press or key press had
+    Ctrl, Cmd, Shift or Alt held (`window.ecommerceKanbanModifiedAt`); a
+    card action with a URL and an event then opens the URL in a new tab.
+
+    The board inlines its own stylesheet (`partials.styles`, once per page),
+    so a board embedded in a host's page is styled without extra includes.
+    It sits in a `wire:ignore` wrapper and is only sent with the first
+    render, not with every Livewire update.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceKanbanLivewire
@@ -61,6 +79,7 @@
 @endphp
 <div
     class="ec-kb-board"
+    @if ( 'rtl' === \ArtisanPackUI\EcommerceKanbanLivewire\Support\KanbanStyles::textDirection() ) dir="rtl" @endif
     @if ( $editing ) data-ec-kb-editing @endif
     data-ec-kb-board-view="{{ $board->id }}"
     x-data="{
@@ -105,6 +124,8 @@
         init() {
             this.connect();
             this.watchFailures();
+            this.watchModifiers();
+            this.configureArrowKeys();
 
             // The dialogs close on Escape or the backdrop by setting their
             // property in the browser only; run the matching cancel action so
@@ -129,6 +150,27 @@
         },
         destroy() {
             this.disconnect();
+        },
+        configureArrowKeys() {
+            // livewire-drag-and-drop maps ArrowRight to the next column whatever the direction; in RTL the next column is to the left.
+            const rtl = 'rtl' === window.getComputedStyle( this.$root ).direction;
+
+            window.LivewireDragAndDrop?.configure?.( { keys: { previousContainer: [ rtl ? 'ArrowRight' : 'ArrowLeft' ], nextContainer: [ rtl ? 'ArrowLeft' : 'ArrowRight' ] } } );
+        },
+        watchModifiers() {
+            // Once per page: when the last press had a modifier, so a card menu item can open its URL in a new tab.
+            if ( window.ecommerceKanbanModifierHook ) {
+                return;
+            }
+
+            window.ecommerceKanbanModifierHook = true;
+
+            const track = ( event ) => {
+                window.ecommerceKanbanModifiedAt = event.metaKey || event.ctrlKey || event.shiftKey || event.altKey ? Date.now() : 0;
+            };
+
+            window.addEventListener( 'pointerdown', track, true );
+            window.addEventListener( 'keydown', track, true );
         },
         watchFailures() {
             // Once per page: tell every board when a Livewire request fails.
@@ -543,6 +585,12 @@
 >
     <div class="apui-sr-only" aria-live="assertive" x-text="announcement" data-ec-kb-announcer></div>
 
+    <div hidden wire:ignore data-ec-kb-board-styles>
+        @unless ( app( 'livewire' )->isLivewireRequest() )
+            @include( 'ecommerce-kanban::partials.styles' )
+        @endunless
+    </div>
+
     {{-- How many cards the filters leave, announced when it changes. --}}
     <p class="apui-sr-only" role="status" data-ec-kb-filter-status>
         @if ( $activeFilters > 0 && $this->loaded )
@@ -740,7 +788,7 @@
                 data-drag-context-id="board-{{ $board->id }}"
                 data-drag-label="{{ $board->name }}"
                 data-drag-orientation="horizontal"
-                data-drag-messages="{{ json_encode( [ ...$dragMessages, 'item' => __( 'Column' ), 'container' => __( 'the board' ) ] ) }}"
+                data-drag-messages="{{ json_encode( \ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Board::dragMessages( 'columns' ) ) }}"
                 x-on:drag:end="endColumns( $event, $el )"
             @endif
         >
@@ -775,7 +823,7 @@
     <x-artisanpack-dialog
         wire:model="moveDialog"
         :title="null === $moveNumber ? __( 'Move to…' ) : __( 'Move order :number', [ 'number' => $moveNumber ] )"
-        :description="__( 'The keyboard and single-pointer way to move a card.' )"
+        :description="__( 'Choose a column and where the order goes in it.' )"
         data-ec-kb-move-dialog
     >
         <form id="ec-kb-move-form" class="ec-kb-dialog-form" wire:submit="submitMove">
@@ -857,9 +905,16 @@
                     data-ec-kb-add-order-search
                 />
 
+                {{-- Always present, so screen readers announce the search result when its text changes (F9). --}}
+                <p class="apui-sr-only" role="status" data-ec-kb-add-order-status>
+                    @if ( $addOrderSearched )
+                        {{ [] === $addOrderResults ? __( "No orders that aren't already on this board match." ) : trans_choice( ':count order found|:count orders found', count( $addOrderResults ), [ 'count' => count( $addOrderResults ) ] ) }}
+                    @endif
+                </p>
+
                 @if ( $addOrderSearched )
                     @if ( [] === $addOrderResults )
-                        <p class="ec-kb-dialog-note" role="status" data-ec-kb-add-order-none>{{ __( "No orders that aren't already on this board match." ) }}</p>
+                        <p class="ec-kb-dialog-note" aria-hidden="true" data-ec-kb-add-order-none>{{ __( "No orders that aren't already on this board match." ) }}</p>
                     @else
                         <x-artisanpack-radio-group
                             id="ec-kb-add-order-id"

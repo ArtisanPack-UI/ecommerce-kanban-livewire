@@ -6,6 +6,7 @@ use ArtisanPackUI\Ecommerce\Models\OrderBoardAssignment;
 use ArtisanPackUI\Ecommerce\Models\OrderItem;
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Board;
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\CardDetail;
+use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\WidgetPicker;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
@@ -21,7 +22,7 @@ const PER_COLUMN_QUERIES    = 3;
 const COLUMN_PAGE_QUERIES   = 15;
 const CARD_RERENDER_QUERIES = 6;
 const IDLE_POLL_QUERIES     = 6;
-const SLIDE_OUT_QUERIES     = 18;
+const SLIDE_OUT_QUERIES     = 17;
 
 beforeEach( function (): void {
     grantAbilities( [ 'kanbanBoard.viewAny', 'kanbanBoard.view', 'kanbanCard.move', 'kanbanBoard.update', 'order.view' ] );
@@ -105,6 +106,39 @@ it( 'opens the slide-out in a fixed number of queries', function ( int $lines ):
 
     expect( queriesDuring( fn () => $detail->call( 'show', $card->order_id ) ) )->toBe( SLIDE_OUT_QUERIES );
 } )->with( [ 'one line' => 1, 'many lines' => 12 ] );
+
+it( 'opens a card on several boards without a query per board', function (): void {
+    [ $board, $columns ] = makeBoard( [ 0 ] );
+    $card                = addCard( $columns[0] );
+    $detail              = Livewire::test( CardDetail::class, [ 'boardId' => $board->id ] );
+    $baseline            = queriesDuring( fn () => $detail->call( 'show', $card->order_id ) );
+
+    foreach ( range( 1, 3 ) as $other ) {
+        [ , $otherColumns ] = makeBoard( [ 0 ] );
+
+        addCard( $otherColumns[0], [], [ 'order_id' => $card->order_id ] );
+    }
+
+    $detail = Livewire::test( CardDetail::class, [ 'boardId' => $board->id ] );
+
+    expect( queriesDuring( fn () => $detail->call( 'show', $card->order_id ) ) )->toBe( $baseline );
+} );
+
+it( 'reads the board once when the widget picker saves', function (): void {
+    [ $board ] = makeBoard( [ 1 ] );
+    $picker    = Livewire::test( WidgetPicker::class, [ 'boardId' => $board->id ] )->call( 'openFor' );
+    $boards    = 0;
+
+    DB::listen( function ( $query ) use ( &$boards ): void {
+        if ( str_contains( $query->sql, 'kanban_boards' ) && str_starts_with( strtolower( ltrim( $query->sql ) ), 'select' ) && ! str_contains( $query->sql, 'join' ) ) {
+            $boards++;
+        }
+    } );
+
+    $picker->call( 'save' );
+
+    expect( $boards )->toBe( 1 );
+} );
 
 it( 'loads a 1,000-card board within the query budget', function (): void {
     [ $board ] = makeBoard( [ 200, 200, 200, 200, 200 ] );

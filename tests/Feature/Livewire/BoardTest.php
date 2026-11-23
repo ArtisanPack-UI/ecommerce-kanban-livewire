@@ -118,6 +118,30 @@ it( 'pages a column with Show more', function (): void {
     $component->assertDontSeeHtml( 'data-ec-kb-show-more' );
 } );
 
+it( 'caps Show more at MAX_CARDS_PER_COLUMN', function (): void {
+    [ $board, $columns ] = makeBoard( [ 1 ] );
+    $columnId            = $columns[0]->id;
+    $component           = Livewire::test( Board::class, [ 'board' => $board ] )->call( 'loadBoard', [] );
+
+    foreach ( range( 1, 30 ) as $press ) {
+        $component->call( 'showMore', $columnId );
+    }
+
+    expect( $component->get( 'limits' )[ $columnId ] )->toBe( Board::MAX_CARDS_PER_COLUMN );
+} );
+
+it( 'hides Show more once a column shows MAX_CARDS_PER_COLUMN cards', function (): void {
+    config()->set( 'artisanpack.ecommerce-kanban-livewire.cards.per_column', 300 );
+    [ $board, $columns ] = makeBoard( [ Board::MAX_CARDS_PER_COLUMN + 1 ] );
+
+    $component = Livewire::test( Board::class, [ 'board' => $board ] )->call( 'loadBoard', [] );
+
+    $component->assertSeeHtml( 'data-ec-kb-show-more' )->call( 'showMore', $columns[0]->id );
+
+    expect( substr_count( $component->html(), 'data-ec-kb-card=' ) )->toBe( Board::MAX_CARDS_PER_COLUMN );
+    $component->assertDontSeeHtml( 'data-ec-kb-show-more' );
+} );
+
 it( 'restores collapsed columns, which load no cards', function (): void {
     [ $board, $columns ] = makeBoard( [ [ 'cards' => 2, 'label_override' => 'Packing' ], [ 'cards' => 1, 'label_override' => 'Shipped' ] ] );
 

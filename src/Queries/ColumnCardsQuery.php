@@ -36,9 +36,13 @@ final class ColumnCardsQuery
     /**
      * Card counts per column on `$board`, keyed by column id: `count` is
      * what the filters leave, `total` every card (what the WIP limit is
-     * checked against).
+     * checked against). `count` never includes a card the
+     * `ap.ecommerce.kanban.cardQuery` filter hides, even with no filter set
+     * (the engine then reports every card), so "Show more" isn't offered for
+     * hidden cards.
      *
      * @since 1.0.0
+     * @since 2.0.0 `count` leaves out hidden cards when no filter is set.
      *
      * @param  KanbanBoard                    $board    The board.
      * @param  Collection<int, KanbanColumn>  $columns  The board's columns.
@@ -48,7 +52,36 @@ final class ColumnCardsQuery
      */
     public static function counts( KanbanBoard $board, Collection $columns, ?KanbanCardFilters $filters = null ): array
     {
-        return KanbanCardQuery::for( $board )->filter( $filters ?? KanbanCardFilters::none() )->countsByColumn( $columns );
+        $filters ??= KanbanCardFilters::none();
+
+        if ( ! $filters->isEmpty() ) {
+            return KanbanCardQuery::for( $board )->filter( $filters )->countsByColumn( $columns );
+        }
+
+        // With no filter set the engine reports every card as matching, so
+        // count the visible ones alongside the total in the same query.
+        $query   = OrderBoardAssignment::query()->active()->where( 'board_id', $board->id );
+        $visible = VisibleCards::ids( $board )->toBase();
+        $rows    = $query
+            ->select( $query->qualifyColumn( 'substatus_id' ) )
+            ->selectRaw( 'COUNT(*) as total' )
+            ->selectRaw( 'SUM(CASE WHEN ' . $query->getQuery()->getGrammar()->wrap( $query->qualifyColumn( 'id' ) ) . ' IN (' . $visible->toSql() . ') THEN 1 ELSE 0 END) as visible', $visible->getBindings() )
+            ->groupBy( $query->qualifyColumn( 'substatus_id' ) )
+            ->toBase()
+            ->get()
+            ->keyBy( 'substatus_id' );
+        $counts  = [];
+
+        foreach ( $columns as $column ) {
+            $row = $rows[ $column->substatus_id ] ?? null;
+
+            $counts[ (int) $column->id ] = [
+                'count' => (int) ( $row->visible ?? 0 ),
+                'total' => (int) ( $row->total ?? 0 ),
+            ];
+        }
+
+        return $counts;
     }
 
     /**
@@ -78,9 +111,11 @@ final class ColumnCardsQuery
      * them), so it changes when a card joins, leaves, or moves within the
      * column (a reorder included), or when one of its orders is updated.
      * One query of a few narrow columns per card; columns without cards get
-     * an empty string.
+     * an empty string. Cards the `ap.ecommerce.kanban.cardQuery` filter
+     * hides are left out ({@see VisibleCards}).
      *
      * @since 1.0.0
+     * @since 2.0.0 Leaves out hidden cards.
      *
      * @param  KanbanBoard                     $board    The board.
      * @param  Collection<int, KanbanColumn>  $columns  Its columns.
@@ -96,6 +131,7 @@ final class ColumnCardsQuery
         $rows = OrderBoardAssignment::query()
             ->active()
             ->where( $assignments . '.board_id', $board->id )
+            ->whereIn( $assignments . '.id', VisibleCards::ids( $board ) )
             ->join( $orders, $orders . '.id', '=', $assignments . '.order_id' )
             ->orderBy( $assignments . '.position' )
             ->orderBy( $assignments . '.assigned_at' )
