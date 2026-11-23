@@ -18,8 +18,6 @@ use ArtisanPackUI\Ecommerce\Models\Order;
 use ArtisanPackUI\Ecommerce\Models\OrderBoardAssignment;
 use ArtisanPackUI\Ecommerce\Models\OrderTimelineEntry;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\Automations;
-use ArtisanPackUI\EcommerceKanbanLivewire\Support\BoardUrls;
-use ArtisanPackUI\EcommerceKanbanLivewire\Support\SafeUrl;
 use Livewire\Attributes\Renderless;
 
 /**
@@ -35,8 +33,8 @@ use Livewire\Attributes\Renderless;
  * browser moved and sends them to {@see self::automationFeedback()}.
  * Either way only the actor sees the toast.
  *
- * A failure toast names each failed trigger and links to the order's
- * slide-out.
+ * A failure toast names each failed trigger. Toasts are plain text, so it
+ * carries no link: the moved card is on the board already.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceKanbanLivewire
@@ -158,8 +156,8 @@ trait ShowsAutomationFeedback
 
     /**
      * One toast for a move's automations: an error naming each failed
-     * trigger (and how many others ran) with a link to the order, or a
-     * success naming those that ran.
+     * trigger (and how many others ran), or a success naming those that
+     * ran. Toasts render as text, so nothing here is escaped.
      *
      * @since 1.0.0
      *
@@ -174,22 +172,15 @@ trait ShowsAutomationFeedback
         $number = (string) $order->order_number;
         $labels = static fn ( array $keys ): string => implode( ', ', array_map( static fn ( string $key ): string => Automations::triggerLabel( $key ), $keys ) );
 
-        // The toast renders its title and description as HTML.
         if ( [] !== $failed ) {
-            $description = e( __( 'Failed: :triggers.', [ 'triggers' => $labels( $failed ) ] ) );
+            $description = __( 'Failed: :triggers.', [ 'triggers' => $labels( $failed ) ] );
 
             if ( [] !== $fired ) {
-                $description .= ' ' . e( trans_choice( ':count other automation ran.|:count other automations ran.', count( $fired ), [ 'count' => count( $fired ) ] ) );
-            }
-
-            $url = SafeUrl::of( BoardUrls::show( $this->board, [ 'card' => $order->id ] ) );
-
-            if ( null !== $url ) {
-                $description .= ' <a class="link" href="' . e( $url ) . '" data-ec-kb-automation-order>' . e( __( 'Open order :number', [ 'number' => $number ] ) ) . '</a>';
+                $description .= ' ' . trans_choice( ':count other automation ran.|:count other automations ran.', count( $fired ), [ 'count' => count( $fired ) ] );
             }
 
             $this->error(
-                e( trans_choice( ':count automation failed for order :number|:count automations failed for order :number', count( $failed ), [ 'count' => count( $failed ), 'number' => $number ] ) ),
+                trans_choice( ':count automation failed for order :number|:count automations failed for order :number', count( $failed ), [ 'count' => count( $failed ), 'number' => $number ] ),
                 $description,
                 duration: 10000,
             );
@@ -199,8 +190,8 @@ trait ShowsAutomationFeedback
 
         if ( [] !== $fired ) {
             $this->success(
-                e( trans_choice( ':count automation ran for order :number|:count automations ran for order :number', count( $fired ), [ 'count' => count( $fired ), 'number' => $number ] ) ),
-                e( $labels( $fired ) ),
+                trans_choice( ':count automation ran for order :number|:count automations ran for order :number', count( $fired ), [ 'count' => count( $fired ), 'number' => $number ] ),
+                $labels( $fired ),
             );
         }
     }

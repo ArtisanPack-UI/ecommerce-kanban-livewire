@@ -112,12 +112,28 @@ it( 'opens a switched-off board for an editor, says so, and doesn\'t remember it
     $this->get( route( 'artisanpack.ecommerce.kanban.boards.index', [ 'pick' => 1 ] ) )->assertDontSee( 'Retired' );
 } );
 
-it( 'escapes the rate-limit message before the toast renders it', function (): void {
+it( 'sends the rate-limit message to the toaster, which renders it as text', function (): void {
     grantAbilities( [ 'kanbanBoard.viewAny', 'kanbanBoard.view' ] );
     [ $board ] = makeBoard( [ 0 ] );
 
     $this->actingAs( makeUser() )
         ->get( route( 'artisanpack.ecommerce.kanban.boards.show', [ 'board' => $board->id ] ) )
-        ->assertSee( 'element.textContent = value;', false )
-        ->assertSee( 'description: escape( message )', false );
+        ->assertSee( "new CustomEvent( 'toast', { detail: { title, description: message, color: 'warning' } } )", false )
+        ->assertDontSee( 'innerHTML', false );
+} );
+
+it( 'inlines the board\'s token-only stylesheet once, with the CSP nonce', function (): void {
+    grantAbilities( [ 'kanbanBoard.viewAny', 'kanbanBoard.view' ] );
+    [ $board ] = makeBoard( [ 0 ] );
+    Illuminate\Support\Facades\Vite::useCspNonce( 'kanban-nonce' );
+
+    $html = $this->actingAs( makeUser() )
+        ->get( route( 'artisanpack.ecommerce.kanban.boards.show', [ 'board' => $board->id ] ) )
+        ->assertOk()
+        ->getContent();
+
+    expect( substr_count( $html, 'data-ecommerce-kanban-styles' ) )->toBe( 1 )
+        ->and( $html )->toMatch( '/<style data-ecommerce-kanban-styles\s+nonce="kanban-nonce"\s*>/' )
+        ->and( $html )->toContain( '.ec-kb-card {' )
+        ->and( $html )->not->toContain( 'daisyui' );
 } );

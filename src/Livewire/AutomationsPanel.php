@@ -174,7 +174,7 @@ class AutomationsPanel extends Component
         $automation->save();
 
         $this->changed( $board );
-        $this->success( e( $active ? __( 'Automation switched on.' ) : __( 'Automation switched off.' ) ) );
+        $this->success( $active ? __( 'Automation switched on.' ) : __( 'Automation switched off.' ) );
     }
 
     /**
@@ -238,7 +238,7 @@ class AutomationsPanel extends Component
 
         if ( true === $deleted ) {
             $this->changed( $board );
-            $this->success( e( __( 'Automation deleted.' ) ) );
+            $this->success( __( 'Automation deleted.' ) );
             $this->dispatch( 'ec-kb-focus-automations', selectors: [ '[data-ec-kb-automation-toggle]', '[data-ec-kb-add-automation]', '[data-ec-kb-automations-heading]' ] );
         }
     }

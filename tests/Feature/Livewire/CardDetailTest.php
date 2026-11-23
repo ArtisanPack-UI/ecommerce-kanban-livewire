@@ -132,13 +132,13 @@ it( 'needs order.view and the order on this board', function (): void {
         ->assertSet( 'open', false )
         ->assertSet( 'orderId', null );
 
-    expect( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'This order is not on this board.' );
+    expect( toastsOf( $component ) )->toContain( 'This order is not on this board.' );
 
     denyAbilities( [ 'order.view' ] );
 
     $component->call( 'show', $order->id )->assertSet( 'open', false );
 
-    expect( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'You are not allowed to view this order.' );
+    expect( toastsOf( $component ) )->toContain( 'You are not allowed to view this order.' );
 
     Livewire::withQueryParams( [ 'card' => $order->id ] )
         ->test( CardDetail::class, [ 'boardId' => $board->id ] )
@@ -158,13 +158,14 @@ it( 'closes, clears the URL, and hands focus back to the card', function (): voi
         ->assertDontSeeHtml( 'data-ec-kb-detail=' );
 } );
 
-it( 'traps focus and closes on Escape', function (): void {
+it( 'opens in the design system\'s modal drawer, which traps focus and closes on Escape', function (): void {
     [ $board, $order ] = detailOrder();
 
     Livewire::test( CardDetail::class, [ 'boardId' => $board->id ] )
         ->call( 'show', $order->id )
-        ->assertSeeHtml( 'x-trap="open"' )
-        ->assertSeeHtml( '@keydown.window.escape="close()"' );
+        ->assertSeeHtml( 'apuiDrawer(' )
+        ->assertSeeHtml( 'modal: true' )
+        ->assertSeeHtml( 'data-side="end"' );
 } );
 
 it( 'hands off to the board\'s Move to… dialog', function (): void {

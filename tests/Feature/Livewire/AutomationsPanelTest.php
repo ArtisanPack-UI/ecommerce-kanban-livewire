@@ -144,12 +144,12 @@ it( 'switches an automation on and off and tells the board', function (): void {
         ->assertDispatched( 'ec-kb-board-changed' );
 
     expect( $automations['email']->fresh()->is_active )->toBeFalse()
-        ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Automation switched off.' );
+        ->and( toastsOf( $component ) )->toContain( 'Automation switched off.' );
 
     $component->call( 'setActive', $automations['email']->id, true );
 
     expect( $automations['email']->fresh()->is_active )->toBeTrue()
-        ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Automation switched on.' );
+        ->and( toastsOf( $component ) )->toContain( 'Automation switched on.' );
 
     Event::assertDispatched( KanbanBoardConfigChanged::class, fn ( KanbanBoardConfigChanged $event ): bool => (int) $event->board->id === (int) $board->id && KanbanBoardConfigChanged::BOARD_UPDATED === $event->change );
 } );
@@ -219,13 +219,13 @@ it( 'deletes an automation once per confirmation token', function (): void {
     $component->call( 'deleteAutomation', $token )->assertDispatched( 'ec-kb-board-changed' )->assertSet( 'deletingId', null );
 
     expect( KanbanAutomation::query()->find( $automations['packing']->id ) )->toBeNull()
-        ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Automation deleted.' );
+        ->and( toastsOf( $component ) )->toContain( 'Automation deleted.' );
 
     $component->call( 'confirmDelete', $automations['email']->id );
     $replayed = $component->call( 'deleteAutomation', $token );
 
     expect( KanbanAutomation::query()->find( $automations['email']->id ) )->not->toBeNull()
-        ->and( json_encode( $replayed->effects['xjs'] ?? [] ) )->toContain( 'This action has expired.' );
+        ->and( toastsOf( $replayed ) )->toContain( 'This action has expired.' );
 } );
 
 it( 'refuses a second use of the same token for the same automation', function (): void {
@@ -245,7 +245,7 @@ it( 'refuses a second use of the same token for the same automation', function (
     $replayed = $component->call( 'confirmDelete', $automations['email']->id )->call( 'deleteAutomation', $token );
 
     expect( $automations['email']->fresh() )->not->toBeNull()
-        ->and( json_encode( $replayed->effects['xjs'] ?? [] ) )->toContain( 'That action was already submitted.' );
+        ->and( toastsOf( $replayed ) )->toContain( 'That action was already submitted.' );
 } );
 
 it( 'does nothing when deleting without a confirmation', function (): void {

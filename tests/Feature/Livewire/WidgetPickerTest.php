@@ -185,7 +185,7 @@ it( 'refuses to save a column that was deleted while the picker was open', funct
     $component->call( 'save' )->assertSet( 'open', false );
 
     expect( $board->fresh()->settings['card_widgets'] ?? [] )->toBe( [] )
-        ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'That column no longer exists' );
+        ->and( toastsOf( $component ) )->toContain( 'That column no longer exists' );
 } );
 
 it( 'keeps settings it has no control for', function (): void {

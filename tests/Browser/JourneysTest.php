@@ -76,7 +76,7 @@ function columnOf( string $number ): string
 function openMoveDialog( object $page, string $number ): object
 {
     return $page->click( Locators::role( 'Actions for order ' . $number ) )
-        ->click( card( $number ) . ' [data-ec-kb-action="move"]' )
+        ->click( Locators::menuItem( 'move' ) )
         ->assertVisible( '[data-ec-kb-move-submit]' );
 }
 
@@ -91,7 +91,7 @@ it( 'drags a card to another column and runs the automation (plan §15.4)', func
         ->and( $this->orders['1001']->refresh()->meta['priority'] ?? null )->toBe( 'high' );
 
     $page->click( Locators::role( 'Actions for order 1001' ) )
-        ->click( card( '1001' ) . ' [data-ec-kb-action="open"]' )
+        ->click( Locators::menuItem( 'open' ) )
         ->assertSeeIn( '[data-ec-kb-detail-timeline]', 'Moved to Ready to ship' );
 
     JavaScript::assertNoErrors( $page );
@@ -100,7 +100,8 @@ it( 'drags a card to another column and runs the automation (plan §15.4)', func
 it( 'reorders cards within a column by dragging', function (): void {
     $page = visit( $this->boardUrl() )->assertScript( numbersIn( 'To pack' ), '1001,1002,1003' );
 
-    $page->drag( card( '1003' ), card( '1001' ) )
+    // Dropped on the top line of 1001, so it lands above it: dead centre is a tie the library breaks downwards.
+    $page->drag( card( '1003' ), card( '1001' ) . ' .ec-kb-card-order' )
         ->assertScript( numbersIn( 'To pack' ), '1003,1001,1002' )
         ->assertScript( settled() );
 
@@ -156,7 +157,12 @@ it( 'refuses a drop into a column at its WIP limit and puts the card back', func
 } );
 
 it( 'reverts a move the engine refuses and says why', function (): void {
-    $page = openMoveDialog( visit( $this->boardUrl() )->assertPresent( card( '1001' ) ), '1001' );
+    $page   = openMoveDialog( visit( $this->boardUrl() )->assertPresent( card( '1001' ) ), '1001' );
+    $option = '#ec-kb-move-column option[value="' . $this->columns['Packing']->id . '"]';
+
+    // The dialog offers a full column disabled; the engine still refuses one forced through.
+    $page->assertScript( 'document.querySelector( ' . json_encode( $option ) . ' ).disabled', true )
+        ->script( '() => { document.querySelector( ' . json_encode( $option ) . ' ).disabled = false; }' );
 
     $page->select( Locators::field( 'ec-kb-move-column' ), (string) $this->columns['Packing']->id )
         ->click( '[data-ec-kb-move-submit]' )
@@ -169,11 +175,14 @@ it( 'reverts a move the engine refuses and says why', function (): void {
 it( 'filters by tag and placed date, and keeps the filters in the URL', function (): void {
     $page = visit( $this->boardUrl() )->assertPresent( card( '1003' ) );
 
-    $page->click( '[data-ec-kb-filters="ec-kb-filters"] [id$="ec-kb-filters-tags-1"]' )
-        ->click( '[data-ec-kb-filters="ec-kb-filters"] [id^="option-"][id$="ec-kb-filters-tags-rush"]' )
-        ->click( '[data-ec-kb-filters="ec-kb-filters"] [id^="option-"][id$="ec-kb-filters-tags-wholesale"]' )
+    $page->click( '#ec-kb-filters-tags-control' )
+        ->click( Locators::role( 'rush', 'option' ) )
+        ->click( Locators::role( 'wholesale', 'option' ) )
         ->assertScript( numbersIn( 'To pack' ), '1001,1002' )
-        ->type( '[data-ec-kb-filters="ec-kb-filters"] [data-ec-kb-filter="placed-from"]', '2026-03-05' )
+        ->click( '[data-ec-kb-more-filters]' )
+        ->assertVisible( '#ec-kb-filters-placed-from-control' )
+        ->type( '#ec-kb-filters-placed-from-control', '03/05/2026' )
+        ->keys( '#ec-kb-filters-placed-from-control', [ 'Enter' ] )
         ->assertScript( numbersIn( 'To pack' ), '1002' )
         ->assertScript( numbersIn( 'Packing' ), '' )
         ->assertScript( 'new URLSearchParams( window.location.search ).get( "from" )', '2026-03-05' );
@@ -265,4 +274,15 @@ it( 'asks before removing a column moves its cards to an exit column', function 
         ->assertNotPresent( '[data-ec-kb-column="' . $this->columns['Packing']->id . '"]' );
 
     expect( $this->orders['1004']->refresh()->system_status )->toBe( 'cancelled' );
+} );
+
+it( 'keeps "More filters" open while other filters re-render the board', function (): void {
+    $page = visit( $this->boardUrl() )->assertPresent( card( '1003' ) );
+
+    $page->click( '[data-ec-kb-more-filters]' )
+        ->assertVisible( '#ec-kb-filters-placed-from-control' )
+        ->type( '#ec-kb-filters-search', '1002' )
+        ->assertScript( numbersIn( 'To pack' ), '1002' )
+        ->assertVisible( '#ec-kb-filters-placed-from-control' )
+        ->assertScript( 'document.querySelector( "[data-ec-kb-more-filters]" ).getAttribute( "aria-expanded" )', 'true' );
 } );

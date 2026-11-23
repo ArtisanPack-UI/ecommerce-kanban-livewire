@@ -92,22 +92,24 @@ it( 'falls back to the order email for the customer and does not repeat the cust
     expect( substr_count( $component->html(), 'jane@example.test' ) )->toBe( 2 ); // the name line and the accessible name
 } );
 
-it( 'maps tones to badge colours with an icon and text, never colour alone', function ( string $tone, string $class, ?string $text ): void {
+it( 'maps tones to soft, small design-system badges with an icon and text, never color alone', function ( string $tone, string $color, ?string $text ): void {
     fakeWidget( 'toned', [ 'value' => '2 days', 'tone' => $tone ] );
 
-    $component = cardBoard( [ 'toned' ] )
-        ->assertSeeHtml( $class )
-        ->assertSeeHtml( 'data-ec-kb-tone="' . $tone . '"' );
+    $component = cardBoard( [ 'toned' ] );
+    $html      = $component->html();
+
+    expect( $html )->toMatch( '/<span[^>]*class="apui-badge"[^>]*data-ec-kb-widget="toned"[^>]*data-ec-kb-tone="' . $tone . '"/' )
+        ->and( $html )->toMatch( '/data-ec-kb-tone="' . $tone . '"[^>]*data-variant="soft"\s+data-color="' . $color . '"\s+data-size="sm"/' );
 
     null === $text
-        ? expect( $component->assertDontSeeHtml( 'data-ec-kb-tone-icon' )->html() )->not->toMatch( '/badge-neutral[^>]*data-ec-kb-widget=/' )
+        ? $component->assertDontSeeHtml( 'data-ec-kb-tone-icon' )
         : $component->assertSeeHtml( 'data-ec-kb-tone-icon' )->assertSee( '(' . $text . ')' );
 } )->with( [
-    'neutral' => [ 'neutral', 'badge-outline', null ],
-    'success' => [ 'success', 'badge-success', 'Good' ],
-    'warning' => [ 'warning', 'badge-warning', 'Needs attention' ],
-    'danger'  => [ 'danger', 'badge-error', 'Problem' ],
-    'info'    => [ 'info', 'badge-info', 'Note' ],
+    'neutral' => [ 'neutral', 'neutral', null ],
+    'success' => [ 'success', 'success', 'Good' ],
+    'warning' => [ 'warning', 'warning', 'Needs attention' ],
+    'danger'  => [ 'danger', 'error', 'Problem' ],
+    'info'    => [ 'info', 'info', 'Note' ],
 ] );
 
 it( 'renders the payload icon, tooltip, and link', function (): void {
@@ -115,7 +117,9 @@ it( 'renders the payload icon, tooltip, and link', function (): void {
 
     cardBoard( [ 'shipping' ] )
         ->assertSeeHtml( 'href="https://example.test/track"' )
-        ->assertSeeHtml( 'data-tip="Ships today"' )
+        ->assertSeeHtml( 'class="ec-kb-widget-link"' )
+        ->assertSeeHtml( 'role="tooltip"' )
+        ->assertSee( 'Ships today' )
         ->assertSee( '(Ships today)' )
         ->assertSee( 'Shipping:' )
         ->assertSeeHtml( '<svg' );
@@ -181,12 +185,19 @@ it( 'offers Open, Move to…, and Remove from board to users who may act', funct
     $component = cardBoard( [] );
     $orderId   = Order::query()->value( 'id' );
 
-    $component->assertSeeHtml( 'aria-label="Actions for order 1042"' )
+    $html    = $component->html();
+    $targets = html_entity_decode( $html );
+
+    $component->assertSee( 'Actions for order 1042' )
         ->assertSeeInOrder( [ 'Open', 'Move to', 'Remove from board' ] )
-        ->assertSee( 'Move to…' )
-        ->assertSeeHtml( 'card=' . $orderId )
-        ->assertSeeHtml( CardActions::MOVE_EVENT )
-        ->assertSeeHtml( CardActions::REMOVE_EVENT );
+        ->assertSee( 'Move to…' );
+
+    expect( $targets )->toContain( 'card=' . $orderId )
+        ->and( $targets )->toContain( CardActions::MOVE_EVENT )
+        ->and( $targets )->toContain( CardActions::REMOVE_EVENT )
+        ->and( $html )->toContain( 'ec-kb-card-actions-trigger' )
+        ->and( $html )->toMatch( '/role="separator".*data-ec-kb-action="remove"/s' )
+        ->and( $html )->toMatch( '/data-ec-kb-action="remove"[^>]*data-color="error"/s' );
 } );
 
 it( 'leaves out Move to… and Remove from board without the abilities', function (): void {
@@ -209,21 +220,33 @@ it( 'adds satellite card actions, checking their abilities and dropping malforme
         return $actions;
     } );
 
-    cardBoard( [] )
+    $component = cardBoard( [] )
         ->assertSee( 'Reprint label' )
-        ->assertSeeHtml( 'labels.reprint' )
-        ->assertSeeHtml( 'href="https://example.test/invoice"' )
-        ->assertSeeHtml( 'x-on:click.stop' )
-        ->assertDontSeeHtml( 'orders.refund' )
+        ->assertSee( 'View invoice' )
         ->assertDontSee( 'No target' )
         ->assertDontSee( 'Sneaky link' );
+
+    $targets = html_entity_decode( $component->html() );
+
+    expect( $targets )->toContain( 'labels.reprint' )
+        ->and( $targets )->toContain( 'https://example.test/invoice' )
+        ->and( $targets )->toContain( 'window.location.assign( target.url )' )
+        ->and( $targets )->not->toContain( 'orders.refund' )
+        ->and( $targets )->not->toContain( 'javascript:alert' );
+
+    // Satellite actions follow the built-in ones; without Remove from board the menu has no separator.
+    $menu = (string) strstr( (string) strstr( $component->html(), 'data-ec-kb-card-actions' ), 'ec-kb-card-widgets', true );
+
+    expect( $menu )->toMatch( '/data-ec-kb-action="open".*data-ec-kb-action="reprint".*data-ec-kb-action="invoice"/s' )
+        ->and( $menu )->not->toContain( 'role="separator"' );
 } );
 
 it( 'has hooks for the moving and reverting states', function (): void {
     cardBoard( [] )
         ->assertSeeHtml( 'x-on:ec-kb-card-state.window' )
-        ->assertSeeHtml( 'transition-[opacity,box-shadow]' )
-        ->assertDontSeeHtml( 'bg-base-100 transition ' )
+        ->assertSeeHtml( 'x-bind:data-ec-kb-state="state"' )
+        ->assertSeeHtml( 'class="ec-kb-spinner"' )
+        ->assertSeeHtml( 'class="ec-kb-card-state" role="status"' )
         ->assertSee( 'Moving…' )
         ->assertSee( 'Move undone' );
 } );
@@ -231,10 +254,12 @@ it( 'has hooks for the moving and reverting states', function (): void {
 it( 'renders the card as a focusable group that holds still under reduced motion', function (): void {
     $html = cardBoard( [] )->html();
 
-    expect( $html )->toMatch( '/<div\s[^>]*tabindex="0"\s+role="group"\s+aria-label="Order 1042/' )
+    expect( $html )->toMatch( '/<div\s[^>]*class="ec-kb-card"[^>]*tabindex="0"\s+role="group"\s+aria-label="Order 1042/' )
         ->and( $html )->not->toContain( '<article' )
-        ->and( $html )->toContain( 'motion-reduce:transition-none' )
-        ->and( $html )->toContain( 'animate-pulse motion-reduce:animate-none' );
+        ->and( $html )->not->toContain( 'animate-pulse' );
+
+    // The card's motion stops under reduced motion (resources/css/kanban.css).
+    expect( (string) file_get_contents( dirname( __DIR__, 3 ) . '/resources/css/kanban.css' ) )->toMatch( '/prefers-reduced-motion: reduce\)\s*\{\s*\.ec-kb-card\s*\{\s*transition: none;/' );
 } );
 
 it( 'gives each column an explicit region role, so a draggable column never becomes a button', function (): void {
@@ -245,9 +270,29 @@ it( 'gives each column an explicit region role, so a draggable column never beco
     expect( preg_match_all( '/<section\s[^>]*role="region"\s+aria-labelledby="ec-kb-column-\d+-title"/', $html ) )->toBe( 2 );
 } );
 
-it( 'writes every tone\'s badge class out in full, so Tailwind can find it', function (): void {
+it( 'maps every tone to a design-system Badge color', function (): void {
     foreach ( WidgetViews::TONES as $tone ) {
-        expect( $tone['class'] )->toStartWith( 'badge-' )
-            ->and( file_get_contents( dirname( __DIR__, 3 ) . '/src/Support/WidgetViews.php' ) )->toContain( "'" . $tone['class'] . "'" );
+        expect( $tone['color'] )->toBeIn( [ 'neutral', 'success', 'warning', 'error', 'info' ] );
     }
+} );
+
+it( 'sets the order number in the mono face without breaking the translated line', function (): void {
+    cardBoard( [], [ 'order_number' => '<b>10</b>' ] )
+        ->assertSeeHtml( 'Order <span class="ec-kb-card-number">&lt;b&gt;10&lt;/b&gt;</span>' )
+        ->assertDontSeeHtml( '<b>10</b>' );
+} );
+
+it( 'shows the grab cursor only when the viewer may move cards', function (): void {
+    expect( cardBoard( [] )->html() )->not->toContain( 'data-ec-kb-draggable' );
+
+    grantAbilities( [ 'kanbanCard.move' ] );
+
+    expect( cardBoard( [], [ 'order_number' => '1043' ] )->html() )->toMatch( '/class="ec-kb-card"[^>]*data-ec-kb-draggable/' );
+} );
+
+it( 'reads without widgets or a placed date', function (): void {
+    $html = cardBoard( [], [ 'placed_at' => null ] )->html();
+
+    expect( $html )->toContain( 'ec-kb-card-customer' )
+        ->and( $html )->not->toContain( 'ec-kb-card-date' );
 } );

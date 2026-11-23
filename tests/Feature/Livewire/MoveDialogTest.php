@@ -146,7 +146,7 @@ it( 'keeps the dialog open and explains a refused move', function (): void {
         ->set( 'moveColumnId', $columns['shipping']->id )
         ->call( 'submitMove' );
 
-    expect( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Shipping is at its WIP limit.' )
+    expect( toastsOf( $component ) )->toContain( 'Shipping is at its WIP limit.' )
         ->and( dialogColumn( $columns['printing'] ) )->toBe( [ 'P1', 'P2', 'P3' ] );
 
     $component->assertSet( 'moveDialog', true );
@@ -169,7 +169,7 @@ it( 'does not open for a card that is not on the board, or without kanbanCard.mo
 
     $component->call( 'openMoveDialog', 999999 )->assertSet( 'moveDialog', false );
 
-    expect( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'This order is no longer on this board.' );
+    expect( toastsOf( $component ) )->toContain( 'This order is no longer on this board.' );
 
     denyAbilities( [ 'kanbanCard.move' ] );
 
@@ -182,7 +182,7 @@ it( 'describes the keyboard model in translated instructions for every card', fu
     Livewire::test( Board::class, [ 'board' => $board ] )
         ->call( 'loadBoard', [] )
         ->assertSeeHtml( e( json_encode( 'Press Space or Enter to pick up the card. While holding it, use the arrow keys to move it within a column or between columns, Home or End to jump to the top or bottom, Space or Enter to drop, and Escape to cancel.' ) ) )
-        ->assertSeeHtml( 'focus-visible:outline-primary' );
+        ->assertSeeHtml( 'class="ec-kb-card' );
 } );
 
 it( 'says when the "After a card" list is cut short', function ( int $cards, bool $truncated ): void {

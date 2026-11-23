@@ -72,13 +72,13 @@ trait WithActionToken
         $scope = $this->actionTokenScope( $action, $subject );
 
         if ( ! ActionTokens::isValid( $user, $scope, $token ) ) {
-            $this->warning( e( __( 'This action has expired. Reload the page and try again.' ) ) );
+            $this->warning( __( 'This action has expired. Reload the page and try again.' ) );
 
             return null;
         }
 
         if ( ! ActionTokens::consume( $user, $action, $scope, $token ) ) {
-            $this->warning( e( __( 'That action was already submitted. Nothing was changed the second time.' ) ) );
+            $this->warning( __( 'That action was already submitted. Nothing was changed the second time.' ) );
 
             return null;
         }

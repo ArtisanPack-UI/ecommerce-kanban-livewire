@@ -269,6 +269,7 @@ class Board extends Component
             'dragMessages'  => self::dragMessages(),
             'realtime'      => $this->realtimeData(),
             'matchingCards' => array_sum( array_column( $counts, 'count' ) ),
+            'totalCards'    => array_sum( array_column( $counts, 'total' ) ),
             ...$this->filterBarData(),
             ...$this->moveDialogData( $counts ),
             ...$this->confirmMoveData(),

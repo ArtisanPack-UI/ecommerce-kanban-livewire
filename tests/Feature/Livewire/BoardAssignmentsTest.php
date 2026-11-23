@@ -76,7 +76,7 @@ it( 'searches orders that are not on the board and adds one to the entry column'
         ->assertDispatched( 'ec-kb-focus-card', orderId: $reprint->id );
 
     expect( onBoardIn( $reprint, $board ) )->toBe( $columns[0]->substatus_id )
-        ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Order R-2001 added to this board.' );
+        ->and( toastsOf( $component ) )->toContain( 'Order R-2001 added to this board.' );
     Event::assertDispatched( KanbanBoardAssignmentAdded::class, fn ( KanbanBoardAssignmentAdded $event ): bool => auth()->id() === $event->actorUserId );
 } );
 
@@ -121,7 +121,7 @@ it( 'maps engine refusals to toasts', function (): void {
         ->set( 'addOrderColumnId', $columns[1]->id )
         ->call( 'submitAddOrder' );
 
-    expect( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Packing cannot hold this order at its current status.' )
+    expect( toastsOf( $component ) )->toContain( 'Packing cannot hold this order at its current status.' )
         ->and( onBoardIn( $pending, $board ) )->toBeNull();
 
     [ $empty ]  = makeBoard( [] );
@@ -130,7 +130,7 @@ it( 'maps engine refusals to toasts', function (): void {
         ->set( 'addOrderId', $pending->id )
         ->call( 'submitAddOrder' );
 
-    expect( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'This board has no column that can hold this order.' );
+    expect( toastsOf( $component ) )->toContain( 'This board has no column that can hold this order.' );
 } );
 
 it( 'removes a card after confirmation, once per token', function (): void {
@@ -149,7 +149,7 @@ it( 'removes a card after confirmation, once per token', function (): void {
     $component->call( 'removeCard', $token )->assertSet( 'confirmingRemove', false );
 
     expect( onBoardIn( $card->order, $board ) )->toBeNull()
-        ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Order D-1 removed from this board.' );
+        ->and( toastsOf( $component ) )->toContain( 'Order D-1 removed from this board.' );
     Event::assertDispatchedTimes( KanbanBoardAssignmentRemoved::class, 1 );
 
     // A replayed token changes nothing.
@@ -158,7 +158,7 @@ it( 'removes a card after confirmation, once per token', function (): void {
     $replayed = $component->call( 'removeCard', $token );
 
     expect( onBoardIn( $card->order, $board ) )->not->toBeNull()
-        ->and( json_encode( $replayed->effects['xjs'] ?? [] ) )->toContain( 'That action was already submitted.' );
+        ->and( toastsOf( $replayed ) )->toContain( 'That action was already submitted.' );
 } );
 
 it( 'cancels a removal and refuses one for a card not on the board or without the ability', function (): void {
@@ -197,7 +197,7 @@ it( 'adds the open order to another board from the slide-out', function (): void
         ->call( 'addToBoard' );
 
     expect( onBoardIn( $card->order, $shipping ) )->toBe( $targets[0]->substatus_id )
-        ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Order S-1 added to Shipping.' );
+        ->and( toastsOf( $component ) )->toContain( 'Order S-1 added to Shipping.' );
 
     $component->assertDontSeeHtml( 'data-ec-kb-detail-add-board-select' );
 } );

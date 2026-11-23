@@ -184,6 +184,51 @@ trait FiltersCards
     public array $productOptions = [];
 
     /**
+     * The text typed into the customer filter; the combobox sets it after
+     * its debounce and {@see self::updatedCustomerSearch()} searches. Not in
+     * the query string. Mixed, like the filters: anything that isn't text is
+     * searched as empty.
+     *
+     * @since 2.0.0
+     *
+     * @var mixed
+     */
+    public mixed $customerSearch = '';
+
+    /**
+     * The text typed into the product filter; see {@see self::$customerSearch}.
+     *
+     * @since 2.0.0
+     *
+     * @var mixed
+     */
+    public mixed $productSearch = '';
+
+    /**
+     * Searches customers as the customer filter's text changes.
+     *
+     * @since 2.0.0
+     *
+     * @return void
+     */
+    public function updatedCustomerSearch(): void
+    {
+        $this->searchCustomers( $this->customerSearch );
+    }
+
+    /**
+     * Searches products as the product filter's text changes.
+     *
+     * @since 2.0.0
+     *
+     * @return void
+     */
+    public function updatedProductSearch(): void
+    {
+        $this->searchProducts( $this->productSearch );
+    }
+
+    /**
      * The filters as the engine reads them.
      *
      * @since 1.0.0
@@ -230,6 +275,28 @@ trait FiltersCards
             null !== $filters->customerId,
             [] !== $filters->tags,
             [] !== $filters->productIds,
+            null !== $filters->placedFrom || null !== $filters->placedTo,
+            null !== $filters->movedBefore,
+            [] !== $filters->paymentStatus,
+            [] !== $filters->fulfillmentStatus,
+        ] ) ) + count( $filters->extra );
+    }
+
+    /**
+     * How many of the filters behind "More filters" are set: the placed
+     * date range, "Stale cards only", the payment and fulfillment statuses,
+     * and the satellites' controls. The filter bar opens that row by itself
+     * when any is.
+     *
+     * @since 2.0.0
+     *
+     * @return int
+     */
+    public function moreFilterCount(): int
+    {
+        $filters = $this->cardFilters();
+
+        return count( array_filter( [
             null !== $filters->placedFrom || null !== $filters->placedTo,
             null !== $filters->movedBefore,
             [] !== $filters->paymentStatus,
@@ -363,6 +430,7 @@ trait FiltersCards
 
         return [
             'activeFilters'      => $this->activeFilterCount(),
+            'moreFilters'        => $this->moreFilterCount(),
             'paymentOptions'     => Statuses::options( 'payment' ),
             'fulfillmentOptions' => Statuses::options( 'fulfillment' ),
             'extraControls'      => FilterControls::for( $this->board ),

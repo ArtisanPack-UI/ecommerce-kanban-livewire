@@ -182,13 +182,13 @@ trait ManagesAssignments
         try {
             $routes->assign( $order, $this->board, $column, self::actorId() );
         } catch ( EcommerceException $exception ) {
-            $this->error( e( MoveErrors::message( MoveErrors::code( $exception ), $label ) ) );
+            $this->error( MoveErrors::message( MoveErrors::code( $exception ), $label ) );
 
             return;
         }
 
         $this->addOrderDialog = false;
-        $this->success( e( __( 'Order :number added to this board.', [ 'number' => $order->order_number ] ) ) );
+        $this->success( __( 'Order :number added to this board.', [ 'number' => $order->order_number ] ) );
         $this->dispatch( 'ec-kb-focus-card', orderId: (int) $order->id );
     }
 
@@ -208,7 +208,7 @@ trait ManagesAssignments
         $this->authorizeKanban( 'kanbanBoard.update', $this->board );
 
         if ( ! $this->onBoard( $orderId ) ) {
-            $this->error( e( MoveErrors::message( 'not-on-board', '' ) ) );
+            $this->error( MoveErrors::message( 'not-on-board', '' ) );
 
             return;
         }
@@ -262,13 +262,13 @@ trait ManagesAssignments
         try {
             $removed = $this->withActionToken( $token, 'remove-card', $this->boardId . ':' . $order->id, fn (): bool => (bool) app( KanbanRoutingService::class )->remove( $order, $this->board, self::actorId() ) );
         } catch ( EcommerceException $exception ) {
-            $this->error( e( MoveErrors::message( MoveErrors::code( $exception ), '' ) ) );
+            $this->error( MoveErrors::message( MoveErrors::code( $exception ), '' ) );
 
             return;
         }
 
         if ( true === $removed ) {
-            $this->success( e( __( 'Order :number removed from this board.', [ 'number' => $order->order_number ] ) ) );
+            $this->success( __( 'Order :number removed from this board.', [ 'number' => $order->order_number ] ) );
         }
     }
 

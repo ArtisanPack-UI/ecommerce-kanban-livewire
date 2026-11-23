@@ -313,7 +313,7 @@ class WidgetPicker extends Component
 
         if ( null !== $this->columnId && null === $column ) {
             $this->open = false;
-            $this->error( e( __( 'That column no longer exists, so its widgets were not saved.' ) ) );
+            $this->error( __( 'That column no longer exists, so its widgets were not saved.' ) );
 
             return;
         }
@@ -338,7 +338,7 @@ class WidgetPicker extends Component
 
         $this->open = false;
         $this->dispatch( 'ec-kb-board-changed' );
-        $this->success( e( __( 'Card widgets saved.' ) ) );
+        $this->success( __( 'Card widgets saved.' ) );
     }
 
     /**

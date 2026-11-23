@@ -171,7 +171,7 @@ it( 'refuses a move into a full column with a toast and leaves the client to rev
 
     expect( $refused->effects['returns'][0] )->toBe( 'rejected' )
         ->and( $refused->effects['html'] ?? null )->toBeNull()
-        ->and( json_encode( $refused->effects['xjs'] ?? [] ) )->toContain( 'Packing is at its WIP limit.' )
+        ->and( toastsOf( $refused ) )->toContain( 'Packing is at its WIP limit.' )
         ->and( orderIn( $columns['printing'] ) )->toBe( [ 'P2' ] );
 } );
 
@@ -197,7 +197,7 @@ it( 'shows "This move was blocked" when a cardMoving hook vetoes the move', func
         ->call( 'moveCard', $orders[0]->id, $columns['packing']->id );
 
     expect( $result->effects['returns'][0] )->toBe( 'rejected' )
-        ->and( json_encode( $result->effects['xjs'] ?? [] ) )->toContain( 'This move was blocked.' )
+        ->and( toastsOf( $result ) )->toContain( 'This move was blocked.' )
         ->and( orderIn( $columns['printing'] ) )->toBe( [ 'P1' ] );
 } );
 
@@ -212,7 +212,7 @@ it( 'refuses a status move the order machine does not allow', function (): void 
         ->call( 'moveCard', $complete->id, $newColumn->id );
 
     expect( $result->effects['returns'][0] )->toBe( 'rejected' )
-        ->and( json_encode( $result->effects['xjs'] ?? [] ) )->toContain( 'The order cannot move to New from its current status.' )
+        ->and( toastsOf( $result ) )->toContain( 'The order cannot move to New from its current status.' )
         ->and( $complete->fresh()->system_status )->toBe( 'complete' );
 } );
 
@@ -224,10 +224,10 @@ it( 'refuses columns from other boards and orders that are not on the board', fu
     $component = Livewire::test( Board::class, [ 'board' => $board ] )->call( 'loadBoard', [] );
 
     expect( $component->call( 'moveCard', $stranger->id, $otherColumns[0]->id )->effects['returns'][0] )->toBe( 'rejected' );
-    expect( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'That column is not on this board.' );
+    expect( toastsOf( $component ) )->toContain( 'That column is not on this board.' );
 
     expect( $component->call( 'moveCard', $stranger->id, $columns['packing']->id )->effects['returns'][0] )->toBe( 'rejected' );
-    expect( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'This order is no longer on this board.' );
+    expect( toastsOf( $component ) )->toContain( 'This order is no longer on this board.' );
 
     expect( $component->call( 'moveCard', 999999, $columns['packing']->id )->effects['returns'][0] )->toBe( 'rejected' );
 } );
@@ -277,7 +277,7 @@ it( 'requires kanbanCard.move to move a card', function (): void {
     expect( orderIn( $columns['printing'] ) )->toBe( [ 'P1' ] );
 } );
 
-it( 'escapes column labels in refusal toasts, which render as HTML', function (): void {
+it( 'sends column labels in refusal toasts as plain text, which the toaster renders as text', function (): void {
     [ $board, $columns, $orders ] = movesBoard( 2 );
     $columns['packing']->update( [ 'wip_limit' => 1, 'label_override' => '<img src=x onerror=alert(1)>' ] );
 
@@ -285,8 +285,8 @@ it( 'escapes column labels in refusal toasts, which render as HTML', function ()
     $component->call( 'moveCard', $orders[0]->id, $columns['packing']->id );
     $component->call( 'moveCard', $orders[1]->id, $columns['packing']->id );
 
-    $toast = json_encode( $component->effects['xjs'] ?? [] );
+    $toast = toastsOf( $component );
 
-    expect( $toast )->toContain( '&lt;img src=x onerror=alert(1)&gt; is at its WIP limit.' )
-        ->and( $toast )->not->toContain( '<img src=x' );
+    expect( $toast )->toContain( '<img src=x onerror=alert(1)> is at its WIP limit.' )
+        ->and( $toast )->not->toContain( '&lt;img' );
 } );

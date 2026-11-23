@@ -13,16 +13,12 @@
     'seconds' => 0,
 ] )
 <span
-    {{ $attributes->class( [ 'inline-flex items-center gap-1 text-xs text-base-content/70' ] ) }}
+    {{ $attributes->class( [ 'ec-kb-connection' ] ) }}
     role="status"
     data-ec-kb-connection
     x-bind:data-ec-kb-connection-state="connection"
 >
-    <span
-        class="inline-block size-2 rounded-full"
-        aria-hidden="true"
-        x-bind:class="{ 'bg-success': 'live' === connection, 'bg-warning': 'polling' === connection, 'bg-error': 'offline' === connection, 'bg-base-300': 'off' === connection }"
-    ></span>
+    <span class="ec-kb-connection-dot" aria-hidden="true"></span>
     <span x-show="'live' === connection">{{ __( 'Live' ) }}</span>
     <span x-show="'polling' === connection" x-cloak>{{ trans_choice( 'Updates every :count second|Updates every :count seconds', (int) $seconds, [ 'count' => (int) $seconds ] ) }}</span>
     <span x-show="'offline' === connection" x-cloak>{{ __( 'Offline' ) }}</span>

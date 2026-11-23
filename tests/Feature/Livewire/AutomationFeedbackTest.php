@@ -80,7 +80,7 @@ function automationInto( $board, $to, string $trigger ): KanbanAutomation
  */
 function toasts( $component ): string
 {
-    return collect( $component->effects['xjs'] ?? [] )->flatten()->implode( ' ' );
+    return toastsOf( $component );
 }
 
 it( 'toasts the automations a move ran, in one toast', function (): void {
@@ -94,12 +94,12 @@ it( 'toasts the automations a move ran, in one toast', function (): void {
 
     expect( $moved->effects['returns'][0] )->toBe( 'moved' )
         ->and( $json )->toContain( '2 automations ran for order F-1' )
-        ->and( $json )->toContain( trim( json_encode( e( 'Buy a <b>label</b>, Buy a <b>label</b>' ) ), '"' ) )
-        ->and( $json )->not->toContain( 'Buy a <b>label</b>' )
-        ->and( substr_count( $json, 'toast(' ) )->toBe( 1 );
+        ->and( $json )->toContain( 'Buy a <b>label</b>, Buy a <b>label</b>' )
+        ->and( $json )->not->toContain( '&lt;b&gt;' )
+        ->and( count( json_decode( $json, true ) ) )->toBe( 1 );
 } );
 
-it( 'names the failed trigger and links to the order', function (): void {
+it( 'names the failed trigger', function (): void {
     [ $board, $columns, $order ] = feedbackBoard();
     automationInto( $board, $columns[1], 'test-label' );
     automationInto( $board, $columns[1], 'test-broken' );
@@ -109,10 +109,8 @@ it( 'names the failed trigger and links to the order', function (): void {
     expect( $json )->toContain( '1 automation failed for order F-1' )
         ->and( $json )->toContain( 'Failed: Notify the carrier.' )
         ->and( $json )->toContain( '1 other automation ran.' )
-        ->and( $json )->toContain( 'Open order F-1' )
-        ->and( $json )->toContain( 'card=' . $order->id )
-        ->and( $json )->toContain( 'alert-error' )
-        ->and( substr_count( $json, 'toast(' ) )->toBe( 1 );
+        ->and( $json )->toContain( '"color":"error"' )
+        ->and( count( json_decode( $json, true ) ) )->toBe( 1 );
 } );
 
 it( 'shows nothing when no automation runs', function (): void {
