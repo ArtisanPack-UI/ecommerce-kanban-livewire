@@ -117,7 +117,7 @@ class EcommerceKanbanLivewireServiceProvider extends ServiceProvider
     public const MENU_KEY = 'kanban';
 
     /**
-     * Registers the package configuration.
+     * Registers the package configuration and translation catalogues.
      *
      * @since 1.0.0
      *
@@ -129,6 +129,8 @@ class EcommerceKanbanLivewireServiceProvider extends ServiceProvider
             __DIR__ . '/../config/artisanpack/ecommerce-kanban-livewire.php',
             'artisanpack.ecommerce-kanban-livewire',
         );
+
+        $this->registerTranslations();
     }
 
     /**
@@ -146,7 +148,6 @@ class EcommerceKanbanLivewireServiceProvider extends ServiceProvider
 
         $this->registerPublishing();
         $this->registerViews();
-        $this->registerTranslations();
         $this->registerCommands();
         $this->registerBladeComponents();
         $this->registerLayoutResolver();
@@ -298,6 +299,11 @@ class EcommerceKanbanLivewireServiceProvider extends ServiceProvider
      *
      * Published catalogues in `lang/vendor/ecommerce-kanban` are loaded too so a
      * host can override individual strings.
+     *
+     * Runs from register(), not boot(): the translator loads a locale's JSON
+     * lines once and caches them, so a provider that calls `__()` while it
+     * boots ahead of this one would otherwise cache the locale without the
+     * board's catalogue, and every board string would stay in English.
      *
      * @since 1.0.0
      *
