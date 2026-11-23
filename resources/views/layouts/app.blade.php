@@ -19,6 +19,10 @@
     the page keeps a scroll padding the height of the sticky Navbar so focus
     never lands under it (WCAG 2.2 SC 2.4.11).
 
+    `dir` follows the locale: right-to-left languages (Arabic, Hebrew,
+    Persian, Urdu, ...) get `dir="rtl"`, and the board's styles and the
+    design system's directional icons mirror with it.
+
     Publish with `php artisan vendor:publish --tag=ecommerce-kanban-views`.
 
     @package    ArtisanPack_UI
@@ -27,10 +31,12 @@
     @since      1.0.0
 --}}
 @php
-    $ecommerceKanbanPickerUrl = \ArtisanPackUI\EcommerceKanbanLivewire\Support\BoardUrls::picker();
+    $ecommerceKanbanPickerUrl     = \ArtisanPackUI\EcommerceKanbanLivewire\Support\BoardUrls::picker();
+    $ecommerceKanbanLocale        = app()->getLocale();
+    $ecommerceKanbanTextDirection = in_array( strtolower( strtok( $ecommerceKanbanLocale, '_-' ) ), [ 'ar', 'ckb', 'dv', 'fa', 'he', 'ps', 'sd', 'ug', 'ur', 'yi' ], true ) ? 'rtl' : 'ltr';
 @endphp
 <!DOCTYPE html>
-<html lang="{{ str_replace( '_', '-', app()->getLocale() ) }}" class="ec-kb-standalone">
+<html lang="{{ str_replace( '_', '-', $ecommerceKanbanLocale ) }}" dir="{{ $ecommerceKanbanTextDirection }}" class="ec-kb-standalone">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">

@@ -87,7 +87,7 @@ it( 'frames the standalone layout with a skip link first, the Navbar brand, and 
 
     $body = (string) strstr( $html, '<body' );
 
-    expect( $html )->toContain( '<html lang="en" class="ec-kb-standalone">' )
+    expect( $html )->toContain( '<html lang="en" dir="ltr" class="ec-kb-standalone">' )
         ->and( $body )->toMatch( '/^<body class="ec-kb-page">\s*<a\s+href="#ecommerce-kanban-content"\s+class="apui-button ec-kb-skip-link"/' )
         ->and( $body )->toMatch( '/data-variant="solid"\s+data-color="primary"\s+data-size="sm"/' )
         ->and( $body )->toContain( 'class="apui-navbar ec-kb-standalone-nav"' )
@@ -99,6 +99,23 @@ it( 'frames the standalone layout with a skip link first, the Navbar brand, and 
         ->and( $body )->toContain( '<main id="ecommerce-kanban-content" class="ec-kb-standalone-main" tabindex="-1">' )
         ->and( (string) strstr( $body, '<main', true ) )->not->toMatch( '/class="(?:[^"]*\s)?(sr-only|focus:\S*|antialiased|p-4|w-full|font-bold)(?:\s[^"]*)?"/' );
 } );
+
+it( 'sets the page direction from the locale', function ( string $locale, string $tag ): void {
+    grantAbilities( [ 'kanbanBoard.viewAny', 'kanbanBoard.view' ] );
+    [ $board ] = makeBoard( [ 0 ], [ 'name' => 'Production' ] );
+
+    app()->setLocale( $locale );
+
+    expect( $this->actingAs( makeUser() )
+        ->get( route( 'artisanpack.ecommerce.kanban.boards.show', [ 'board' => $board->id ] ) )
+        ->assertOk()
+        ->getContent() )->toContain( $tag );
+} )->with( [
+    'Arabic'           => [ 'ar', '<html lang="ar" dir="rtl" class="ec-kb-standalone">' ],
+    'Hebrew (Israel)'  => [ 'he_IL', '<html lang="he-IL" dir="rtl" class="ec-kb-standalone">' ],
+    'Portuguese (BR)'  => [ 'pt_BR', '<html lang="pt-BR" dir="ltr" class="ec-kb-standalone">' ],
+    'Japanese'         => [ 'ja', '<html lang="ja" dir="ltr" class="ec-kb-standalone">' ],
+] );
 
 it( 'draws the brand glyph in an unlinked brand when there is no picker URL', function (): void {
     grantAbilities( [ 'kanbanBoard.viewAny', 'kanbanBoard.view' ] );
