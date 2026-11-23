@@ -1,0 +1,30 @@
+name: Docs lint
+
+# Checks docs/ against the org docs standard:
+# https://github.com/ArtisanPack-UI/.github/blob/main/DOCS_STANDARD.md
+#
+# Set `archetype` to match the package: package (default),
+# component-library, starter-kit or meta.
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'src/**'
+      - 'resources/**'
+      - 'composer.json'
+      - '.github/workflows/docs-lint.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'src/**'
+      - 'resources/**'
+      - 'composer.json'
+  workflow_dispatch:
+
+jobs:
+  docs-lint:
+    uses: ArtisanPack-UI/.github/.github/workflows/docs-lint.yml@main
+    with:
+      archetype: package

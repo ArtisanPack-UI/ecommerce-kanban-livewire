@@ -1,5 +1,6 @@
 ---
-title: Installation Overview
+title: Installation
+menu_order: 20
 ---
 
 # Installation
@@ -8,10 +9,10 @@ Everything you need to install the board and wire it into your application.
 
 ## In this section
 
-- [Requirements](Installation-Requirements) - PHP, Laravel, Livewire, the engine, npm packages, and optional packages
-- [Configuration](Installation-Configuration) - Every configuration key
-- [Front-End Setup](Installation-Front-End) - Tailwind sources, daisyUI, and the drag-and-drop import
-- [Layouts](Installation-Layouts) - Which layout the board pages use, and how to use your own
+- [Requirements](installation/requirements.md) - PHP, Laravel, Livewire, the engine, npm packages, and optional packages
+- [Configuration](installation/configuration.md) - Every configuration key
+- [Front-End Setup](installation/front-end.md) - Tailwind sources, daisyUI, and the drag-and-drop import
+- [Layouts](installation/layouts.md) - Which layout the board pages use, and how to use your own
 
 ## Install via Composer
 
@@ -30,13 +31,13 @@ php artisan ecommerce-kanban:install
 It:
 
 1. Publishes the config to `config/artisanpack/ecommerce-kanban-livewire.php` (tag `ecommerce-kanban-config`). A file you already published is kept; `--force` overwrites it.
-2. Prints the Tailwind `@source` lines to add to your main stylesheet. See [Front-End Setup](Installation-Front-End).
+2. Prints the Tailwind `@source` lines to add to your main stylesheet. See [Front-End Setup](installation/front-end.md).
 3. Prints the drag-and-drop install command (`npm install @artisanpack-ui/livewire-drag-and-drop@^2.1.0`) and the line to add to your main script (`import '@artisanpack-ui/livewire-drag-and-drop';`).
 4. Reports the installed `artisanpack-ui/ecommerce` version and warns when it is older than 1.2.0.
 5. Counts the active boards. With none, it says where to create one: the ecommerce admin's board list (when the admin is installed) and the engine's REST route (`POST /api/ecommerce/v1/kanban/boards`).
-6. Reports whether real-time sync can work: the engine's `artisanpack.ecommerce.kanban.broadcast` flag and the default broadcaster. When either is missing, it says that boards will poll instead and what to turn on. See [Real-Time Updates](Realtime).
+6. Reports whether real-time sync can work: the engine's `artisanpack.ecommerce.kanban.broadcast` flag and the default broadcaster. When either is missing, it says that boards will poll instead and what to turn on. See [Real-Time Updates](realtime.md).
 
-The command never edits your stylesheet or script, and the checks only warn. See [Artisan Commands](Advanced-Artisan-Commands).
+The command never edits your stylesheet or script, and the checks only warn. See [Artisan Commands](reference/commands.md).
 
 ## Publishing
 
@@ -56,7 +57,7 @@ The config loads under `artisanpack.ecommerce-kanban-livewire`:
 config( 'artisanpack.ecommerce-kanban-livewire.board.route_prefix' ); // 'ecommerce-kanban'
 ```
 
-Views load under the `ecommerce-kanban::` namespace. Translations are JSON catalogues (`lang/{locale}.json`) keyed by their English text. Prefer the [extension points](Extending) over published views: a published view does not pick up fixes in later releases.
+Views load under the `ecommerce-kanban::` namespace. Translations are JSON catalogues (`lang/{locale}.json`) keyed by their English text. Prefer the [extension points](extending.md) over published views: a published view does not pick up fixes in later releases.
 
 ## Routes
 
@@ -67,7 +68,7 @@ Views load under the `ecommerce-kanban::` namespace. Translations are JSON catal
 
 Every route runs `board.middleware` (`[ 'web', 'auth' ]` by default) followed by the `ecommerce-kanban.throttle` rate limiter. Every page is a controller action returning a page view, so `php artisan route:cache` works. `boards.show` is a fixed name: the ecommerce admin links to it.
 
-Set `board.routes_enabled` to `false` to register your own routes and embed the components. See [Embedding Components](Extending-Embedding-Components).
+Set `board.routes_enabled` to `false` to register your own routes and embed the components. See [Embedding Components](extending/embedding-components.md).
 
 ## Admin menu entry
 
@@ -79,7 +80,7 @@ The board registers itself with the engine's `SatelliteRegistry`. It owns no tab
 
 ## Next steps
 
-- [Front-End Setup](Installation-Front-End) — required before the board is styled and cards drag
-- [Layouts](Installation-Layouts) — render the board inside your admin
-- [Configuration](Installation-Configuration) — every key you can tune
-- [Real-Time Updates](Realtime) — live boards with Echo
+- [Front-End Setup](installation/front-end.md) — required before the board is styled and cards drag
+- [Layouts](installation/layouts.md) — render the board inside your admin
+- [Configuration](installation/configuration.md) — every key you can tune
+- [Real-Time Updates](realtime.md) — live boards with Echo

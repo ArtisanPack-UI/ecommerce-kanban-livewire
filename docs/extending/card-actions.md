@@ -1,5 +1,6 @@
 ---
 title: Card and Toolbar Actions
+menu_order: 20
 ---
 
 # Card and Toolbar Actions
@@ -81,7 +82,7 @@ class ReprintLabel extends Component
 }
 ```
 
-Render that component on the board pages, for example from your layout or by [embedding](Extending-Embedding-Components) the board in your own page.
+Render that component on the board pages, for example from your layout or by [embedding](embedding-components.md) the board in your own page.
 
 ## Toolbar actions
 

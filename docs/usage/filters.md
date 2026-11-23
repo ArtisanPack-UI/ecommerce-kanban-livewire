@@ -1,5 +1,6 @@
 ---
 title: Filters
+menu_order: 30
 ---
 
 # Filters
@@ -19,7 +20,7 @@ The filter bar above the columns narrows the cards on a board. On small screens 
 | Payment status | `payment` | Orders with any of the chosen payment statuses |
 | Fulfillment status | `fulfillment` | Orders with any of the chosen fulfillment statuses |
 | Stale cards only | `stale` | Cards that reached their column more than the engine's `kanban.stale_after_days` (3 by default) days ago |
-| Satellite controls | `f[{key}]` | Whatever the satellite's card query filter does. See [Filter Controls](Extending-Filter-Controls). |
+| Satellite controls | `f[{key}]` | Whatever the satellite's card query filter does. See [Filter Controls](../extending/filter-controls.md). |
 
 Every value lives in the query string, so a filtered board is a shareable link:
 

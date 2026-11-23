@@ -1,5 +1,6 @@
 ---
-title: Usage Overview
+title: Usage
+menu_order: 30
 ---
 
 # Usage
@@ -8,12 +9,12 @@ What staff can do on the board, and the behavior every board shares.
 
 ## In this section
 
-- [Board Picker](Usage-Board-Picker) - Choosing a board, and switching between boards
-- [Moving Cards](Usage-Moving-Cards) - Dragging, the keyboard, "Move to…", exit columns, WIP limits, and refused moves
-- [Filters](Usage-Filters) - The filter bar and its URL parameters
-- [Card Detail](Usage-Card-Detail) - The card slide-out, adding and removing orders
-- [Editing the Board](Usage-Editing-The-Board) - Columns and card widgets, on the board itself
-- [Automations](Usage-Automations) - The automations panel and feedback after a move
+- [Board Picker](usage/board-picker.md) - Choosing a board, and switching between boards
+- [Moving Cards](usage/moving-cards.md) - Dragging, the keyboard, "Move to…", exit columns, WIP limits, and refused moves
+- [Filters](usage/filters.md) - The filter bar and its URL parameters
+- [Card Detail](usage/card-detail.md) - The card slide-out, adding and removing orders
+- [Editing the Board](usage/editing-the-board.md) - Columns and card widgets, on the board itself
+- [Automations](usage/automations.md) - The automations panel and feedback after a move
 
 ## The board at a glance
 
@@ -48,7 +49,7 @@ The board's own editing works without the admin installed. What it can't do on i
 
 - **Shareable URLs.** Filters and the open card (`?card=`) live in the query string, so a link reopens the same view, and back and forward work.
 - **Every move goes through the engine.** Dragging, the keyboard, and "Move to…" all call the engine's `KanbanBoardService::move()`, so WIP limits, the order status roll-up, hooks, automations, and broadcasting always apply.
-- **Checked on every request.** Each Livewire update checks the user's abilities again, not only the page load. See [Authorization](Advanced-Authorization).
+- **Checked on every request.** Each Livewire update checks the user's abilities again, not only the page load. See [Authorization](advanced/authorization.md).
 - **Destructive actions run once.** Removing a card from a board, removing a column, and deleting an automation ask first and carry a one-time token, so a double click can't run them twice.
-- **Rate limits.** Board changes count against the engine's `ecommerce.admin.mutate` limiter. Over the limit, the change doesn't run and a toast says how long to wait. See [Rate limits](Advanced#rate-limits).
-- **Kept current.** Changes made elsewhere arrive live over Echo or by polling. See [Real-Time Updates](Realtime).
+- **Rate limits.** Board changes count against the engine's `ecommerce.admin.mutate` limiter. Over the limit, the change doesn't run and a toast says how long to wait. See [Rate limits](advanced.md#rate-limits).
+- **Kept current.** Changes made elsewhere arrive live over Echo or by polling. See [Real-Time Updates](realtime.md).

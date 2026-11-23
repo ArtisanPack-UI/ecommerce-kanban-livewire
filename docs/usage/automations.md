@@ -1,5 +1,6 @@
 ---
 title: Automations
+menu_order: 60
 ---
 
 # Automations
@@ -35,4 +36,4 @@ The person who moved a card gets one toast for that move, however many automatio
 - When every automation succeeded, a success toast names those that ran.
 - When any failed, an error toast ("1 automation failed for order 1003") names each failed trigger, says how many others ran, and links to the order's slide-out ("Open order 1003"), where the failure is in "Recent activity".
 
-Only the mover sees the toast. Other viewers see the move itself. The board reads the results from the order timeline entries the move wrote (`kanban.automation_fired` and `kanban.automation_failed`) or, while it is live over Echo, from the engine's `automation-fired` and `automation-failed` broadcasts. See [Real-Time Updates](Realtime).
+Only the mover sees the toast. Other viewers see the move itself. The board reads the results from the order timeline entries the move wrote (`kanban.automation_fired` and `kanban.automation_failed`) or, while it is live over Echo, from the engine's `automation-fired` and `automation-failed` broadcasts. See [Real-Time Updates](../realtime.md).

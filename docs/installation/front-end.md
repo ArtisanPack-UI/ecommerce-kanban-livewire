@@ -1,5 +1,6 @@
 ---
 title: Front-End Setup
+menu_order: 30
 ---
 
 # Front-End Setup
@@ -45,7 +46,7 @@ Pin daisyUI to `~5.0`. Later 5.x releases hide `.tab-content`, so the component 
 
 The paths are relative to the CSS file. Adjust them if your entry lives elsewhere. If you publish the board's views, your app's `resources/views` source usually covers `resources/views/vendor/ecommerce-kanban`.
 
-Classes you add to cards with the `ap.ecommerceKanbanLivewire.cardClasses` filter must be in your Tailwind sources too. See [Hooks Reference](Extending-Hooks-Reference).
+Classes you add to cards with the `ap.ecommerceKanbanLivewire.cardClasses` filter must be in your Tailwind sources too. See [Hooks](../reference/hooks.md).
 
 ## 3. Install and import drag-and-drop
 
@@ -77,11 +78,11 @@ addFilter( 'ap.ecommerceKanbanLivewire.layout.viteEntries', function ( array $en
 } );
 ```
 
-Return an empty array to load nothing. When the board renders in the ecommerce admin's layout or a layout you configured, that layout loads its own assets. See [Layouts](Installation-Layouts).
+Return an empty array to load nothing. When the board renders in the ecommerce admin's layout or a layout you configured, that layout loads its own assets. See [Layouts](layouts.md).
 
 ## Real-time
 
-For live boards, your main script also sets up Laravel Echo on `window.Echo`. See [Broadcasting with Echo](Realtime-Broadcasting).
+For live boards, your main script also sets up Laravel Echo on `window.Echo`. See [Broadcasting with Echo](../realtime/broadcasting.md).
 
 ## Checklist
 

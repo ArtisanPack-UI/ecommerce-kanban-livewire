@@ -1,5 +1,6 @@
 ---
 title: Configuration
+menu_order: 20
 ---
 
 # Configuration
@@ -16,17 +17,17 @@ Every key has a default, so you only need the keys you change.
 
 | Key | Default | What it controls |
 | --- | --- | --- |
-| `board.routes_enabled` | `true` | Register the board routes and the "Kanban" admin menu entry. Set to `false` to register your own routes and embed the Livewire components. See [Embedding Components](Extending-Embedding-Components). |
+| `board.routes_enabled` | `true` | Register the board routes and the "Kanban" admin menu entry. Set to `false` to register your own routes and embed the Livewire components. See [Embedding Components](../extending/embedding-components.md). |
 | `board.route_prefix` | `'ecommerce-kanban'` | URL prefix for the picker and board pages. Leading and trailing slashes are trimmed. |
 | `board.middleware` | `[ 'web', 'auth' ]` | Middleware on every board route. Add your 2FA or `verified` middleware here. Every entry that names a middleware class or alias is also registered as Livewire persistent middleware, so it runs again on each Livewire update from a board page. Middleware groups (such as `web`) are left out; Livewire's update route has its own. |
 
-Route names are always `artisanpack.ecommerce.kanban.*` (`boards.index` and `boards.show`). The `ecommerce-kanban.throttle` rate limiter is added after `board.middleware` on every route. See [Rate limits](Advanced#rate-limits).
+Route names are always `artisanpack.ecommerce.kanban.*` (`boards.index` and `boards.show`). The `ecommerce-kanban.throttle` rate limiter is added after `board.middleware` on every route. See [Rate limits](../advanced.md#rate-limits).
 
 ## Layout
 
 | Key | Default | What it controls |
 | --- | --- | --- |
-| `layout` | `null` | The Blade layout the board pages extend. Leave `null` to use, in order, cms-framework's admin layout, the ecommerce admin's layout (when that package is installed and active), or this package's standalone layout. A view name that doesn't exist is ignored. See [Layouts](Installation-Layouts). |
+| `layout` | `null` | The Blade layout the board pages extend. Leave `null` to use, in order, cms-framework's admin layout, the ecommerce admin's layout (when that package is installed and active), or this package's standalone layout. A view name that doesn't exist is ignored. See [Layouts](layouts.md). |
 
 ## Cards
 
@@ -49,7 +50,7 @@ The board's real-time setting is only half the switch. The engine must broadcast
 | `artisanpack.ecommerce.kanban.broadcast_connection` | `ECOMMERCE_KANBAN_BROADCAST_CONNECTION` | `null` | Queue connection the broadcasts are queued on (the default when null) |
 | `artisanpack.ecommerce.kanban.broadcast_queue` | `ECOMMERCE_KANBAN_BROADCAST_QUEUE` | `null` | Queue the broadcasts are queued on (the default when null) |
 
-See [Real-Time Updates](Realtime).
+See [Real-Time Updates](../realtime.md).
 
 ## Engine settings the board reads
 
@@ -57,7 +58,7 @@ These belong to the engine, but change what the board shows:
 
 | Engine key | Default | Effect on the board |
 | --- | --- | --- |
-| `artisanpack.ecommerce.kanban.default_card_widgets` | `[ 'total', 'item-count', 'customer' ]` | Widgets on cards in columns and boards that don't choose their own. See [Editing the Board](Usage-Editing-The-Board#card-widgets). |
+| `artisanpack.ecommerce.kanban.default_card_widgets` | `[ 'total', 'item-count', 'customer' ]` | Widgets on cards in columns and boards that don't choose their own. See [Editing the Board](../usage/editing-the-board.md#card-widgets). |
 | `artisanpack.ecommerce.kanban.stale_after_days` | `3` | What "Stale cards only" means: cards that reached their column more than this many days ago. The `days-in-column` widget also turns to a warning after this many days. |
 | `artisanpack.ecommerce.kanban.new_card_position` | `'bottom'` | Where cards that join a board land in their column: `bottom` or `top` |
-| `per_user` of `'admin.mutate'` in `artisanpack.ecommerce.rate_limits` (`ECOMMERCE_RATE_ADMIN_MUTATE_PER_USER`) | `120` | Board changes a user may make per minute. See [Rate limits](Advanced#rate-limits). |
+| `per_user` of `'admin.mutate'` in `artisanpack.ecommerce.rate_limits` (`ECOMMERCE_RATE_ADMIN_MUTATE_PER_USER`) | `120` | Board changes a user may make per minute. See [Rate limits](../advanced.md#rate-limits). |

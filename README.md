@@ -97,13 +97,12 @@ broadcaster, and set up Laravel Echo on `window.Echo`. See [Real-Time Updates](d
 - [Usage](docs/usage.md): [board picker](docs/usage/board-picker.md), [moving cards](docs/usage/moving-cards.md),
   [filters](docs/usage/filters.md), [card detail](docs/usage/card-detail.md),
   [editing the board](docs/usage/editing-the-board.md), [automations](docs/usage/automations.md)
-- [Extending](docs/extending.md): [hooks reference](docs/extending/hooks-reference.md),
-  [card and toolbar actions](docs/extending/card-actions.md), [card widgets](docs/extending/card-widgets.md),
+- [Extending](docs/extending.md): [card and toolbar actions](docs/extending/card-actions.md), [card widgets](docs/extending/card-widgets.md),
   [filter controls](docs/extending/filter-controls.md), [embedding components](docs/extending/embedding-components.md)
 - [Accessibility](docs/accessibility.md) and [localization](docs/localization.md)
-- [Advanced](docs/advanced.md): [authorization](docs/advanced/authorization.md),
-  [Artisan commands](docs/advanced/artisan-commands.md), [performance](docs/advanced/performance.md),
-  [browser tests](docs/advanced/browser-tests.md)
+- [Advanced](docs/advanced.md): [authorization](docs/advanced/authorization.md), [performance](docs/advanced/performance.md)
+- [Reference](docs/reference.md): [hooks](docs/reference/hooks.md), [Artisan commands](docs/reference/commands.md)
+- [FAQ](docs/faq.md) and [troubleshooting](docs/troubleshooting.md)
 
 ## Contributing
 
@@ -113,7 +112,7 @@ guidelines](CONTRIBUTING.md) to learn more about how you can contribute to this 
 ```bash
 composer test           # unit and feature tests
 composer lint           # php-cs-fixer (dry run) and phpcs
-composer test:browser   # browser suite; see docs/advanced/browser-tests.md
+composer test:browser   # browser suite; see CONTRIBUTING.md
 ```
 
 ## License

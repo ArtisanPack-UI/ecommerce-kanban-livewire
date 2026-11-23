@@ -1,5 +1,6 @@
 ---
-title: Extending Overview
+title: Extending
+menu_order: 45
 ---
 
 # Extending
@@ -8,11 +9,11 @@ Satellites (print providers, shipping labels, chat notifications) and host appli
 
 ## In this section
 
-- [Hooks Reference](Extending-Hooks-Reference) - Every filter and action the board offers, with signatures
-- [Card and Toolbar Actions](Extending-Card-Actions) - Add items to a card's actions menu and buttons to the board header
-- [Card Widgets](Extending-Card-Widgets) - Register widgets with the engine and render them with your own Blade view
-- [Filter Controls](Extending-Filter-Controls) - Add controls to the filter bar and narrow the cards
-- [Embedding Components](Extending-Embedding-Components) - Turn the routes off and mount the board on your own pages
+- [Hooks](reference/hooks.md) - Every filter and action the board offers, with signatures (in the reference)
+- [Card and Toolbar Actions](extending/card-actions.md) - Add items to a card's actions menu and buttons to the board header
+- [Card Widgets](extending/card-widgets.md) - Register widgets with the engine and render them with your own Blade view
+- [Filter Controls](extending/filter-controls.md) - Add controls to the filter bar and narrow the cards
+- [Embedding Components](extending/embedding-components.md) - Turn the routes off and mount the board on your own pages
 
 ## Filters and actions
 
@@ -39,7 +40,7 @@ addFilter( 'ap.ecommerceKanbanLivewire.cardActions', function ( array $actions, 
 } );
 ```
 
-A filter receives the value first and must return it. Every extra argument is passed to the callback, so declare only the ones you need. Entries a filter returns in the wrong shape are dropped. [Hooks Reference](Extending-Hooks-Reference) lists every one.
+A filter receives the value first and must return it. Every extra argument is passed to the callback, so declare only the ones you need. Entries a filter returns in the wrong shape are dropped. [Hooks](reference/hooks.md) lists every one.
 
 The engine's own kanban hooks apply on the board too, since every read and write goes through the engine: `ap.ecommerce.kanban.cardQuery` (narrow the cards), `ap.ecommerce.kanban.cardMoving` (veto or redirect a move), `ap.ecommerce.kanban.widgetRendered` (change a widget payload), and the rest in the engine's kanban documentation.
 
