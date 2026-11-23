@@ -28,7 +28,11 @@ See [Front-End Setup](installation/front-end.md).
 
 **Cause:** The design system's behavior engine isn't registered. The card actions menus, the filter bar's date pickers and comboboxes, and the tooltips need it too.
 
-**Fix:** Register it in `resources/js/app.js`, then rebuild:
+**Fix:** Install the package, register it in `resources/js/app.js`, then rebuild:
+
+```bash
+npm install --save-dev @artisanpack-ui/behavior@^1
+```
 
 ```js
 import apuiBehavior from '@artisanpack-ui/behavior/alpine';
@@ -70,9 +74,12 @@ See [Authorization](advanced/authorization.md).
 
 ## The picker says there are no boards
 
-**Cause:** No active board exists yet. The board can't create one on its own.
+**Cause:** The picker lists only active boards the user holds `kanbanBoard.view` on. Either no active board exists yet, or the user may not view the ones that do.
 
-**Fix:** Create one in the ecommerce admin's **Kanban boards** screen, or with `POST /api/ecommerce/v1/kanban/boards`. On a development database, `php artisan ecommerce:seed-demo` seeds a "Fulfillment" board.
+**Fix:**
+
+1. If boards exist, check that they are active and that the user holds `kanbanBoard.view` on them. See [Authorization](advanced/authorization.md).
+2. Otherwise, create one in the ecommerce admin's **Kanban boards** screen, or with `POST /api/ecommerce/v1/kanban/boards`. The board can't create one on its own. On a development database, `php artisan ecommerce:seed-demo` seeds a "Fulfillment" board.
 
 ## The header says "Updates every 30 seconds" instead of "Live"
 

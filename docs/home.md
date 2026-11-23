@@ -33,7 +33,12 @@ php artisan ecommerce-kanban:install
 npm install @artisanpack-ui/livewire-drag-and-drop@^2.1.0
 ```
 
-Add the lines the install command prints to your main stylesheet and script, grant the `kanbanBoard` abilities, then open `/ecommerce-kanban`.
+Then:
+
+1. Add the lines the install command prints to your main stylesheet and script, and build your assets with `npm run build` (or run `npm run dev`).
+2. Grant the `kanbanBoard` abilities. See [Authorization](advanced/authorization.md).
+3. Create a board if the engine has none: in the ecommerce admin, or through the engine's REST API. See [Create a board](getting-started.md#4-create-a-board-or-seed-a-demo-store).
+4. Open `/ecommerce-kanban`.
 
 ## Next steps
 

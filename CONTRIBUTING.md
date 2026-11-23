@@ -145,12 +145,13 @@ Find fields by label, or with `Locators::field()` by part of their id: the compo
 
 ```php
 use Tests\Browser\Support\Accessibility;
+use Tests\Browser\Support\JavaScript;
 
 it( 'opens a card from the URL', function (): void {
     $page = visit( $this->boardUrl( [ 'card' => $this->orders['1004']->id ] ) )
-        ->assertVisible( '[data-ec-kb-detail="' . $this->orders['1004']->id . '"]' )
-        ->assertNoJavaScriptErrors();
+        ->assertVisible( '[data-ec-kb-detail="' . $this->orders['1004']->id . '"]' );
 
+    JavaScript::assertNoErrors( $page );
     Accessibility::assertAccessible( $page );
 } );
 ```
@@ -158,7 +159,7 @@ it( 'opens a card from the URL', function (): void {
 - `$this->board`, `$this->columns[ $label ]`, and `$this->orders[ $number ]` hold the demo board's records; `$this->boardUrl( $query )` builds its URL.
 - Focus and announcements settle just after Livewire's update. Check them with `assertScript()`, which retries until it holds.
 - Prefer the `data-*` hooks the views carry (`[data-ec-kb-card="…"]`, `[data-ec-kb-cards="…"]`, `[data-ec-kb-column="…"]`, `[data-ec-kb-action="move"]`, `[data-ec-kb-move-submit]`) over classes.
-- Assert `assertNoJavaScriptErrors()` on new screens.
+- Check new screens with `JavaScript::assertNoErrors( $page )`, not the plugin's `assertNoJavaScriptErrors()`: the helper skips the known component-library errors in `JavaScript::LIBRARY_ERRORS`, and fails on everything else.
 
 ### Selectors that never match
 

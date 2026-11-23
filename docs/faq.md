@@ -7,7 +7,7 @@ menu_order: 95
 
 ## Do I need the ecommerce admin?
 
-No. The board works on its own, with its standalone layout and its own column, widget, and automation editing. With `artisanpack-ui/ecommerce-admin-livewire` installed, the board renders inside the admin's layout and links to the admin's screens for creating boards, routing rules, and creating and editing automations. See [Usage](usage.md#board-settings-the-board-and-the-admin).
+No. The board works on its own, with its standalone layout. On its own it can reorder, add, edit, and remove columns, choose card widgets, and switch automations on and off or delete them. It can't create boards, edit routing rules, or create and edit automations: use the engine's REST API for those. With `artisanpack-ui/ecommerce-admin-livewire` installed, the board renders inside the admin's layout and links to the admin's screens for them. See [Usage](usage.md#board-settings-the-board-and-the-admin).
 
 ## Do I need cms-framework?
 
@@ -23,7 +23,7 @@ Yes. Grant `kanbanBoard.viewAny`, `kanbanBoard.view`, and `kanbanCard.move`, and
 
 ## How do I create a board?
 
-In the ecommerce admin's **Kanban boards** screen when the admin is installed, or through the engine's REST API (`POST /api/ecommerce/v1/kanban/boards`) otherwise. The board itself can edit a board's columns, widgets, and automations, but not create one. To try the board with data, run `php artisan ecommerce:seed-demo`. See [Getting Started](getting-started.md).
+In the ecommerce admin's **Kanban boards** screen when the admin is installed, or through the engine's REST API (`POST /api/ecommerce/v1/kanban/boards`) otherwise. The board itself can edit a board's columns and widgets and switch its automations on and off, but not create one. To try the board with data, run `php artisan ecommerce:seed-demo` against a development database. It adds demo products and orders, so never run it on a live store. See [Getting Started](getting-started.md).
 
 ## Does the board have its own database tables?
 
@@ -31,7 +31,7 @@ No. Boards, columns, cards, widgets, and automations are the engine's tables, re
 
 ## Why is the board unstyled?
 
-The package ships no CSS build. Load the design system (`@artisanpack-ui/css`), add the board's `@source` lines to your stylesheet, and rebuild. See [Front-End Setup](installation/front-end.md).
+The package ships no CSS build. Load the design system (`@artisanpack-ui/css`), add the board's `@source` lines to your stylesheet, and rebuild. `php artisan ecommerce-kanban:install` prints every line you need. See [The board is unstyled](troubleshooting.md#the-board-is-unstyled).
 
 ## Does it still need daisyUI?
 
