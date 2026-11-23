@@ -18,8 +18,11 @@ use ArtisanPackUI\Ecommerce\Models\KanbanColumn;
 use ArtisanPackUI\Ecommerce\Models\Order;
 use ArtisanPackUI\Ecommerce\Models\OrderBoardAssignment;
 use ArtisanPackUI\Ecommerce\Services\KanbanRoutingService;
+use ArtisanPackUI\Ecommerce\Support\LocalizedDate;
+use ArtisanPackUI\Ecommerce\Support\MoneyFormatter;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\Authorization;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\CardActions;
+use ArtisanPackUI\EcommerceKanbanLivewire\Support\CardPresenter;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\MoveErrors;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
@@ -300,7 +303,7 @@ trait ManagesAssignments
      *
      * @since 1.0.0
      *
-     * @return array<int, array{id: int, name: string}>
+     * @return array<int, array{id: int, name: string, description: string}>
      */
     private function addOrderResults(): array
     {
@@ -326,8 +329,14 @@ trait ManagesAssignments
             ->filter( static fn ( Order $order ): bool => Authorization::allows( $user, 'order.view', $order ) )
             ->take( 10 )
             ->map( static fn ( Order $order ): array => [
-                'id'   => (int) $order->id,
-                'name' => __( 'Order :number — :email', [ 'number' => $order->order_number, 'email' => $order->email ] ),
+                'id'          => (int) $order->id,
+                'name'        => __( 'Order :number · :customer', [ 'number' => $order->order_number, 'customer' => CardPresenter::customerName( $order ) ] ),
+                'description' => null === $order->placed_at
+                    ? MoneyFormatter::format( (int) $order->total_amount, (string) $order->currency )
+                    : __( ':total · placed :date', [
+                        'total' => MoneyFormatter::format( (int) $order->total_amount, (string) $order->currency ),
+                        'date'  => LocalizedDate::format( $order->placed_at ),
+                    ] ),
             ] )
             ->values()
             ->all();

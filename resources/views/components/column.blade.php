@@ -62,6 +62,11 @@
     @if ( $collapsed ) data-ec-kb-collapsed @endif
 >
     <header class="ec-kb-column-header">
+        @if ( $editing )
+            {{-- The column drags by its header; the handle only shows where to grab. --}}
+            <x-artisanpack-icon name="grip-vertical" class="ec-kb-column-grip" size="sm" data-ec-kb-column-grip />
+        @endif
+
         <x-artisanpack-button
             variant="ghost"
             color="neutral"

@@ -116,10 +116,164 @@ a.ec-kb-brand:focus-visible {
 	}
 }
 
+/* Board picker (#53): a centered column of Cards in an auto-fill grid. */
+.ec-kb-picker {
+	display: flex;
+	flex-direction: column;
+	gap: 24px;
+	box-sizing: border-box;
+	inline-size: 100%;
+	max-inline-size: 896px;
+	margin-inline: auto;
+}
+
+.ec-kb-picker-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr));
+	gap: 12px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.ec-kb-picker-grid > li {
+	display: flex;
+}
+
+.ec-kb-picker-card.apui-card {
+	flex: 1;
+}
+
+.ec-kb-picker-card [data-scope='card'][data-part='title'] {
+	font-family: var(--apui-type-heading-sm-font-family);
+	font-size: var(--apui-type-heading-sm-font-size);
+	font-weight: var(--apui-type-heading-sm-font-weight);
+	line-height: var(--apui-type-heading-sm-line-height);
+	letter-spacing: var(--apui-type-heading-sm-letter-spacing);
+}
+
+.ec-kb-picker-card [data-scope='card'][data-part='header'] + .ec-kb-picker-card-body {
+	padding-block-start: 8px;
+}
+
+.ec-kb-picker-last {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin: 0;
+	color: var(--apui-text-muted);
+	font-size: var(--apui-type-body-sm-font-size);
+	line-height: var(--apui-type-body-sm-line-height);
+}
+
+/* Board (#54): the header, the notices and the strip stack with 16px gaps. */
+.ec-kb-board-page {
+	inline-size: 100%;
+	max-inline-size: none;
+}
+
+.ec-kb-board {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	min-inline-size: 0;
+}
+
+/*
+ * The board switcher is the header's meta part; it sits after the title on
+ * the title's line, with the description below both.
+ */
+.ec-kb-board-header [data-scope='page-header'][data-part='row'] > :first-child {
+	display: grid;
+	grid-template-columns: minmax(0, auto) auto;
+	align-items: center;
+	justify-content: start;
+	column-gap: 8px;
+}
+
+.ec-kb-board-header [data-scope='page-header'][data-part='meta'] {
+	grid-row: 1;
+	grid-column: 2;
+	margin: 0;
+}
+
+.ec-kb-board-header [data-scope='page-header'][data-part='title'] {
+	grid-row: 1;
+	grid-column: 1;
+}
+
+.ec-kb-board-header [data-scope='page-header'][data-part='description'] {
+	grid-column: 1 / -1;
+}
+
+.ec-kb-switcher-trigger.apui-button {
+	--apui-_h: var(--apui-control-height-sm);
+	--apui-_border: transparent;
+
+	inline-size: var(--apui-_h);
+	padding-inline: 0;
+	background-color: transparent;
+	color: var(--apui-text-muted);
+}
+
+.ec-kb-switcher-trigger [data-part='iconEnd'] {
+	display: none;
+}
+
+.ec-kb-toolbar-filters {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--apui-space-2);
+}
+
+/*
+ * Edit mode (#56): cards stay put and step back onto the sunken surface (not
+ * opacity, which would take their muted text below AA contrast); the column
+ * header shows a grip.
+ */
+.ec-kb-board[data-ec-kb-editing] .ec-kb-card {
+	background: var(--apui-surface-sunken);
+	box-shadow: none;
+}
+
+.ec-kb-column-grip {
+	flex: none;
+	color: var(--apui-text-muted);
+	cursor: grab;
+}
+
+.ec-kb-add-column {
+	display: flex;
+	flex: none;
+	align-items: flex-start;
+	inline-size: 240px;
+}
+
+.ec-kb-add-column-button.apui-button {
+	inline-size: 100%;
+	border-style: dashed;
+}
+
+/* Dialog bodies (#55, #56): fields stacked with 16px gaps. */
+.ec-kb-dialog-form {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	margin: 0;
+}
+
+.ec-kb-dialog-note {
+	margin: 0;
+	color: var(--apui-text-muted);
+	font-size: var(--apui-type-body-sm-font-size);
+	line-height: var(--apui-type-body-sm-line-height);
+}
+
 .ec-kb-strip {
 	display: flex;
 	align-items: flex-start;
-	gap: var(--apui-space-4);
+	gap: 12px;
 	overflow-x: auto;
 	padding-block-end: var(--apui-space-4);
 	border-radius: var(--apui-radius-lg);
@@ -1013,31 +1167,8 @@ a.ec-kb-brand:focus-visible {
 	line-height: var(--apui-type-body-sm-line-height);
 }
 
-/* How the board keeps up with changes made elsewhere. */
+/* How the board keeps up with changes made elsewhere: one ghost Badge per state. */
 .ec-kb-connection {
 	display: inline-flex;
 	align-items: center;
-	gap: 4px;
-	color: var(--apui-text-muted);
-	font-size: var(--apui-type-caption-font-size);
-	line-height: var(--apui-type-caption-line-height);
-}
-
-.ec-kb-connection-dot {
-	inline-size: 8px;
-	block-size: 8px;
-	border-radius: var(--apui-radius-full);
-	background: var(--apui-border-strong);
-}
-
-[data-ec-kb-connection-state='live'] > .ec-kb-connection-dot {
-	background: var(--apui-color-success);
-}
-
-[data-ec-kb-connection-state='polling'] > .ec-kb-connection-dot {
-	background: var(--apui-color-warning);
-}
-
-[data-ec-kb-connection-state='offline'] > .ec-kb-connection-dot {
-	background: var(--apui-color-error);
 }

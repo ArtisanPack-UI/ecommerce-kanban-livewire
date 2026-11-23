@@ -264,8 +264,7 @@ it( 'asks before removing a column moves its cards to an exit column', function 
 
     $page->select( Locators::field( 'ec-kb-delete-column-move-to' ), (string) $this->columns['Cancelled']->id )
         ->assertVisible( '[data-ec-kb-delete-column-exit]' )
-        ->click( '[data-ec-kb-delete-column-button]' )
-        ->assertSee( 'Confirm that the orders' );
+        ->assertScript( 'document.querySelector( "[data-ec-kb-delete-column-button]" ).disabled', true );
 
     expect( KanbanColumn::query()->find( $this->columns['Packing']->id ) )->not->toBeNull();
 

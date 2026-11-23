@@ -14,7 +14,7 @@
 @section( 'content' )
     @include( 'ecommerce-kanban::partials.page-assets' )
 
-    <div class="w-full max-w-none" data-ecommerce-kanban-page>
+    <div class="ec-kb-board-page" data-ecommerce-kanban-page>
         <livewire:artisanpack-ecommerce-kanban-board :board="$board" />
     </div>
 @endsection
