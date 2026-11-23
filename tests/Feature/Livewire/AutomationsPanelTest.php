@@ -345,3 +345,37 @@ it( 'mounts the panel on the board for viewers who cannot edit', function (): vo
         ->assertSeeLivewire( AutomationsPanel::class )
         ->assertSeeHtml( 'data-ec-kb-automations' );
 } );
+
+it( 'shows each automation with a tile colored by its state and a dashed empty group', function (): void {
+    [ $board, $columns, $automations ] = automatedBoard();
+
+    $html = Livewire::test( AutomationsPanel::class, [ 'boardId' => $board->id ] )
+        ->call( 'openFor', $columns[1]->id )
+        ->assertSeeHtml( 'class="apui-drawer ec-kb-automations-drawer"' )
+        ->assertSeeHtml( 'class="ec-kb-automations-empty"' )
+        ->html();
+
+    $on  = (string) strstr( (string) strstr( $html, 'data-ec-kb-automation="' . $automations['email']->id . '"' ), '</li>', true );
+    $off = (string) strstr( (string) strstr( $html, 'data-ec-kb-automation="' . $automations['webhook']->id . '"' ), '</li>', true );
+
+    expect( $on )->toMatch( '/apui-icon-tile[^>]*data-variant="tile"[^>]*data-color="primary"/' )
+        ->and( $off )->toMatch( '/apui-icon-tile[^>]*data-variant="tile"[^>]*data-color="neutral"/' )
+        ->and( $off )->toContain( 'data-ec-kb-automation-off' )
+        ->and( $on )->toContain( 'data-mirror' );
+} );
+
+it( 'confirms a delete in an error alert that is an alertdialog, with Delete before Cancel', function (): void {
+    [ $board, , $automations ] = automatedBoard();
+
+    $html = Livewire::test( AutomationsPanel::class, [ 'boardId' => $board->id ] )
+        ->call( 'openFor', null )
+        ->call( 'confirmDelete', $automations['email']->id )
+        ->html();
+
+    $dialog = (string) strstr( $html, 'class="apui-alert ec-kb-delete-automation"' );
+
+    expect( $dialog )->toContain( 'data-color="error"' )
+        ->and( $dialog )->toContain( 'role="alertdialog"' )
+        ->and( substr_count( (string) strstr( $dialog, '</div>', true ) . '>', 'role=' ) )->toBe( 1 )
+        ->and( strpos( $dialog, 'data-ec-kb-delete-automation-button="' ) )->toBeLessThan( strpos( $dialog, 'data-ec-kb-cancel-delete-automation="' ) );
+} );

@@ -296,3 +296,40 @@ it( 'reads without widgets or a placed date', function (): void {
     expect( $html )->toContain( 'ec-kb-card-customer' )
         ->and( $html )->not->toContain( 'ec-kb-card-date' );
 } );
+
+it( 'leads with the tone icon, then the widget icon, then the value', function (): void {
+    fakeWidget( 'fulfilled', [ 'value' => 'Fulfilled', 'tone' => 'success', 'icon' => 'truck' ] );
+
+    $html  = cardBoard( [ 'fulfilled' ] )->html();
+    $badge = (string) strstr( (string) strstr( $html, 'data-ec-kb-widget="fulfilled"' ), '</span></span>', true );
+
+    expect( $badge )->toContain( 'class="ec-kb-widget-icons"' )
+        ->and( substr_count( (string) strstr( $badge, 'ec-kb-widget-icons' ), 'class="apui-icon"' ) )->toBe( 2 )
+        ->and( strpos( $badge, 'data-part="icon"' ) )->toBeLessThan( strpos( $badge, 'data-part="label"' ) );
+} );
+
+it( 'shows no icons for a plain neutral value', function (): void {
+    fakeWidget( 'plain', [ 'value' => '$184.00' ] );
+
+    cardBoard( [ 'plain' ] )->assertDontSeeHtml( 'class="ec-kb-widget-icons"' );
+} );
+
+it( 'reads neutral tags in the info color with no tone icon', function (): void {
+    $html = (string) WidgetViews::render( [ 'key' => 'tags', 'label' => 'Tags', 'value' => 'Wholesale', 'tone' => 'neutral', 'icon' => 'tag' ] );
+
+    expect( $html )->toMatch( '/data-ec-kb-widget="tags"[^>]*data-ec-kb-tone="neutral"[^>]*data-variant="soft"\s+data-color="info"/' )
+        ->and( $html )->not->toContain( 'data-ec-kb-tone-icon' );
+
+    expect( WidgetViews::tone( 'warning', 'tags' )['color'] )->toBe( 'warning' )
+        ->and( WidgetViews::tone( 'neutral', 'tags' ) )->toBe( [ 'color' => 'info', 'icon' => null, 'text' => null ] )
+        ->and( WidgetViews::tone( 'neutral', 'total' )['color'] )->toBe( 'neutral' );
+} );
+
+it( 'makes a badge with a tooltip focusable so the tooltip opens from the keyboard', function (): void {
+    fakeWidget( 'waiting', [ 'value' => '3 days', 'tone' => 'warning', 'tooltip' => 'Packing since Nov 19' ] );
+
+    cardBoard( [ 'waiting' ] )
+        ->assertSeeHtml( 'class="ec-kb-widget-tip" tabindex="0"' )
+        ->assertSeeHtml( 'role="tooltip"' )
+        ->assertSee( '(Packing since Nov 19)' );
+} );

@@ -1,5 +1,4 @@
 {
-    ":board: :column": ":board : :column",
     ":column (at its WIP limit)": ":column (à sa limite WIP)",
     ":column (current column)": ":column (colonne actuelle)",
     ":column cannot hold this order at its current status.": ":column ne peut pas contenir cette commande à son statut actuel.",
@@ -79,6 +78,7 @@
     "Column \":column\" could not be removed: :reason": "La colonne « :column » n'a pas pu être supprimée : :reason",
     "Column \":column\" removed.": "Colonne « :column » supprimée.",
     "Column \":column\" saved.": "Colonne « :column » enregistrée.",
+    "Column:": "Colonne :",
     "Columns without their own widgets use this list.": "Les colonnes sans widgets propres utilisent cette liste.",
     "Complete": "Terminée",
     "Configure a broadcaster (for example run php artisan install:broadcasting for Reverb), then set up Laravel Echo in your main script.": "Configurez un diffuseur (par exemple, exécutez php artisan install:broadcasting pour Reverb), puis configurez Laravel Echo dans votre script principal.",
@@ -290,6 +290,8 @@
     "Unfulfilled": "Non expédiée",
     "Unknown column": "Colonne inconnue",
     "Updates every :count second|Updates every :count seconds": "Mise à jour toutes les :count seconde|Mise à jour toutes les :count secondes",
+    "Uses the first card in this column, or on the board when the column is empty.": "Utilise la première carte de cette colonne, ou du tableau si la colonne est vide.",
+    "Uses the first card on the board.": "Utilise la première carte du tableau.",
     "Voided": "Annulée (void)",
     "WIP limit": "Limite WIP",
     "Widgets": "Widgets",

@@ -77,6 +77,16 @@ final class WidgetViews
     ];
 
     /**
+     * Widget keys whose values are tags: a neutral tag reads in the info
+     * color, with no tone icon or tone text.
+     *
+     * @since 2.0.0
+     *
+     * @var array<int, string>
+     */
+    public const TAG_KEYS = [ 'tags' ];
+
+    /**
      * The view for a payload.
      *
      * @since 1.0.0
@@ -115,17 +125,24 @@ final class WidgetViews
 
     /**
      * The Badge color and tone icon for a payload's tone, with the text
-     * that names the tone for screen readers.
+     * that names the tone for screen readers. A neutral tag (see
+     * `TAG_KEYS`) uses the info color.
      *
      * @since 1.0.0
+     * @since 2.0.0 Added `$key`.
      *
      * @param  string|null  $tone  Payload tone.
+     * @param  string|null  $key   Widget key.
      *
      * @return array{color: string, icon: string|null, text: string|null}
      */
-    public static function tone( ?string $tone ): array
+    public static function tone( ?string $tone, ?string $key = null ): array
     {
         $tone = isset( self::TONES[ (string) $tone ] ) ? (string) $tone : 'neutral';
+
+        if ( 'neutral' === $tone && in_array( (string) $key, self::TAG_KEYS, true ) ) {
+            return [ 'color' => 'info', 'icon' => null, 'text' => null ];
+        }
 
         return self::TONES[ $tone ] + [ 'text' => match ( $tone ) {
             'success' => __( 'Good' ),
