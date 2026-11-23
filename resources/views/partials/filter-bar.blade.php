@@ -6,10 +6,14 @@
     visible, and everything else (the placed dates, the payment and
     fulfillment statuses, the satellites' controls and "Stale cards only")
     sits in a second row behind "More filters", which opens by itself when
-    one of those is set. While filters are on, a footer line says how many
-    orders show and offers Clear filters. With `$inDrawer` (small screens)
-    the same fields stack in the Filters drawer, which brings its own
-    summary and footer; `$prefix` keeps the two sets of ids apart.
+    one of those is set: on load, and whenever the count goes from none to
+    some (say, one set in the drawer before the window widened), read from
+    the re-rendered `data-ec-kb-more-count` because Alpine keeps `more`
+    across renders. The person can still close it afterwards. While filters
+    are on, a footer line says how many orders show and offers Clear
+    filters. With `$inDrawer` (small screens) the same fields stack in the
+    Filters drawer, which brings its own summary and footer; `$prefix` keeps
+    the two sets of ids apart.
 
     Every control writes a `FiltersCards` property, all of which live in the
     query string. The customer and product comboboxes search on the server
@@ -38,7 +42,9 @@
         role="search"
         aria-label="{{ __( 'Filter orders' ) }}"
         data-ec-kb-filters="{{ $prefix }}"
-        x-data="{ more: {{ $moreFilters > 0 ? 'true' : 'false' }} }"
+        data-ec-kb-more-count="{{ $moreFilters }}"
+        x-data="{ more: {{ $moreFilters > 0 ? 'true' : 'false' }}, count: {{ (int) $moreFilters }} }"
+        x-init="new MutationObserver( () => { const next = Number( $el.dataset.ecKbMoreCount ) || 0; if ( 0 === count && next > 0 ) { more = true } count = next } ).observe( $el, { attributes: true, attributeFilter: [ 'data-ec-kb-more-count' ] } )"
     >
         <div class="ec-kb-filters-row">
             @include( 'ecommerce-kanban::partials.filter-fields.primary' )

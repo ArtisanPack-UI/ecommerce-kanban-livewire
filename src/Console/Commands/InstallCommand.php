@@ -48,6 +48,51 @@ class InstallCommand extends Command
     ];
 
     /**
+     * The component library's installer, which sets up the ArtisanPack UI
+     * design system (CSS and behavior engine) the board renders with.
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    public const DESIGN_SYSTEM_INSTALL = 'php artisan livewire-ui-components:install --assets=bundler';
+
+    /**
+     * The design system's npm packages, for a host that adds it by hand.
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    public const DESIGN_SYSTEM_PACKAGES = '@artisanpack-ui/css@^1 @artisanpack-ui/behavior@^1';
+
+    /**
+     * The main-stylesheet lines that load the design system: the layer order
+     * goes before `@import 'tailwindcss';`, the import after it.
+     *
+     * @since 2.0.0
+     *
+     * @var array<int, string>
+     */
+    public const DESIGN_SYSTEM_STYLES = [
+        '@layer theme, base, apui, components, utilities;',
+        "@import '@artisanpack-ui/css';",
+    ];
+
+    /**
+     * The main-script lines that register the design system's behavior engine
+     * as an Alpine plugin.
+     *
+     * @since 2.0.0
+     *
+     * @var array<int, string>
+     */
+    public const DESIGN_SYSTEM_SCRIPT = [
+        "import apuiBehavior from '@artisanpack-ui/behavior/alpine';",
+        "document.addEventListener( 'alpine:init', () => window.Alpine.plugin( apuiBehavior ) );",
+    ];
+
+    /**
      * The drag-and-drop npm package and the lowest version the board supports
      * (cross-container groups, keyboard moves, revert; spec §10).
      *
@@ -141,7 +186,8 @@ class InstallCommand extends Command
     }
 
     /**
-     * Prints the stylesheet and script lines the host adds.
+     * Prints the design-system setup, then the stylesheet and script lines
+     * the host adds.
      *
      * @since 1.0.0
      *
@@ -149,6 +195,18 @@ class InstallCommand extends Command
      */
     protected function printFrontEnd(): void
     {
+        $this->newLine();
+        $this->components->info( __( 'The board renders with the ArtisanPack UI design system. Skip this step if your app already loads it for livewire-ui-components 3.0; otherwise run:' ) );
+        $this->line( '    ' . self::DESIGN_SYSTEM_INSTALL );
+
+        $this->newLine();
+        $this->components->info( __( 'Or add it by hand: install the packages, add the stylesheet and script lines, and put @apuiThemeScript in your layout\'s <head> before @vite:' ) );
+        $this->line( '    npm install --save-dev ' . self::DESIGN_SYSTEM_PACKAGES );
+
+        foreach ( [ ...self::DESIGN_SYSTEM_STYLES, ...self::DESIGN_SYSTEM_SCRIPT ] as $line ) {
+            $this->line( '    ' . $line );
+        }
+
         $this->newLine();
         $this->components->info( __( 'Add these lines to your main stylesheet (e.g. resources/css/app.css):' ) );
 

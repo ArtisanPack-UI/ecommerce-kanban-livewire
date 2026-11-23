@@ -286,3 +286,19 @@ it( 'keeps "More filters" open while other filters re-render the board', functio
         ->assertVisible( '#ec-kb-filters-placed-from-control' )
         ->assertScript( 'document.querySelector( "[data-ec-kb-more-filters]" ).getAttribute( "aria-expanded" )', 'true' );
 } );
+
+it( 'opens "More filters" when one of its filters was set in the drawer before the window widened', function (): void {
+    $page = visit( $this->boardUrl() )->resize( 400, 800 )->assertPresent( card( '1003' ) );
+
+    $page->click( '[data-ec-kb-filters-toggle]' )
+        ->assertVisible( '[data-ec-kb-filters="ec-kb-filters-drawer"]' )
+        ->click( Locators::label( 'Stale cards only' ) . ' >> visible=true' )
+        ->assertScript( 'new URLSearchParams( window.location.search ).get( "stale" )', 'true' )
+        ->click( '[data-ec-kb-show-orders]' )
+        ->resize( 1280, 800 )
+        ->assertVisible( '#ec-kb-filters-placed-from-control' )
+        ->assertScript( 'document.querySelector( "[data-ec-kb-more-filters]" ).getAttribute( "aria-expanded" )', 'true' )
+        // It can still be closed.
+        ->click( '[data-ec-kb-more-filters]' )
+        ->assertScript( 'document.querySelector( "#ec-kb-filters-more" ).hidden', true );
+} );
