@@ -262,3 +262,71 @@ it( 'renders a textarea for a textarea setting', function (): void {
         ->call( 'openFor', $columns[0]->id )
         ->assertSeeHtml( '<textarea' );
 } );
+
+it( 'describes the dialog with the note on which list applies and saves from the footer', function (): void {
+    [ $board, $columns ] = makeBoard( [ [ 'cards' => 0, 'card_widgets' => [ 'total' ] ] ] );
+
+    $html = Livewire::test( WidgetPicker::class, [ 'boardId' => $board->id ] )
+        ->call( 'openFor', $columns[0]->id )
+        ->assertSeeHtml( 'class="apui-dialog ec-kb-widget-picker-dialog"' )
+        ->assertSeeHtml( 'id="ec-kb-widget-picker-form"' )
+        ->assertSeeHtml( 'form="ec-kb-widget-picker-form"' )
+        ->html();
+
+    $description = (string) strstr( (string) strstr( $html, 'data-part="description"' ), '</p>', true );
+
+    expect( $description )->toContain( 'data-ec-kb-widget-source' )
+        ->and( $description )->toContain( 'This column uses its own widgets.' )
+        ->and( $html )->toContain( 'aria-label="Widgets, in the order cards show them"' );
+} );
+
+it( 'warns about a missing widget with an icon and says which card the preview uses', function (): void {
+    [ $board, $columns ] = makeBoard( [ 0 ] );
+    addCard( $columns[0], [ 'order_number' => 'PV-3' ] );
+
+    Livewire::test( WidgetPicker::class, [ 'boardId' => $board->id ] )
+        ->call( 'openFor', $columns[0]->id )
+        ->assertSee( 'Order PV-3' )
+        ->assertSee( 'Uses the first card in this column, or on the board when the column is empty.' )
+        ->set( 'entries', [ [ 'key' => 'gone', 'config' => [] ] ] )
+        ->assertSeeHtml( 'data-ec-kb-widget-missing' );
+
+    Livewire::test( WidgetPicker::class, [ 'boardId' => $board->id ] )
+        ->call( 'openFor', null )
+        ->assertSee( 'Uses the first card on the board.' );
+} );
+
+it( 'shows a switch setting\'s help as its description', function (): void {
+    app( ArtisanPackUI\Ecommerce\Registries\KanbanCardWidgetRegistry::class )->register( 'weekend-widget', new class () extends ArtisanPackUI\Ecommerce\Kanban\Widgets\AbstractKanbanCardWidget {
+        public function key(): string
+        {
+            return 'weekend-widget';
+        }
+
+        public function label(): string
+        {
+            return 'Weekend';
+        }
+
+        public function render( ArtisanPackUI\Ecommerce\Models\Order $order, ArtisanPackUI\Ecommerce\Models\KanbanColumn $column ): array
+        {
+            return [ 'key' => 'weekend-widget', 'label' => 'Weekend', 'value' => 'Yes', 'tone' => 'neutral' ];
+        }
+
+        public function configSchema(): array
+        {
+            return [ [ 'name' => 'weekends', 'type' => 'boolean', 'label' => 'Count weekends', 'help' => 'Saturdays and Sundays count as days.' ] ];
+        }
+    } );
+
+    [ $board, $columns ] = makeBoard( [ [ 'cards' => 0, 'card_widgets' => [ 'weekend-widget' ] ] ] );
+
+    $html = Livewire::test( WidgetPicker::class, [ 'boardId' => $board->id ] )
+        ->call( 'openFor', $columns[0]->id )
+        ->assertSee( 'Saturdays and Sundays count as days.' )
+        ->html();
+
+    expect( $html )->toMatch( '/id="(ec-kb-widget-0-weekends[^"]*description[^"]*)"/' )
+        ->and( $html )->toMatch( '/<input[^>]*id="ec-kb-widget-0-weekends"[^>]*aria-describedby="[^"]*ec-kb-widget-0-weekends[^"]*description/s' )
+        ->and( $html )->not->toMatch( '/<input[^>]*\shint="/' );
+} );

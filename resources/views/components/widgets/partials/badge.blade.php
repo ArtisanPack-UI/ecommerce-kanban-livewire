@@ -1,6 +1,6 @@
 {{--
-    The generic widget's Badge: the icon, the value, and the label, tone and
-    tooltip as visually hidden text.
+    The generic widget's Badge: the tone icon, then the widget's own icon,
+    then the value, with the label, tone and tooltip as visually hidden text.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceKanbanLivewire
@@ -11,8 +11,15 @@
     variant="soft"
     size="sm"
     :color="$tone['color']"
-    :leading-icon="$icon"
+    :classes="[ 'icon' => 'ec-kb-widget-icons' ]"
     data-ec-kb-widget="{{ $widget['key'] ?? '' }}"
     data-ec-kb-tone="{{ $widget['tone'] ?? 'neutral' }}"
     :data-ec-kb-tone-icon="null !== $tone['icon'] ? '' : null"
->@if ( '' !== $label )<span class="apui-sr-only">{{ $label }}:</span> @endif{{ $value }}@if ( null !== $tone['text'] )<span class="apui-sr-only"> ({{ $tone['text'] }})</span>@endif @if ( null !== $note )<span class="apui-sr-only"> ({{ $note }})</span>@endif</x-artisanpack-badge>
+>
+    <x-slot:icon>
+        @foreach ( $icons as $badgeIcon )
+            <x-artisanpack-icon :name="$badgeIcon" size="sm" />
+        @endforeach
+    </x-slot:icon>
+    @include( 'ecommerce-kanban::components.widgets.partials.badge-text' )
+</x-artisanpack-badge>

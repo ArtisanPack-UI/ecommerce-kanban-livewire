@@ -1,5 +1,4 @@
 {
-    ":board: :column": ":board: :column",
     ":column (at its WIP limit)": ":column (at its WIP limit)",
     ":column (current column)": ":column (current column)",
     ":column cannot hold this order at its current status.": ":column cannot hold this order at its current status.",
@@ -79,6 +78,7 @@
     "Column \":column\" could not be removed: :reason": "Column \":column\" could not be removed: :reason",
     "Column \":column\" removed.": "Column \":column\" removed.",
     "Column \":column\" saved.": "Column \":column\" saved.",
+    "Column:": "Column:",
     "Columns without their own widgets use this list.": "Columns without their own widgets use this list.",
     "Complete": "Complete",
     "Configure a broadcaster (for example run php artisan install:broadcasting for Reverb), then set up Laravel Echo in your main script.": "Configure a broadcaster (for example run php artisan install:broadcasting for Reverb), then set up Laravel Echo in your main script.",
@@ -290,6 +290,8 @@
     "Unfulfilled": "Unfulfilled",
     "Unknown column": "Unknown column",
     "Updates every :count second|Updates every :count seconds": "Updates every :count second|Updates every :count seconds",
+    "Uses the first card in this column, or on the board when the column is empty.": "Uses the first card in this column, or on the board when the column is empty.",
+    "Uses the first card on the board.": "Uses the first card on the board.",
     "Voided": "Voided",
     "WIP limit": "WIP limit",
     "Widgets": "Widgets",

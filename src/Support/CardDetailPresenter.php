@@ -48,6 +48,29 @@ final class CardDetailPresenter
     public const TIMELINE_ENTRIES = 5;
 
     /**
+     * The Timeline marker (icon and color role) for each known event type.
+     *
+     * @since 2.0.0
+     *
+     * @var array<string, array{icon: string, color: string}>
+     */
+    public const MARKERS = [
+        'order.placed'               => [ 'icon' => 'o-shopping-bag', 'color' => 'primary' ],
+        'order.status_changed'       => [ 'icon' => 'o-arrows-right-left', 'color' => 'info' ],
+        'order.substatus_changed'    => [ 'icon' => 'o-arrows-right-left', 'color' => 'info' ],
+        'kanban.assignment_added'    => [ 'icon' => 'o-arrows-right-left', 'color' => 'info' ],
+        'kanban.assignment_removed'  => [ 'icon' => 'o-arrows-right-left', 'color' => 'info' ],
+        'kanban.automation_fired'    => [ 'icon' => 'o-bolt', 'color' => 'success' ],
+        'kanban.automation_failed'   => [ 'icon' => 'o-bolt', 'color' => 'error' ],
+        'payment.captured'           => [ 'icon' => 'o-check-circle', 'color' => 'success' ],
+        'order.cancelled'            => [ 'icon' => 'o-x-circle', 'color' => 'error' ],
+        'order.refunded'             => [ 'icon' => 'o-arrow-uturn-left', 'color' => 'warning' ],
+        'note.added'                 => [ 'icon' => 'o-chat-bubble-left', 'color' => 'neutral' ],
+        'order.edited'               => [ 'icon' => 'o-pencil', 'color' => 'neutral' ],
+        'kanban.order_field_updated' => [ 'icon' => 'o-pencil', 'color' => 'neutral' ],
+    ];
+
+    /**
      * `$order`'s detail as seen from `$board`. "Other boards" lists only
      * the boards `$user` may view.
      *
@@ -96,9 +119,11 @@ final class CardDetailPresenter
                 [ 'label' => __( 'Total' ), 'value' => $money( $order->total_amount ), 'strong' => true ],
                 (int) $order->total_refunded_amount > 0 ? [ 'label' => __( 'Refunded' ), 'value' => $money( $order->total_refunded_amount ) ] : null,
             ] ) ),
-            'payment'     => Statuses::label( 'payment', $order->payment_status ),
-            'fulfillment' => Statuses::label( 'fulfillment', $order->fulfillment_status ),
-            'boards'      => $assignments
+            'payment'          => Statuses::label( 'payment', $order->payment_status ),
+            'payment_tone'     => Statuses::tone( 'payment', $order->payment_status ),
+            'fulfillment'      => Statuses::label( 'fulfillment', $order->fulfillment_status ),
+            'fulfillment_tone' => Statuses::tone( 'fulfillment', $order->fulfillment_status ),
+            'boards'           => $assignments
                 ->reject( static fn ( OrderBoardAssignment $card ): bool => (int) $card->board_id === (int) $board->id || null === $card->board )
                 ->filter( static fn ( OrderBoardAssignment $card ): bool => Authorization::allows( $user, 'kanbanBoard.view', $card->board ) )
                 ->map( static fn ( OrderBoardAssignment $card ): array => [ 'board' => (string) $card->board->name, 'column' => $column( $card ) ] )
@@ -116,7 +141,7 @@ final class CardDetailPresenter
      *
      * @param  Order  $order  The order.
      *
-     * @return array<int, array{id: int, text: string, date: string, date_iso: string|null}>
+     * @return array<int, array{id: int, text: string, date: string, date_iso: string|null, icon: string|null, color: string}>
      */
     public static function timeline( Order $order ): array
     {
@@ -136,8 +161,23 @@ final class CardDetailPresenter
                 'text'     => self::describe( (string) $entry->event_type, [ ...$payload, 'to_label' => $column?->displayLabel() ?? $labels[ $to ] ?? null ] ),
                 'date'     => LocalizedDate::format( $entry->created_at ),
                 'date_iso' => $entry->created_at?->toIso8601String(),
+                ...self::marker( (string) $entry->event_type ),
             ];
         } )->all();
+    }
+
+    /**
+     * The Timeline marker for an event: its icon and color role.
+     *
+     * @since 2.0.0
+     *
+     * @param  string  $type  Timeline event type.
+     *
+     * @return array{icon: string|null, color: string}
+     */
+    public static function marker( string $type ): array
+    {
+        return self::MARKERS[ $type ] ?? [ 'icon' => null, 'color' => 'neutral' ];
     }
 
     /**

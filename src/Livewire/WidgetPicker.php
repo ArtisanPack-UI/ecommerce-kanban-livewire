@@ -351,7 +351,7 @@ class WidgetPicker extends Component
     public function render(): View
     {
         if ( ! $this->open ) {
-            return view( 'ecommerce-kanban::livewire.widget-picker', [ 'title' => '', 'catalog' => [], 'rows' => [], 'addOptions' => [], 'source' => '', 'preview' => null, 'previewInvalid' => false ] );
+            return view( 'ecommerce-kanban::livewire.widget-picker', [ 'title' => '', 'catalog' => [], 'rows' => [], 'addOptions' => [], 'source' => '', 'preview' => null, 'previewInvalid' => false, 'previewSource' => '' ] );
         }
 
         $this->authorizeEditing();
@@ -383,6 +383,7 @@ class WidgetPicker extends Component
             'source'         => $this->sourceText( $board, $column ),
             'preview'        => $valid ? $this->preview( $board, $column ) : null,
             'previewInvalid' => ! $valid,
+            'previewSource'  => null === $column ? __( 'Uses the first card on the board.' ) : __( 'Uses the first card in this column, or on the board when the column is empty.' ),
         ] );
     }
 

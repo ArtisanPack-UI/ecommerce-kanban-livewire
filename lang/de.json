@@ -1,5 +1,4 @@
 {
-    ":board: :column": ":board: :column",
     ":column (at its WIP limit)": ":column (WIP-Limit erreicht)",
     ":column (current column)": ":column (aktuelle Spalte)",
     ":column cannot hold this order at its current status.": ":column kann diese Bestellung in ihrem aktuellen Status nicht aufnehmen.",
@@ -79,6 +78,7 @@
     "Column \":column\" could not be removed: :reason": "Die Spalte „:column“ konnte nicht entfernt werden: :reason",
     "Column \":column\" removed.": "Spalte „:column“ entfernt.",
     "Column \":column\" saved.": "Spalte „:column“ gespeichert.",
+    "Column:": "Spalte:",
     "Columns without their own widgets use this list.": "Spalten ohne eigene Widgets verwenden diese Liste.",
     "Complete": "Abgeschlossen",
     "Configure a broadcaster (for example run php artisan install:broadcasting for Reverb), then set up Laravel Echo in your main script.": "Konfigurieren Sie einen Broadcaster (führen Sie z. B. php artisan install:broadcasting für Reverb aus) und richten Sie dann Laravel Echo in Ihrem Hauptskript ein.",
@@ -290,6 +290,8 @@
     "Unfulfilled": "Nicht erfüllt",
     "Unknown column": "Unbekannte Spalte",
     "Updates every :count second|Updates every :count seconds": "Aktualisierung jede :count Sekunde|Aktualisierung alle :count Sekunden",
+    "Uses the first card in this column, or on the board when the column is empty.": "Verwendet die erste Karte in dieser Spalte oder auf dem Board, wenn die Spalte leer ist.",
+    "Uses the first card on the board.": "Verwendet die erste Karte auf dem Board.",
     "Voided": "Storniert (void)",
     "WIP limit": "WIP-Limit",
     "Widgets": "Widgets",

@@ -75,6 +75,28 @@ it( 'renders a board page in the standalone layout', function (): void {
         ->assertSeeLivewire( 'artisanpack-ecommerce-kanban-board' );
 } );
 
+it( 'frames the standalone layout with a skip link first, the Navbar brand, and no utility classes', function (): void {
+    grantAbilities( [ 'kanbanBoard.viewAny', 'kanbanBoard.view' ] );
+    [ $board ] = makeBoard( [ 0 ], [ 'name' => 'Production' ] );
+
+    $html = $this->actingAs( makeUser() )
+        ->get( route( 'artisanpack.ecommerce.kanban.boards.show', [ 'board' => $board->id ] ) )
+        ->assertOk()
+        ->getContent();
+
+    $body = (string) strstr( $html, '<body' );
+
+    expect( $html )->toContain( '<html lang="en" class="ec-kb-standalone">' )
+        ->and( $body )->toMatch( '/^<body class="ec-kb-page">\s*<a\s+href="#ecommerce-kanban-content"\s+class="apui-button ec-kb-skip-link"/' )
+        ->and( $body )->toMatch( '/data-variant="solid"\s+data-color="primary"\s+data-size="sm"/' )
+        ->and( $body )->toContain( 'class="apui-navbar ec-kb-standalone-nav"' )
+        ->and( $body )->toContain( 'class="ec-kb-brand"' )
+        ->and( $body )->toMatch( '/apui-icon-tile ec-kb-brand-mark/' )
+        ->and( $body )->toContain( 'aria-label="Switch to dark theme"' )
+        ->and( $body )->toContain( '<main id="ecommerce-kanban-content" class="ec-kb-standalone-main" tabindex="-1">' )
+        ->and( (string) strstr( $body, '<main', true ) )->not->toMatch( '/class="(?:[^"]*\s)?(sr-only|focus:\S*|antialiased|p-4|w-full|font-bold)(?:\s[^"]*)?"/' );
+} );
+
 it( 'renders the picker page', function (): void {
     grantAbilities( [ 'kanbanBoard.viewAny', 'kanbanBoard.view' ] );
     makeBoard( [ 0 ], [ 'name' => 'Production' ] );
