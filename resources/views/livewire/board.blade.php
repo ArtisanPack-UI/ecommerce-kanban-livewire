@@ -60,7 +60,8 @@
     use ArtisanPackUI\EcommerceKanbanLivewire\Support\BoardUrls;
 @endphp
 <div
-    class="flex flex-col gap-4"
+    class="ec-kb-board"
+    @if ( $editing ) data-ec-kb-editing @endif
     data-ec-kb-board-view="{{ $board->id }}"
     x-data="{
         storageKey: @js( $storageKey ),
@@ -549,26 +550,32 @@
         @endif
     </p>
 
-    <div class="flex flex-wrap items-center justify-between gap-2">
-        <div class="flex items-center gap-2">
-            <h1 class="text-2xl font-bold" id="ec-kb-board-title">{{ $board->name }}</h1>
+    @php
+        $switchTargets = [];
 
-            @if ( $boards->count() > 1 || null !== $pickerUrl )
-                @php
-                    $switchTargets = [];
+        foreach ( $boards as $option ) {
+            $switchTargets[ (string) $option->id ] = BoardUrls::show( $option );
+        }
 
-                    foreach ( $boards as $option ) {
-                        $switchTargets[ (string) $option->id ] = BoardUrls::show( $option );
-                    }
+        $switchTargets['all'] = $pickerUrl;
+    @endphp
+    <x-artisanpack-page-header class="ec-kb-board-header" :description="filled( $board->description ) ? $board->description : null" data-ec-kb-board-header>
+        <x-slot:title><span id="ec-kb-board-title">{{ $board->name }}</span></x-slot:title>
 
-                    $switchTargets['all'] = $pickerUrl;
-                @endphp
+        @if ( $boards->count() > 1 || null !== $pickerUrl )
+            {{-- The switcher sits beside the title: the header's meta part, placed after the heading by kanban.css. --}}
+            <x-slot:meta>
                 <x-artisanpack-dropdown-menu
-                    :label="__( 'Switch board' )"
+                    :classes="[ 'trigger' => 'ec-kb-switcher-trigger' ]"
                     data-ec-kb-switcher
                     data-ec-kb-targets="{{ json_encode( $switchTargets, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) }}"
                     x-on:select="const url = JSON.parse( $el.dataset.ecKbTargets )[ $event.detail.value ]; if ( url ) { window.location.assign( url ) }"
                 >
+                    <x-slot:label>
+                        <x-artisanpack-icon name="chevrons-up-down" />
+                        <span class="apui-sr-only">{{ __( 'Switch board' ) }}</span>
+                    </x-slot:label>
+
                     @foreach ( $boards as $option )
                         @if ( null !== BoardUrls::show( $option ) )
                             <x-artisanpack-dropdown-menu-item
@@ -583,14 +590,39 @@
 
                     @if ( null !== $pickerUrl )
                         <x-artisanpack-dropdown-menu-separator />
-                        <x-artisanpack-dropdown-menu-item value="all" icon="o-squares-2x2" data-ec-kb-switch="all">{{ __( 'All boards' ) }}</x-artisanpack-dropdown-menu-item>
+                        <x-artisanpack-dropdown-menu-item value="all" icon="layout-grid" data-ec-kb-switch="all">{{ __( 'All boards' ) }}</x-artisanpack-dropdown-menu-item>
                     @endif
                 </x-artisanpack-dropdown-menu>
-            @endif
-        </div>
+            </x-slot:meta>
+        @endif
 
-        <div class="flex flex-wrap items-center gap-2">
+        <x-slot:actions>
             <x-artisanpack-ec-kb-connection :seconds="$realtime['poll']" />
+
+            @if ( $editing )
+                <x-artisanpack-button
+                    variant="ghost" color="neutral"
+                    leading-icon="o-squares-plus"
+                    x-on:click="$dispatch( 'ec-kb-edit-widgets', { columnId: null } )"
+                    data-ec-kb-board-widgets
+                >{{ __( 'Default card widgets' ) }}</x-artisanpack-button>
+                @if ( null !== $advancedUrl )
+                    <x-artisanpack-button variant="link" color="primary" leading-icon="o-adjustments-horizontal" :href="$advancedUrl" data-ec-kb-advanced-settings>{{ __( 'Advanced settings' ) }}</x-artisanpack-button>
+                @endif
+                <x-artisanpack-button leading-icon="check" wire:click="stopEditing" data-ec-kb-stop-editing>{{ __( 'Done editing' ) }}</x-artisanpack-button>
+            @else
+                <x-artisanpack-button
+                    variant="ghost" color="neutral"
+                    leading-icon="o-bolt"
+                    x-on:click="$dispatch( 'ec-kb-edit-automations', { columnId: null } )"
+                    data-ec-kb-automations
+                >{{ __( 'Automations' ) }}</x-artisanpack-button>
+
+                @if ( $canEdit )
+                    <x-artisanpack-button variant="outline" color="neutral" leading-icon="pencil" wire:click="startEditing" data-ec-kb-edit-board>{{ __( 'Edit board' ) }}</x-artisanpack-button>
+                    <x-artisanpack-button leading-icon="plus" wire:click="openAddOrder" data-ec-kb-add-order>{{ __( 'Add order' ) }}</x-artisanpack-button>
+                @endif
+            @endif
 
             @foreach ( $toolbar as $action )
                 @if ( null !== $action['url'] && null !== $action['event'] )
@@ -613,35 +645,8 @@
                 @endif
             @endforeach
 
-            @unless ( $editing )
-                <x-artisanpack-button
-                    variant="ghost" color="neutral" size="sm"
-                    leading-icon="o-bolt"
-                    x-on:click="$dispatch( 'ec-kb-edit-automations', { columnId: null } )"
-                    data-ec-kb-automations
-                >{{ __( 'Automations' ) }}</x-artisanpack-button>
-            @endunless
-
-            @if ( $canEdit && ! $editing )
-                <x-artisanpack-button size="sm" leading-icon="plus" wire:click="openAddOrder" data-ec-kb-add-order>{{ __( 'Add order' ) }}</x-artisanpack-button>
-                <x-artisanpack-button variant="ghost" color="neutral" size="sm" leading-icon="pencil" wire:click="startEditing" data-ec-kb-edit-board>{{ __( 'Edit board' ) }}</x-artisanpack-button>
-            @endif
-
-            @if ( $editing )
-                <x-artisanpack-button
-                    variant="ghost" color="neutral" size="sm"
-                    leading-icon="o-squares-plus"
-                    x-on:click="$dispatch( 'ec-kb-edit-widgets', { columnId: null } )"
-                    data-ec-kb-board-widgets
-                >{{ __( 'Default card widgets' ) }}</x-artisanpack-button>
-                @if ( null !== $advancedUrl )
-                    <x-artisanpack-button variant="ghost" color="neutral" size="sm" leading-icon="settings" :href="$advancedUrl" data-ec-kb-advanced-settings>{{ __( 'Advanced settings' ) }}</x-artisanpack-button>
-                @endif
-                <x-artisanpack-button size="sm" leading-icon="check" wire:click="stopEditing" data-ec-kb-stop-editing>{{ __( 'Done editing' ) }}</x-artisanpack-button>
-            @endif
-
             {{-- Below md the filters live in a drawer: its button, and Clear filters while any are on. --}}
-            <div class="ec-kb-below-md flex flex-wrap items-center gap-2">
+            <span class="ec-kb-below-md ec-kb-toolbar-filters">
                 <x-artisanpack-button
                     variant="outline"
                     color="neutral"
@@ -660,13 +665,9 @@
                 @if ( $activeFilters > 0 )
                     <x-artisanpack-button variant="ghost" color="neutral" size="sm" leading-icon="x" wire:click="clearFilters" data-ec-kb-toolbar-clear-filters>{{ __( 'Clear filters' ) }}</x-artisanpack-button>
                 @endif
-            </div>
-        </div>
-
-        @if ( filled( $board->description ) )
-            <p class="ec-kb-muted w-full text-sm">{{ $board->description }}</p>
-        @endif
-    </div>
+            </span>
+        </x-slot:actions>
+    </x-artisanpack-page-header>
 
     <div class="ec-kb-from-md">
         @include( 'ecommerce-kanban::partials.filter-bar', [ 'prefix' => 'ec-kb-filters' ] )
@@ -692,15 +693,23 @@
     </x-artisanpack-drawer>
 
     @unless ( $board->is_active )
-        <x-artisanpack-alert color="warning" icon="o-eye-slash" data-ec-kb-inactive-notice>
-            {{ __( 'This board is switched off. Only people who can edit it see it.' ) }}
-        </x-artisanpack-alert>
+        <x-artisanpack-alert
+            color="warning"
+            icon="eye-off"
+            :title="__( 'This board is switched off' )"
+            :description="__( 'Only people who can edit it see it.' )"
+            data-ec-kb-inactive-notice
+        />
     @endunless
 
     @if ( $editing )
-        <x-artisanpack-alert color="info" icon="pencil" data-ec-kb-editing-notice>
-            {{ __( 'Editing the board. Drag column headers or use the arrows to reorder columns; changes save as you make them.' ) }}
-        </x-artisanpack-alert>
+        <x-artisanpack-alert
+            color="info"
+            icon="pencil"
+            :title="__( 'Editing the board' )"
+            :description="__( 'Drag column headers or use the arrows to reorder columns. Changes save as you make them.' )"
+            data-ec-kb-editing-notice
+        />
     @endif
 
     @if ( [] === $columns && ! $editing )
@@ -755,16 +764,21 @@
             @endforeach
 
             @if ( $editing )
-                <div class="flex w-60 shrink-0 items-start" wire:key="add-column">
-                    <x-artisanpack-button variant="outline" color="neutral" class="w-full" leading-icon="plus" wire:click="openAddColumn" data-ec-kb-add-column>{{ __( 'Add column' ) }}</x-artisanpack-button>
+                <div class="ec-kb-add-column" wire:key="add-column">
+                    <x-artisanpack-button variant="outline" color="neutral" class="ec-kb-add-column-button" leading-icon="plus" wire:click="openAddColumn" data-ec-kb-add-column>{{ __( 'Add column' ) }}</x-artisanpack-button>
                 </div>
             @endif
         </div>
     @endif
 
-    {{-- "Move to…" (spec §7.3, D10): the single-pointer alternative to dragging. --}}
-    <x-artisanpack-dialog wire:model="moveDialog" :title="null === $moveNumber ? __( 'Move to…' ) : __( 'Move order :number', [ 'number' => $moveNumber ] )" data-ec-kb-move-dialog>
-        <x-artisanpack-form wire:submit="submitMove">
+    {{-- "Move to…" (spec §7.3, D10): the single-pointer and keyboard alternative to dragging. --}}
+    <x-artisanpack-dialog
+        wire:model="moveDialog"
+        :title="null === $moveNumber ? __( 'Move to…' ) : __( 'Move order :number', [ 'number' => $moveNumber ] )"
+        :description="__( 'The keyboard and single-pointer way to move a card.' )"
+        data-ec-kb-move-dialog
+    >
+        <form id="ec-kb-move-form" class="ec-kb-dialog-form" wire:submit="submitMove">
             <x-artisanpack-select
                 id="ec-kb-move-column"
                 placeholder=""
@@ -797,32 +811,45 @@
                     data-ec-kb-move-after
                 />
             @endif
-
-            <x-slot:actions>
-                <x-artisanpack-button variant="ghost" color="neutral" wire:click="closeMoveDialog">{{ __( 'Cancel' ) }}</x-artisanpack-button>
-                <x-artisanpack-button type="submit" wire:loading.attr="disabled" wire:target="submitMove" data-ec-kb-move-submit>{{ __( 'Move' ) }}</x-artisanpack-button>
-            </x-slot:actions>
-        </x-artisanpack-form>
-    </x-artisanpack-dialog>
-
-    {{-- Moving into an exit column changes the whole order's status, so it is confirmed first. --}}
-    <x-artisanpack-dialog wire:model="confirmingMove" :title="null === $pending ? '' : __( 'Move order :number to :column?', $pending )" data-ec-kb-confirm-move>
-        @if ( null !== $pending )
-            <p>{{ __( 'This changes the whole order\'s status to :status, on every board it is on.', [ 'status' => $pending['status'] ] ) }}</p>
-        @endif
+        </form>
 
         <x-slot:footer>
-            <x-artisanpack-button variant="ghost" color="neutral" wire:click="cancelMove" data-ec-kb-cancel-move>{{ __( 'Cancel' ) }}</x-artisanpack-button>
+            <x-artisanpack-button variant="outline" color="neutral" wire:click="closeMoveDialog" data-ec-kb-cancel-move-dialog>{{ __( 'Cancel' ) }}</x-artisanpack-button>
+            <x-artisanpack-button type="submit" form="ec-kb-move-form" wire:loading.attr="disabled" wire:target="submitMove" data-ec-kb-move-submit>{{ __( 'Move' ) }}</x-artisanpack-button>
+        </x-slot:footer>
+    </x-artisanpack-dialog>
+
+    {{-- Moving into an exit column changes the whole order's status on every board, so it is confirmed first. --}}
+    <x-artisanpack-dialog
+        wire:model="confirmingMove"
+        role="alertdialog"
+        color="warning"
+        icon="triangle-alert"
+        :title="null === $pending ? '' : __( 'Move order :number to :column?', $pending )"
+        :description="null === $pending ? null : __( 'This changes the whole order\'s status to :status, on every board it is on.', [ 'status' => $pending['status'] ] )"
+        data-ec-kb-confirm-move
+    >
+        <x-slot:footer>
+            <x-artisanpack-button variant="outline" color="neutral" wire:click="cancelMove" data-ec-kb-cancel-move>{{ __( 'Cancel' ) }}</x-artisanpack-button>
             <x-artisanpack-button wire:click="confirmMove" wire:loading.attr="disabled" wire:target="confirmMove" data-ec-kb-confirm-move-button>{{ __( 'Move' ) }}</x-artisanpack-button>
         </x-slot:footer>
     </x-artisanpack-dialog>
 
     @if ( $canEdit )
         {{-- "Add order" (spec §7.6.1): search orders that aren't on the board and put one on it. --}}
-        <x-artisanpack-dialog wire:model="addOrderDialog" :title="__( 'Add an order to this board' )" data-ec-kb-add-order-dialog>
-            <x-artisanpack-form wire:submit="submitAddOrder">
+        @php
+            $addOrderSearched = is_scalar( $addOrderSearch ) && '' !== trim( (string) $addOrderSearch );
+        @endphp
+        <x-artisanpack-dialog
+            wire:model="addOrderDialog"
+            :title="__( 'Add an order to this board' )"
+            :description="__( 'Only orders that aren\'t on this board are listed.' )"
+            data-ec-kb-add-order-dialog
+        >
+            <form id="ec-kb-add-order-form" class="ec-kb-dialog-form" wire:submit="submitAddOrder">
                 <x-artisanpack-input
                     id="ec-kb-add-order-search"
+                    type="search"
                     wire:model.live.debounce.300ms="addOrderSearch"
                     :label="__( 'Search orders' )"
                     :placeholder="__( 'Order number or email' )"
@@ -830,9 +857,9 @@
                     data-ec-kb-add-order-search
                 />
 
-                @if ( '' !== trim( (string) $addOrderSearch ) )
+                @if ( $addOrderSearched )
                     @if ( [] === $addOrderResults )
-                        <p class="ec-kb-muted text-sm" data-ec-kb-add-order-none>{{ __( "No orders that aren't already on this board match." ) }}</p>
+                        <p class="ec-kb-dialog-note" role="status" data-ec-kb-add-order-none>{{ __( "No orders that aren't already on this board match." ) }}</p>
                     @else
                         <x-artisanpack-radio-group
                             id="ec-kb-add-order-id"
@@ -844,29 +871,44 @@
                     @endif
                 @endif
 
-                <x-artisanpack-select
-                    id="ec-kb-add-order-column"
-                    placeholder=""
-                    wire:model="addOrderColumnId"
-                    :label="__( 'Column' )"
-                    :options="\ArtisanPackUI\EcommerceKanbanLivewire\Support\ControlOptions::from( $addOrderColumns )"
-                    :hint="__( 'The entry column is the first column that fits the order\'s status.' )"
-                    data-ec-kb-add-order-column
-                />
+                @if ( ! $addOrderSearched || [] !== $addOrderResults )
+                    <x-artisanpack-select
+                        id="ec-kb-add-order-column"
+                        placeholder=""
+                        wire:model="addOrderColumnId"
+                        :label="__( 'Column' )"
+                        :options="\ArtisanPackUI\EcommerceKanbanLivewire\Support\ControlOptions::from( $addOrderColumns )"
+                        :hint="__( 'The entry column is the first column that fits the order\'s status.' )"
+                        data-ec-kb-add-order-column
+                    />
+                @endif
+            </form>
 
-                <x-slot:actions>
-                    <x-artisanpack-button variant="ghost" color="neutral" wire:click="cancelAddOrder">{{ __( 'Cancel' ) }}</x-artisanpack-button>
-                    <x-artisanpack-button type="submit" wire:loading.attr="disabled" wire:target="submitAddOrder" data-ec-kb-add-order-submit>{{ __( 'Add to board' ) }}</x-artisanpack-button>
-                </x-slot:actions>
-            </x-artisanpack-form>
+            <x-slot:footer>
+                <x-artisanpack-button variant="outline" color="neutral" wire:click="cancelAddOrder" data-ec-kb-cancel-add-order>{{ __( 'Cancel' ) }}</x-artisanpack-button>
+                <x-artisanpack-button
+                    type="submit"
+                    form="ec-kb-add-order-form"
+                    :disabled="[] === $addOrderResults"
+                    wire:loading.attr="disabled"
+                    wire:target="submitAddOrder"
+                    data-ec-kb-add-order-submit
+                >{{ __( 'Add to board' ) }}</x-artisanpack-button>
+            </x-slot:footer>
         </x-artisanpack-dialog>
 
         {{-- Removing a card takes the order off this board only; it runs once per token. --}}
-        <x-artisanpack-dialog wire:model="confirmingRemove" :title="null === $removingNumber ? '' : __( 'Remove order :number from this board?', [ 'number' => $removingNumber ] )" data-ec-kb-confirm-remove>
-            <p>{{ __( "The order stays on any other boards it is on, and its status doesn't change." ) }}</p>
-
+        <x-artisanpack-dialog
+            wire:model="confirmingRemove"
+            role="alertdialog"
+            color="error"
+            icon="trash"
+            :title="null === $removingNumber ? '' : __( 'Remove order :number from this board?', [ 'number' => $removingNumber ] )"
+            :description="__( 'The order stays on any other boards it is on, and its status doesn\'t change.' )"
+            data-ec-kb-confirm-remove
+        >
             <x-slot:footer>
-                <x-artisanpack-button variant="ghost" color="neutral" wire:click="cancelRemoveCard" data-ec-kb-cancel-remove>{{ __( 'Cancel' ) }}</x-artisanpack-button>
+                <x-artisanpack-button variant="outline" color="neutral" wire:click="cancelRemoveCard" data-ec-kb-cancel-remove>{{ __( 'Cancel' ) }}</x-artisanpack-button>
                 @if ( null !== $removeToken )
                     <x-artisanpack-button color="error" wire:click="removeCard( {{ \Illuminate\Support\Js::from( $removeToken ) }} )" wire:loading.attr="disabled" wire:target="removeCard" data-ec-kb-remove-button>{{ __( 'Remove from board' ) }}</x-artisanpack-button>
                 @endif
@@ -875,7 +917,7 @@
 
         {{-- Column editor (spec §7.8): the engine's validation messages show on the fields. The color picker stays in the dialog's layer: its own portal inside the dialog's leaves its positioner outside the widget. --}}
         <x-artisanpack-dialog wire:model="columnDialog" :title="null === $editingColumn ? __( 'Edit column' ) : __( 'Edit column: :substatus', [ 'substatus' => $editingColumn ] )" data-ec-kb-column-dialog>
-            <x-artisanpack-form wire:submit="saveColumn">
+            <form id="ec-kb-column-form" class="ec-kb-dialog-form" wire:submit="saveColumn">
                 <x-artisanpack-input
                     id="ec-kb-column-label"
                     wire:model="columnForm.label_override"
@@ -908,19 +950,22 @@
                     :hint="__( 'The most cards this column may hold. Leave empty for no limit.' )"
                     data-ec-kb-column-wip
                 />
+            </form>
 
-                <x-slot:actions>
-                    <x-artisanpack-button variant="ghost" color="neutral" wire:click="closeColumnDialog">{{ __( 'Cancel' ) }}</x-artisanpack-button>
-                    <x-artisanpack-button type="submit" wire:loading.attr="disabled" wire:target="saveColumn" data-ec-kb-column-save>{{ __( 'Save' ) }}</x-artisanpack-button>
-                </x-slot:actions>
-            </x-artisanpack-form>
+            <x-slot:footer>
+                <x-artisanpack-button variant="outline" color="neutral" wire:click="closeColumnDialog" data-ec-kb-cancel-column>{{ __( 'Cancel' ) }}</x-artisanpack-button>
+                <x-artisanpack-button type="submit" form="ec-kb-column-form" wire:loading.attr="disabled" wire:target="saveColumn" data-ec-kb-column-save>{{ __( 'Save' ) }}</x-artisanpack-button>
+            </x-slot:footer>
         </x-artisanpack-dialog>
 
-        <x-artisanpack-dialog wire:model="addColumnDialog" :title="__( 'Add a column' )" data-ec-kb-add-column-dialog>
-            <x-artisanpack-form wire:submit="addColumn">
-                @if ( [] === $substatusOptions )
-                    <p class="ec-kb-muted text-sm" data-ec-kb-no-substatuses>{{ __( 'Every sub-status already has a column on this board.' ) }}</p>
-                @else
+        <x-artisanpack-dialog
+            wire:model="addColumnDialog"
+            :title="__( 'Add a column' )"
+            :description="[] === $substatusOptions ? __( 'Every sub-status already has a column on this board.' ) : __( 'Each column shows the orders in one sub-status.' )"
+            data-ec-kb-add-column-dialog
+        >
+            @if ( [] !== $substatusOptions )
+                <form id="ec-kb-add-column-form" class="ec-kb-dialog-form" wire:submit="addColumn">
                     <x-artisanpack-select
                         id="ec-kb-add-column-substatus"
                         wire:model="newSubstatusId"
@@ -929,56 +974,75 @@
                         :placeholder="__( 'Choose a sub-status' )"
                         data-ec-kb-add-column-substatus
                     />
-                @endif
+                </form>
+            @endif
 
-                <x-slot:actions>
-                    <x-artisanpack-button variant="ghost" color="neutral" wire:click="cancelAddColumn">{{ __( 'Cancel' ) }}</x-artisanpack-button>
-                    @if ( [] !== $substatusOptions )
-                        <x-artisanpack-button type="submit" wire:loading.attr="disabled" wire:target="addColumn" data-ec-kb-add-column-submit>{{ __( 'Add column' ) }}</x-artisanpack-button>
-                    @endif
-                </x-slot:actions>
-            </x-artisanpack-form>
+            <x-slot:footer>
+                @if ( [] === $substatusOptions )
+                    <x-artisanpack-button variant="outline" color="neutral" wire:click="cancelAddColumn" data-ec-kb-no-substatuses>{{ __( 'Close' ) }}</x-artisanpack-button>
+                @else
+                    <x-artisanpack-button variant="outline" color="neutral" wire:click="cancelAddColumn" data-ec-kb-cancel-add-column>{{ __( 'Cancel' ) }}</x-artisanpack-button>
+                    <x-artisanpack-button type="submit" form="ec-kb-add-column-form" wire:loading.attr="disabled" wire:target="addColumn" data-ec-kb-add-column-submit>{{ __( 'Add column' ) }}</x-artisanpack-button>
+                @endif
+            </x-slot:footer>
         </x-artisanpack-dialog>
 
         {{-- Removing a column runs once per token; cards on it must move first. --}}
-        <x-artisanpack-dialog wire:model="confirmingDeleteColumn" :title="null === $deletingColumn ? '' : __( 'Remove column :column?', [ 'column' => $deletingColumn['label'] ] )" data-ec-kb-confirm-delete-column>
-            @if ( null !== $deletingColumn )
-                <div class="flex flex-col gap-4">
-                    @if ( $deletingColumn['cards'] > 0 )
-                        <p data-ec-kb-delete-column-cards>{{ trans_choice( 'This column has :count card. Choose a column to move it to before removing this one.|This column has :count cards. Choose a column to move them to before removing this one.', $deletingColumn['cards'], [ 'count' => $deletingColumn['cards'] ] ) }}</p>
+        @php
+            $deletingCards = null === $deletingColumn ? 0 : (int) $deletingColumn['cards'];
+            $deletingExit  = null !== $deletingColumn && $deletingCards > 0 && null !== $deletingColumn['exit'];
+        @endphp
+        <x-artisanpack-dialog
+            wire:model="confirmingDeleteColumn"
+            role="alertdialog"
+            color="error"
+            icon="trash"
+            :title="null === $deletingColumn ? '' : __( 'Remove column :column?', [ 'column' => $deletingColumn['label'] ] )"
+            :description="null === $deletingColumn ? null : ( $deletingCards > 0
+                ? trans_choice( 'This column has :count card. Choose a column to move it to before removing this one.|This column has :count cards. Choose a column to move them to before removing this one.', $deletingCards, [ 'count' => $deletingCards ] )
+                : __( 'Automations that move cards into this column are removed with it.' ) )"
+            data-ec-kb-confirm-delete-column
+        >
+            @if ( $deletingCards > 0 )
+                <div class="ec-kb-dialog-form" data-ec-kb-delete-column-cards>
+                    <x-artisanpack-select
+                        id="ec-kb-delete-column-move-to"
+                        wire:model.live="deleteMoveTo"
+                        :label="__( 'Move the cards to' )"
+                        :options="\ArtisanPackUI\EcommerceKanbanLivewire\Support\ControlOptions::from( $moveToColumns )"
+                        :placeholder="__( 'Choose a column' )"
+                        data-ec-kb-delete-column-move-to
+                    />
 
-                        <x-artisanpack-select
-                            id="ec-kb-delete-column-move-to"
-                            wire:model.live="deleteMoveTo"
-                            :label="__( 'Move the cards to' )"
-                            :options="\ArtisanPackUI\EcommerceKanbanLivewire\Support\ControlOptions::from( $moveToColumns )"
-                            :placeholder="__( 'Choose a column' )"
-                            data-ec-kb-delete-column-move-to
+                    {{-- An exit column changes every moved order's status, so it is confirmed, as a drop into one is. --}}
+                    @if ( $deletingExit )
+                        <x-artisanpack-alert color="warning" icon="triangle-alert" data-ec-kb-delete-column-exit>
+                            {{ trans_choice( 'Moving :count order to :column changes its status to :status on every board it is on.|Moving :count orders to :column changes each order\'s status to :status on every board it is on.', $deletingCards, [ 'count' => $deletingCards, 'column' => $deletingColumn['exit']['column'], 'status' => $deletingColumn['exit']['status'] ] ) }}
+                        </x-artisanpack-alert>
+
+                        <x-artisanpack-checkbox
+                            id="ec-kb-delete-column-confirm-exit"
+                            wire:model.live="confirmDeleteExit"
+                            :label="__( 'I understand' )"
+                            data-ec-kb-delete-column-confirm-exit
                         />
-
-                        {{-- An exit column changes every moved order's status, so it is confirmed, as a drop into one is. --}}
-                        @if ( null !== $deletingColumn['exit'] )
-                            <x-artisanpack-alert color="warning" icon="triangle-alert" data-ec-kb-delete-column-exit>
-                                {{ trans_choice( 'Moving :count order to :column changes its status to :status on every board it is on.|Moving :count orders to :column changes each order\'s status to :status on every board it is on.', $deletingColumn['cards'], [ 'count' => $deletingColumn['cards'], 'column' => $deletingColumn['exit']['column'], 'status' => $deletingColumn['exit']['status'] ] ) }}
-                            </x-artisanpack-alert>
-
-                            <x-artisanpack-checkbox
-                                id="ec-kb-delete-column-confirm-exit"
-                                wire:model="confirmDeleteExit"
-                                :label="__( 'I understand' )"
-                                data-ec-kb-delete-column-confirm-exit
-                            />
-                        @endif
-                    @else
-                        <p>{{ __( 'Automations that move cards into this column are removed with it.' ) }}</p>
                     @endif
+
+                    <p class="ec-kb-dialog-note">{{ __( 'Automations that move cards into this column are removed with it.' ) }}</p>
                 </div>
             @endif
 
             <x-slot:footer>
-                <x-artisanpack-button variant="ghost" color="neutral" wire:click="cancelDeleteColumn" data-ec-kb-cancel-delete-column>{{ __( 'Cancel' ) }}</x-artisanpack-button>
+                <x-artisanpack-button variant="outline" color="neutral" wire:click="cancelDeleteColumn" data-ec-kb-cancel-delete-column>{{ __( 'Cancel' ) }}</x-artisanpack-button>
                 @if ( null !== $deletingColumn )
-                    <x-artisanpack-button color="error" wire:click="deleteColumn( {{ \Illuminate\Support\Js::from( $deletingColumn['token'] ) }} )" wire:loading.attr="disabled" wire:target="deleteColumn" data-ec-kb-delete-column-button>{{ __( 'Remove column' ) }}</x-artisanpack-button>
+                    <x-artisanpack-button
+                        color="error"
+                        :disabled="$deletingExit && ! $confirmDeleteExit"
+                        wire:click="deleteColumn( {{ \Illuminate\Support\Js::from( $deletingColumn['token'] ) }} )"
+                        wire:loading.attr="disabled"
+                        wire:target="deleteColumn"
+                        data-ec-kb-delete-column-button
+                    >{{ __( 'Remove column' ) }}</x-artisanpack-button>
                 @endif
             </x-slot:footer>
         </x-artisanpack-dialog>

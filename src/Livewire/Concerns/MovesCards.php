@@ -21,6 +21,7 @@ use ArtisanPackUI\Ecommerce\Models\OrderBoardAssignment;
 use ArtisanPackUI\Ecommerce\Services\KanbanBoardService;
 use ArtisanPackUI\EcommerceKanbanLivewire\Queries\ColumnCardsQuery;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\CardActions;
+use ArtisanPackUI\EcommerceKanbanLivewire\Support\CardPresenter;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\Hooks;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\MoveErrors;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\Statuses;
@@ -358,7 +359,7 @@ trait MovesCards
             // One more than shown, to tell whether the list was cut short.
             foreach ( ColumnCardsQuery::cards( $target, self::MOVE_AFTER_LIMIT + 2 ) as $card ) {
                 if ( (int) $card->order_id !== $this->moveOrderId ) {
-                    $cards[] = [ 'id' => (int) $card->order_id, 'name' => __( 'Order :number', [ 'number' => $card->order->order_number ] ) ];
+                    $cards[] = [ 'id' => (int) $card->order_id, 'name' => __( 'Order :number · :customer', [ 'number' => $card->order->order_number, 'customer' => CardPresenter::customerName( $card->order ) ] ) ];
                 }
             }
         }

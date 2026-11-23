@@ -254,7 +254,7 @@ it( 'labels the date inputs, keeps the filters button below md, and replaces the
 
     expect( $after )->toMatch( '/<label[^>]*for="ec-kb-filters-placed-from-control"[^>]*>Placed from/' )
         ->and( $after )->toMatch( '/<label[^>]*for="ec-kb-filters-placed-to-control"[^>]*>Placed to/' )
-        ->and( $after )->toMatch( '/<div class="ec-kb-below-md[^"]*">\s*(<!--\[if BLOCK\]><!\[endif\]-->)?\s*<button[^>]*data-ec-kb-filters-toggle/' )
+        ->and( $after )->toMatch( '/<span class="ec-kb-below-md[^"]*">\s*(<!--\[if BLOCK\]><!\[endif\]-->)?\s*<button[^>]*data-ec-kb-filters-toggle/' )
         ->and( $tagsKey( $before ) )->not->toBe( '' )
         ->and( $tagsKey( $after ) )->not->toBe( $tagsKey( $before ) );
 } );

@@ -24,7 +24,7 @@ it( 'lists active boards in position order with descriptions and card counts', f
 
     Livewire::test( BoardPicker::class, [ 'pick' => true ] )
         ->assertOk()
-        ->assertSeeInOrder( [ 'Production', '1 card', 'Shipping', '3 cards', 'Ready to ship' ] )
+        ->assertSeeInOrder( [ 'Production', '1 card', 'Shipping', 'Ready to ship', '3 cards' ] )
         ->assertDontSee( 'Returns' )
         ->assertSeeHtml( route( 'artisanpack.ecommerce.kanban.boards.show', [ 'board' => KanbanBoard::query()->where( 'name', 'Shipping' )->value( 'id' ) ] ) );
 } );

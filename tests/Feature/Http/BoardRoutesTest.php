@@ -127,7 +127,8 @@ it( 'opens a switched-off board for an editor, says so, and doesn\'t remember it
     $this->actingAs( $user )
         ->get( route( 'artisanpack.ecommerce.kanban.boards.show', [ 'board' => $board->id ] ) )
         ->assertOk()
-        ->assertSee( 'This board is switched off.' );
+        ->assertSee( 'This board is switched off' )
+        ->assertSee( 'Only people who can edit it see it.' );
 
     expect( ArtisanPackUI\EcommerceKanbanLivewire\Support\LastBoard::id( $user ) )->toBeNull();
 
