@@ -44,3 +44,16 @@ it( 'registers the view namespace', function (): void {
 it( 'registers the publish tags', function ( string $tag ): void {
     expect( ServiceProvider::pathsToPublish( EcommerceKanbanLivewireServiceProvider::class, $tag ) )->not->toBeEmpty();
 } )->with( [ 'ecommerce-kanban-config', 'ecommerce-kanban-views', 'ecommerce-kanban-lang' ] );
+
+it( 'registers its catalogues before any provider boots, so an early __() cannot cache a locale without them', function (): void {
+    $translator = new Illuminate\Translation\Translator(
+        new Illuminate\Translation\FileLoader( new Illuminate\Filesystem\Filesystem(), $this->app->langPath() ),
+        'es',
+    );
+    $this->app->instance( 'translator', $translator );
+
+    ( new EcommerceKanbanLivewireServiceProvider( $this->app ) )->register();
+
+    expect( $translator->get( 'Switch board' ) )->toBe( json_decode( (string) file_get_contents( dirname( __DIR__, 2 ) . '/lang/es.json' ), true )['Switch board'] )
+        ->not->toBe( 'Switch board' );
+} );

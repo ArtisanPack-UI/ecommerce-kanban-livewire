@@ -90,3 +90,18 @@ it( 'passes the engine translation lint', function (): void {
     expect( $code )->toBe( 0, $output )
         ->and( $output )->toContain( 'Translation lint passed' );
 } );
+
+it( 'agrees with the engine on every key they share', function ( string $locale ): void {
+    // Every package's JSON catalogue loads into one namespace, so a shared key
+    // must read the same everywhere or the winner depends on load order. The
+    // engine uses "WIP limit" as a lowercase validation attribute, while the
+    // board shows it as a field label, so that key is left out.
+    $engine = dirname( ( new ReflectionClass( ArtisanPackUI\Ecommerce\Providers\EcommerceServiceProvider::class ) )->getFileName(), 3 ) . '/lang/' . $locale . '.json';
+    $theirs = json_decode( (string) file_get_contents( $engine ), true, flags: JSON_THROW_ON_ERROR );
+
+    foreach ( catalogue( $locale ) as $key => $value ) {
+        if ( 'WIP limit' !== $key && array_key_exists( $key, $theirs ) ) {
+            expect( $value )->toBe( $theirs[ $key ], $locale . ': ' . $key );
+        }
+    }
+} )->with( [ 'es', 'fr', 'de' ] );
