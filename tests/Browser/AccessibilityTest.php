@@ -3,8 +3,8 @@
 declare( strict_types=1 );
 
 use Tests\Browser\Support\Accessibility;
+use Tests\Browser\Support\CardMenu;
 use Tests\Browser\Support\JavaScript;
-use Tests\Browser\Support\Locators;
 
 /*
  * axe on every board screen, dialog, and panel (#22, #23), against the
@@ -48,9 +48,7 @@ it( 'has no accessibility violations in the card slide-out', function (): void {
 } );
 
 it( 'has no accessibility violations in the "Move to…" dialog', function (): void {
-    $page = visit( $this->boardUrl() )
-        ->click( Locators::role( 'Actions for order 1001' ) )
-        ->click( Locators::menuItem( 'move' ) )
+    $page = CardMenu::choose( visit( $this->boardUrl() )->assertPresent( '[data-ec-kb-card]' ), '1001', 'move' )
         ->assertVisible( '[data-ec-kb-move-submit]' );
 
     Accessibility::assertAccessible( $page, Accessibility::OPEN_OVERLAY );

@@ -34,8 +34,11 @@ final class CardPresenter
 {
     /**
      * The card CSS classes filter: `( array $classes, Order $order,
-     * KanbanColumn $column, KanbanBoard $board ): array`. The classes must be
-     * in the host's Tailwind sources.
+     * KanbanColumn $column, KanbanBoard $board ): array`. Style the classes
+     * in the host's own stylesheet, for example
+     * `.ec-kb-card.shop-card-large { border-inline-start: 4px solid var(--apui-color-warning); }`;
+     * Tailwind isn't required (if the host uses it, the classes must be in
+     * its sources).
      *
      * @since 1.0.0
      *

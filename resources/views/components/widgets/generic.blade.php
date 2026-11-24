@@ -10,7 +10,8 @@
     tooltip's text is also part of the badge's name.
 
     Receives `$widget`: `key`, `label`, `value`, `tone`, and optionally
-    `icon`, `tooltip`, `href`.
+    `icon`, `tooltip`, `href`, and `id_prefix` (the card's, so the tooltip
+    gets an id of its own even in a single-card refresh).
 
     @package    ArtisanPack_UI
     @subpackage EcommerceKanbanLivewire
@@ -28,15 +29,16 @@
     $value   = (string) ( $widget['value'] ?? '' );
     $tooltip = filled( $widget['tooltip'] ?? null ) ? (string) $widget['tooltip'] : null;
     $href    = SafeUrl::of( $widget['href'] ?? null );
+    $tipId   = filled( $widget['id_prefix'] ?? null ) ? $widget['id_prefix'] . '-tip-' . \Illuminate\Support\Str::slug( (string) ( $widget['key'] ?? 'widget' ) ) : null;
 @endphp
 @if ( '' !== $value )
     @php( $badgeData = [ 'widget' => $widget, 'tone' => $tone, 'icons' => $icons, 'label' => $label, 'value' => $value, 'note' => $tooltip ] )
     @if ( null !== $href && null !== $tooltip )
-        <x-artisanpack-tooltip :content="$tooltip"><a href="{{ $href }}" class="ec-kb-widget-link">@include( 'ecommerce-kanban::components.widgets.partials.badge', $badgeData )</a></x-artisanpack-tooltip>
+        <x-artisanpack-tooltip :id="$tipId" :content="$tooltip"><a href="{{ $href }}" class="ec-kb-widget-link">@include( 'ecommerce-kanban::components.widgets.partials.badge', $badgeData )</a></x-artisanpack-tooltip>
     @elseif ( null !== $href )
         <a href="{{ $href }}" class="ec-kb-widget-link">@include( 'ecommerce-kanban::components.widgets.partials.badge', $badgeData )</a>
     @elseif ( null !== $tooltip )
-        <x-artisanpack-tooltip :content="$tooltip"><span class="ec-kb-widget-tip" tabindex="0">@include( 'ecommerce-kanban::components.widgets.partials.badge', $badgeData )</span></x-artisanpack-tooltip>
+        <x-artisanpack-tooltip :id="$tipId" :content="$tooltip"><span class="ec-kb-widget-tip" tabindex="0">@include( 'ecommerce-kanban::components.widgets.partials.badge', $badgeData )</span></x-artisanpack-tooltip>
     @else
         @include( 'ecommerce-kanban::components.widgets.partials.badge', $badgeData )
     @endif

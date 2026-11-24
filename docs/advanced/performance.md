@@ -12,7 +12,7 @@ The board is built to stay fast with thousands of cards. Every card query is fix
 - **Headers first.** The first render draws the column headers only. The page then loads the cards of the columns on screen.
 - **Lazy columns.** Columns further along show skeletons and load their cards when they scroll into view, in batches.
 - **Collapsed columns never load.** A column the user collapsed (remembered per board in the browser) runs no card queries until it is expanded.
-- **Paging.** A column shows `cards.per_column` cards (25 by default); "Show more" adds the same number again.
+- **Paging.** A column shows `cards.per_column` cards (25 by default); "Show more" adds the same number again, up to 500 cards per column (`Board::MAX_CARDS_PER_COLUMN`).
 - **Tag options load with the cards**, not on every request.
 
 ## Re-rendering only what changed

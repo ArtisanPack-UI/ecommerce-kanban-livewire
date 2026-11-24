@@ -56,11 +56,19 @@ Embed the component in the view:
 <livewire:artisanpack-ecommerce-kanban-board :board="$board" />
 ```
 
-The page needs what the package's layouts provide (see [Layouts](../installation/layouts.md#the-layout-contract)): your Tailwind build and main script (with drag-and-drop and, for live boards, Echo), Livewire's assets, `<x-artisanpack-toast />`, and `@include( 'ecommerce-kanban::partials.rate-limit-notice' )` after `@livewireScripts`.
+The page needs what the package's layouts provide (see [Layouts](../installation/layouts.md#the-layout-contract)):
+
+- your Vite entries, with the design system and its behavior engine, drag-and-drop, and (for live boards) Echo. See [Front-End Setup](../installation/front-end.md);
+- `@apuiThemeScript` in `<head>`, before `@vite`;
+- Livewire's assets;
+- `<x-artisanpack-toaster />`;
+- `@include( 'ecommerce-kanban::partials.rate-limit-notice' )` after `@livewireScripts`.
+
+The board brings its own styles: it registers its stylesheet (cards, columns, filter bar), with the Vite CSP nonce, as a Livewire `@assets` block, which Livewire adds to the page's `<head>` once per page, including for a `lazy` board. A page that embeds only the board picker should add `@include( 'ecommerce-kanban::partials.styles' )` once, since the picker's cards use the same stylesheet.
 
 ## Pointing links at your routes
 
-The board links to boards from the switcher, the picker, each card's **Open** action (its new-tab link), and the automation failure toast. With the routes off those links have nowhere to go, so supply your URLs:
+The board links to boards from the switcher, the picker, and each card's **Open** action (its new-tab link). With the routes off those links have nowhere to go, so supply your URLs:
 
 ```php
 use ArtisanPackUI\Ecommerce\Models\KanbanBoard;

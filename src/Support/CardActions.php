@@ -106,9 +106,12 @@ final class CardActions
     }
 
     /**
-     * The actions the viewer may take on a card.
+     * The actions the viewer may take on a card, one per key: a satellite
+     * action reusing a built-in key (`open`, `move`, `remove`) doesn't
+     * replace the built-in.
      *
      * @since 1.0.0
+     * @since 2.0.0 Built-in keys win over satellite duplicates.
      *
      * @param  Order         $order   The card's order.
      * @param  KanbanColumn  $column  The column the card is in.
@@ -144,6 +147,7 @@ final class CardActions
         return ActionList::normalize(
             applyFilters( self::FILTER, $actions, $order, $column, $this->board ),
             fn ( string $ability ): bool => $this->allows( $ability ),
+            [ 'open' => self::OPEN_EVENT, 'move' => self::MOVE_EVENT, 'remove' => self::REMOVE_EVENT ],
         );
     }
 

@@ -20,6 +20,7 @@ use ArtisanPackUI\Ecommerce\Models\OrderBoardAssignment;
 use ArtisanPackUI\Ecommerce\Services\KanbanRoutingService;
 use ArtisanPackUI\Ecommerce\Support\LocalizedDate;
 use ArtisanPackUI\Ecommerce\Support\MoneyFormatter;
+use ArtisanPackUI\EcommerceKanbanLivewire\Queries\VisibleCards;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\Authorization;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\CardActions;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\CardPresenter;
@@ -149,9 +150,12 @@ trait ManagesAssignments
     }
 
     /**
-     * Puts the picked order on the board.
+     * Puts the picked order on the board. An order that is already on it (a
+     * stale dialog, or someone else added it meanwhile) is reported rather
+     * than "added" again.
      *
      * @since 1.0.0
+     * @since 2.0.0 Reports an order already on the board.
      *
      * @return void
      */
@@ -173,6 +177,14 @@ trait ManagesAssignments
 
         if ( null === $order || ! Authorization::allows( auth()->user(), 'order.view', $order ) ) {
             $this->addError( 'addOrderId', __( 'That order no longer exists.' ) );
+
+            return;
+        }
+
+        if ( OrderBoardAssignment::query()->active()->where( 'board_id', $this->boardId )->where( 'order_id', $order->id )->exists() ) {
+            $this->addOrderDialog = false;
+            $this->info( __( 'Order :number is already on :board.', [ 'number' => $order->order_number, 'board' => $this->board->name ] ) );
+            $this->dispatch( 'ec-kb-focus', selector: '[data-ec-kb-add-order]' );
 
             return;
         }
@@ -262,6 +274,13 @@ trait ManagesAssignments
             return;
         }
 
+        // The card may have been hidden since the confirmation opened.
+        if ( ! $this->onBoard( (int) $order->id ) ) {
+            $this->error( MoveErrors::message( 'not-on-board', '' ) );
+
+            return;
+        }
+
         try {
             $removed = $this->withActionToken( $token, 'remove-card', $this->boardId . ':' . $order->id, fn (): bool => (bool) app( KanbanRoutingService::class )->remove( $order, $this->board, self::actorId() ) );
         } catch ( EcommerceException $exception ) {
@@ -284,6 +303,12 @@ trait ManagesAssignments
      */
     protected function assignmentData(): array
     {
+        // The card may have been hidden since the confirmation opened.
+        if ( null !== $this->removingOrderId && ! $this->onBoard( $this->removingOrderId ) ) {
+            $this->removingOrderId  = null;
+            $this->confirmingRemove = false;
+        }
+
         $removing = null === $this->removingOrderId ? null : Order::query()->whereKey( $this->removingOrderId )->value( 'order_number' );
 
         return [
@@ -343,9 +368,12 @@ trait ManagesAssignments
     }
 
     /**
-     * Whether `$orderId` has a card on this board.
+     * Whether `$orderId` has a card on this board that the
+     * `ap.ecommerce.kanban.cardQuery` filter leaves visible
+     * ({@see VisibleCards}).
      *
      * @since 1.0.0
+     * @since 2.0.0 A card the card query hides counts as not on the board.
      *
      * @param  int  $orderId  The order.
      *
@@ -353,6 +381,6 @@ trait ManagesAssignments
      */
     private function onBoard( int $orderId ): bool
     {
-        return OrderBoardAssignment::query()->active()->where( 'board_id', $this->boardId )->where( 'order_id', $orderId )->exists();
+        return null !== VisibleCards::assignment( $this->board, $orderId );
     }
 }

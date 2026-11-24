@@ -71,11 +71,15 @@ namespace ArtisanPackUI\EcommerceKanbanLivewire\Support;
  *   ```
  *
  * - {@see self::CARD_CLASSES} — `( array $classes, Order $order, KanbanColumn $column, KanbanBoard $board ): array`,
- *   extra CSS classes on a card ({@see CardPresenter}). Add the classes to
- *   the host's Tailwind sources.
+ *   extra CSS classes on a card ({@see CardPresenter}). Style them in the
+ *   host's own stylesheet; Tailwind isn't required.
  *
  *   ```php
- *   addFilter( 'ap.ecommerceKanbanLivewire.cardClasses', fn ( array $classes, Order $order ): array => $order->total_amount > 50_000 ? [ ...$classes, 'border-l-4 border-l-warning' ] : $classes );
+ *   addFilter( 'ap.ecommerceKanbanLivewire.cardClasses', fn ( array $classes, Order $order ): array => $order->total_amount > 50_000 ? [ ...$classes, 'shop-card-large' ] : $classes );
+ *   ```
+ *
+ *   ```css
+ *   .ec-kb-card.shop-card-large { border-inline-start: 4px solid var(--apui-color-warning); }
  *   ```
  *
  * - {@see self::BOARD_URL} — `( ?string $url, KanbanBoard $board, array $query ): ?string`

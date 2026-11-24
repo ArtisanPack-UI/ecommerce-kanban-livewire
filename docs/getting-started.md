@@ -17,21 +17,40 @@ php artisan ecommerce-kanban:install
 The service provider is auto-discovered. The install command:
 
 - publishes `config/artisanpack/ecommerce-kanban-livewire.php`;
-- prints the Tailwind `@source` lines, the drag-and-drop install command, and the import line;
+- prints the design-system setup (the component library's installer, or the npm packages, stylesheet lines, and behavior-engine lines to add by hand, and a reminder about `@apuiThemeScript`), the board's optional Tailwind `@source` lines, the drag-and-drop install command, and the import line;
 - reports the engine version, how many active boards there are (and how to create one), and whether real-time sync is set up.
 
 Nothing it checks stops the install. See [Installation](installation.md).
 
 ## 2. Add the board to your front end
 
-The package ships no CSS or JavaScript build. Add the printed lines to your Tailwind entry (for example `resources/css/app.css`):
+The package ships no CSS or JavaScript build. The board renders with the ArtisanPack UI design system, which livewire-ui-components 3.0 uses. If your app doesn't load it yet, run the component library's installer:
 
-```css
-@source "../../vendor/artisanpack-ui/ecommerce-kanban-livewire/resources/views/**/*.blade.php";
-@source "../../vendor/artisanpack-ui/ecommerce-kanban-livewire/src/**/*.php";
+```bash
+php artisan livewire-ui-components:install --assets=bundler
 ```
 
-Install drag-and-drop and import it in your main script (for example `resources/js/app.js`):
+Or install the packages by hand:
+
+```bash
+npm install --save-dev @artisanpack-ui/css@^1 @artisanpack-ui/behavior@^1
+```
+
+Import the design system in your main stylesheet (for example `resources/css/app.css`):
+
+```css
+@import '@artisanpack-ui/css';
+```
+
+Register the behavior engine in your main script (for example `resources/js/app.js`):
+
+```js
+import apuiBehavior from '@artisanpack-ui/behavior/alpine';
+
+document.addEventListener( 'alpine:init', () => window.Alpine.plugin( apuiBehavior ) );
+```
+
+Either way, install drag-and-drop, which the component library's installer doesn't add, and import it in your main script:
 
 ```bash
 npm install @artisanpack-ui/livewire-drag-and-drop@^2.1.0
@@ -41,13 +60,13 @@ npm install @artisanpack-ui/livewire-drag-and-drop@^2.1.0
 import '@artisanpack-ui/livewire-drag-and-drop';
 ```
 
-Then build:
+Put `@apuiThemeScript` in your layout's `<head>`, before `@vite`. The package's standalone layout already does. Then build:
 
 ```bash
 npm run build
 ```
 
-See [Front-End Setup](installation/front-end.md) for the full entry, including daisyUI.
+Tailwind CSS is optional. If your app builds with it, put `@layer theme, base, apui, components, utilities;` first in your stylesheet, before `@import 'tailwindcss';`. See [Front-End Setup](installation/front-end.md) for the full entry, including the design system and the optional Tailwind lines.
 
 ## 3. Grant access
 
@@ -82,5 +101,6 @@ The board stays in step with other people's changes by polling every 30 seconds.
 - [Configuration](installation/configuration.md) — every config key
 - [Layouts](installation/layouts.md) — render the board inside your admin's layout
 - [Real-Time Updates](realtime.md) — Reverb or Pusher with Echo
+- [Upgrading](upgrading.md) — moving from 1.x to 2.0
 - [Usage](usage.md) — what staff can do on the board
 - [Extending](extending.md) — hooks, card actions, widgets, and embedding

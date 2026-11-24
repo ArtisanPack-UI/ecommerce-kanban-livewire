@@ -154,6 +154,22 @@ it( 'switches an automation on and off and tells the board', function (): void {
     Event::assertDispatched( KanbanBoardConfigChanged::class, fn ( KanbanBoardConfigChanged $event ): bool => (int) $event->board->id === (int) $board->id && KanbanBoardConfigChanged::BOARD_UPDATED === $event->change );
 } );
 
+it( 'reports a failing board-change listener instead of failing a saved switch', function (): void {
+    [ $board, , $automations ] = automatedBoard();
+    Event::listen( KanbanBoardConfigChanged::class, function (): void {
+        throw new RuntimeException( 'Broadcaster is down.' );
+    } );
+
+    $component = Livewire::test( AutomationsPanel::class, [ 'boardId' => $board->id ] )
+        ->call( 'openFor', null )
+        ->call( 'setActive', $automations['email']->id, false )
+        ->assertOk()
+        ->assertSeeHtml( 'data-ec-kb-automation-state' );
+
+    expect( $automations['email']->fresh()->is_active )->toBeFalse()
+        ->and( toastsOf( $component ) )->toContain( 'Automation switched off.' );
+} );
+
 it( 'sets the state rather than flipping it, so a repeated request changes nothing', function (): void {
     [ $board, , $automations ] = automatedBoard();
     Event::fake( [ KanbanBoardConfigChanged::class ] );

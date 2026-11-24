@@ -13,7 +13,7 @@ Moving needs `kanbanCard.move` on the board. Without it, cards don't drag and "M
 
 Drag a card to another column, or up and down within its column. Cards keep the position you drop them at: the board stores a manual order, so "next up" stays at the top.
 
-A drop is optimistic. The card stays where you dropped it and dims ("Moving…") while the request runs. When the move goes through, only the two columns it touched re-render. When it is refused, the card goes back where it came from, is outlined and marked "Move undone" for a moment, and a toast says why. The same happens when the request itself fails, for example when you hit the [rate limit](../advanced.md#rate-limits) (the toast then says how long to wait), and a move that gets no answer at all is put back after 20 seconds and the board re-reads.
+A drop is optimistic. The card stays where you dropped it and shows "Moving…" with a spinner, a dashed edge, and a sunken background while the request runs (at full opacity, so its text stays readable). When the move goes through, only the two columns it touched re-render. When it is refused, the card goes back where it came from, is outlined and marked "Move undone" for a moment, and a toast says why. The same happens when the request itself fails, for example when you hit the [rate limit](../advanced.md#rate-limits) (the toast then says how long to wait), and a move that gets no answer at all is put back after 20 seconds and the board re-reads.
 
 A drop into a column already at its WIP limit is refused in the browser before anything moves, and the engine checks the limit again on the server.
 
@@ -50,7 +50,7 @@ A column whose sub-status belongs to the `cancelled`, `refunded`, or `failed` sy
 > **Move order 1003 to Cancelled?**
 > This changes the whole order's status to Cancelled, on every board it is on.
 
-**Move** confirms; **Cancel** leaves the card where it was. Moves within an exit column don't ask.
+**Move** confirms; **Cancel** leaves the card where it was. Moves within an exit column don't ask. A move of an order that isn't on the board (or that a `cardQuery` filter hides from you) is refused straight away with "This order is no longer on this board.", without asking first.
 
 ## WIP limits
 
@@ -66,7 +66,7 @@ The limit counts every card in the column, whatever the filters show. Set a colu
 | `invalid-status-transition` | "The order cannot move to :column from its current status." |
 | `incompatible-column` | ":column cannot hold this order at its current status." |
 | `move-rejected` | "This move was blocked." (an `ap.ecommerce.kanban.cardMoving` filter vetoed it) |
-| `not-on-board` | "This order is no longer on this board." |
+| `not-on-board` | "This order is no longer on this board." (also when an `ap.ecommerce.kanban.cardQuery` filter hides the card from the viewer; see [Filters](filters.md#restricting-which-cards-people-see)) |
 | `column-not-on-board` | "That column is not on this board." |
 | `no-entry-column` | "This board has no column that can hold this order." |
 | anything else | "The card could not be moved." |

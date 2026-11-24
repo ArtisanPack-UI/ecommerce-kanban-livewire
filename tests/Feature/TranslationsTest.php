@@ -145,3 +145,63 @@ it( 'agrees with the engine on every key they share', function ( string $locale 
         }
     }
 } )->with( [ 'es', 'fr', 'de' ] );
+
+/**
+ * Keys `__()` / `trans_choice()` can't be found for by a literal scan,
+ * because the code builds them at runtime. Add a key here only with a note
+ * on where it is built.
+ *
+ * @var array<int, string>
+ */
+const KANBAN_DYNAMIC_TRANSLATION_KEYS = [];
+
+/**
+ * Every literal key passed to `__()`, `trans_choice()`, or `@lang()` in
+ * `src/`, `resources/views`, and `routes/`, skipping docblock lines.
+ *
+ * @return array<int, string>
+ */
+function sourceTranslationKeys(): array
+{
+    $root  = dirname( __DIR__, 2 );
+    $files = [];
+
+    foreach ( [ 'src', 'resources/views', 'routes' ] as $directory ) {
+        if ( ! is_dir( $root . '/' . $directory ) ) {
+            continue;
+        }
+
+        foreach ( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $root . '/' . $directory, FilesystemIterator::SKIP_DOTS ) ) as $file ) {
+            if ( $file->isFile() && str_ends_with( $file->getFilename(), '.php' ) ) {
+                $files[] = $file->getPathname();
+            }
+        }
+    }
+
+    $keys = [];
+
+    foreach ( $files as $path ) {
+        $code = implode( "\n", array_filter(
+            explode( "\n", (string) file_get_contents( $path ) ),
+            static fn ( string $line ): bool => ! str_starts_with( ltrim( $line ), '*' ) && ! str_starts_with( ltrim( $line ), '/**' ),
+        ) );
+
+        preg_match_all( "/(?:\\b__|\\btrans_choice|@lang)\\(\\s*(?:'((?:[^'\\\\]|\\\\.)*)'|\"((?:[^\"\\\\]|\\\\.)*)\")/s", $code, $matches, PREG_SET_ORDER );
+
+        foreach ( $matches as $match ) {
+            $keys[] = '' !== ( $match[1] ?? '' ) ? stripcslashes( str_replace( "\\'", "'", $match[1] ) ) : stripcslashes( $match[2] ?? '' );
+        }
+    }
+
+    return array_values( array_unique( array_filter( $keys, static fn ( string $key ): bool => '' !== $key ) ) );
+}
+
+it( 'has every key used in the source in the English catalogue', function (): void {
+    expect( array_values( array_diff( sourceTranslationKeys(), array_keys( catalogue( 'en' ) ) ) ) )->toBe( [] );
+} );
+
+it( 'has no English key that the source does not use', function (): void {
+    $unused = array_diff( array_keys( catalogue( 'en' ) ), sourceTranslationKeys(), KANBAN_DYNAMIC_TRANSLATION_KEYS );
+
+    expect( array_values( $unused ) )->toBe( [] );
+} );

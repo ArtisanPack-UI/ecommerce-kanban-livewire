@@ -231,7 +231,7 @@ You can also open a blank issue for questions.
 - **`main`** - The latest stable release
   - Every release is tagged on `main` (`vX.Y.Z`)
   - Protected: no direct pushes
-- **`release/X.Y`** - The next release in progress (for example, `release/1.0` or `release/1.1`)
+- **`release/X.Y`** - The next release in progress (for example, `release/2.0` or `release/2.1`)
   - Pull requests for that release target this branch
   - CI runs on every push and pull request
 
@@ -253,7 +253,7 @@ You can also open a blank issue for questions.
 
 ```bash
 git fetch upstream
-git checkout -b fix/your-bugfix upstream/release/1.1
+git checkout -b fix/your-bugfix upstream/release/2.1
 ```
 
 Use the release branch that matches the issue's milestone. If you're not sure which one, ask in the issue.
@@ -336,7 +336,7 @@ The issue templates apply these automatically. Maintainers add other labels duri
 
 ### Milestones
 
-Milestones track releases (`v1.0`, `v1.1`, and so on). A milestone is assigned automatically when an issue is opened, and maintainers move issues between milestones when they schedule work. **You don't need to assign milestones.**
+Milestones track releases (`v2.0`, `v2.1`, and so on). A milestone is assigned automatically when an issue is opened, and maintainers move issues between milestones when they schedule work. **You don't need to assign milestones.**
 
 ## Forking and Contributing
 
@@ -360,7 +360,7 @@ The repository is hosted on GitHub at [ArtisanPack-UI/ecommerce-kanban-livewire]
 
 4. **Create a branch from the release branch**
    ```bash
-   git checkout -b feature/your-feature upstream/release/1.1
+   git checkout -b feature/your-feature upstream/release/2.1
    ```
 
 5. **Make changes and push**
@@ -381,7 +381,7 @@ The repository is hosted on GitHub at [ArtisanPack-UI/ecommerce-kanban-livewire]
 
 ```bash
 git fetch upstream
-git rebase upstream/release/1.1
+git rebase upstream/release/2.1
 git push --force-with-lease origin feature/your-feature
 ```
 

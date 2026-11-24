@@ -80,6 +80,16 @@ class Board extends Component
     use WithActionToken;
 
     /**
+     * Most cards a column shows, however often "Show more" is pressed; the
+     * button is hidden once a column shows this many.
+     *
+     * @since 2.0.0
+     *
+     * @var int
+     */
+    public const MAX_CARDS_PER_COLUMN = 500;
+
+    /**
      * The board's id.
      *
      * @since 1.0.0
@@ -224,9 +234,11 @@ class Board extends Component
     }
 
     /**
-     * Shows another page of cards in a column.
+     * Shows another page of cards in a column, up to
+     * {@see self::MAX_CARDS_PER_COLUMN}.
      *
      * @since 1.0.0
+     * @since 2.0.0 Stops at {@see self::MAX_CARDS_PER_COLUMN}.
      *
      * @param  int  $columnId  The column.
      *
@@ -238,7 +250,7 @@ class Board extends Component
             return;
         }
 
-        $this->limits[ $columnId ] = $this->limitFor( $columnId ) + self::perColumn();
+        $this->limits[ $columnId ] = min( self::MAX_CARDS_PER_COLUMN, $this->limitFor( $columnId ) + self::perColumn() );
     }
 
     /**
@@ -261,7 +273,7 @@ class Board extends Component
             'board'         => $board,
             'columns'       => $columns,
             'toolbar'       => ( new BoardToolbar( $board, $user ) )->actions(),
-            'boards'        => BoardsQuery::visibleTo( $user ),
+            'boards'        => BoardsQuery::visibleTo( $user, false ),
             'pickerUrl'     => BoardUrls::picker(),
             'storageKey'    => 'ecommerce-kanban.collapsed.' . $board->id,
             'canMove'       => $this->cardsDraggable(),
@@ -308,11 +320,48 @@ class Board extends Component
      * use the library's `{item}`, `{container}`, `{position}`, and `{total}`
      * placeholders, which it fills in on the client.
      *
+     * `$kind` picks the list they're for: `cards` (the columns' card
+     * lists), `columns` (the edit-mode column strip) or `widgets` (the
+     * widget picker's list). The last two swap in their own instructions,
+     * item and container names, so a column or widget isn't called a card.
+     *
      * @since 1.0.0
+     * @since 2.0.0 Added the `$kind` parameter.
+     *
+     * @param  string  $kind  `cards`, `columns`, or `widgets`.
      *
      * @return array<string, string>
      */
-    public static function dragMessages(): array
+    public static function dragMessages( string $kind = 'cards' ): array
+    {
+        $overrides = match ( $kind ) {
+            'columns' => [
+                'instructions' => __( 'Press Space or Enter to pick up the column. While holding it, use the arrow keys to move it, Home or End to jump to the start or end, Space or Enter to drop, and Escape to cancel.' ),
+                'item'         => __( 'Column' ),
+                'container'    => __( 'the board' ),
+            ],
+            'widgets' => [
+                'instructions' => __( 'Press Space or Enter to pick up the widget. While holding it, use the arrow keys to move it, Home or End to jump to the top or bottom, Space or Enter to drop, and Escape to cancel.' ),
+                'item'         => __( 'Widget' ),
+                'container'    => __( 'the widget list' ),
+            ],
+            default => [],
+        };
+
+        return [
+            ...self::cardDragMessages(),
+            ...$overrides,
+        ];
+    }
+
+    /**
+     * The card lists' drag-and-drop announcement templates.
+     *
+     * @since 2.0.0
+     *
+     * @return array<string, string>
+     */
+    private static function cardDragMessages(): array
     {
         return [
             'instructions'     => __( 'Press Space or Enter to pick up the card. While holding it, use the arrow keys to move it within a column or between columns, Home or End to jump to the top or bottom, Space or Enter to drop, and Escape to cancel.' ),
@@ -330,9 +379,11 @@ class Board extends Component
     }
 
     /**
-     * How many cards a column shows now.
+     * How many cards a column shows now, at most
+     * {@see self::MAX_CARDS_PER_COLUMN}.
      *
      * @since 1.0.0
+     * @since 2.0.0 Capped at {@see self::MAX_CARDS_PER_COLUMN}.
      *
      * @param  int  $columnId  The column.
      *
@@ -340,7 +391,7 @@ class Board extends Component
      */
     private function limitFor( int $columnId ): int
     {
-        return max( self::perColumn(), (int) ( $this->limits[ $columnId ] ?? 0 ) );
+        return min( self::MAX_CARDS_PER_COLUMN, max( self::perColumn(), (int) ( $this->limits[ $columnId ] ?? 0 ) ) );
     }
 
     /**

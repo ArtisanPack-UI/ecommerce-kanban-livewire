@@ -2,6 +2,14 @@
     The filter bar's always-visible fields: search, customer, tags and
     products. Included by `partials.filter-bar` with its `$prefix`.
 
+    The remote comboboxes (customer, products) are `wire:ignore.self`: the
+    component library's Combobox puts the current search text in its root's
+    `x-data`, so every server search changed that attribute, Alpine re-ran
+    the component, and its input and options stayed bound to the stopped
+    machine, so later typing never reached the server and picking did
+    nothing. Leaving the root's attributes alone keeps the machine; the
+    options inside it still morph.
+
     @package    ArtisanPack_UI
     @subpackage EcommerceKanbanLivewire
 
@@ -30,6 +38,7 @@
         remote
         search-model="customerSearch"
         clearable
+        wire:ignore.self
         data-ec-kb-filter="customer"
     />
 </div>
@@ -60,6 +69,7 @@
         remote
         search-model="productSearch"
         clearable
+        wire:ignore.self
         data-ec-kb-filter="products"
     />
 </div>

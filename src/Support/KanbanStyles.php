@@ -28,6 +28,16 @@ namespace ArtisanPackUI\EcommerceKanbanLivewire\Support;
  */
 final class KanbanStyles
 {
+
+    /**
+     * The base language codes written right to left.
+     *
+     * @since 2.0.0
+     *
+     * @var array<int, string>
+     */
+    public const RTL_LANGUAGES = [ 'ar', 'ckb', 'dv', 'fa', 'he', 'ps', 'sd', 'ug', 'ur', 'yi' ];
+
     /**
      * The stylesheet, once read.
      *
@@ -36,6 +46,29 @@ final class KanbanStyles
      * @var string|null
      */
     private static ?string $css = null;
+
+    /**
+     * The text direction for a locale: `rtl` for a right-to-left language
+     * (`ar`, `he`, `fa`, …), `ltr` otherwise.
+     *
+     * The standalone layout sets it on `<html>`, and the board sets it on
+     * its own root for a right-to-left locale, so the board's layout, its
+     * mirrored icons, its visual "left / right" labels, and its keyboard
+     * drag direction stay right even in a host layout that doesn't set
+     * `dir`.
+     *
+     * @since 2.0.0
+     *
+     * @param  string|null  $locale  The locale; the app's current one when null.
+     *
+     * @return string `rtl` or `ltr`.
+     */
+    public static function textDirection( ?string $locale = null ): string
+    {
+        $language = strtolower( (string) strtok( $locale ?? app()->getLocale(), '_-' ) );
+
+        return in_array( $language, self::RTL_LANGUAGES, true ) ? 'rtl' : 'ltr';
+    }
 
     /**
      * The stylesheet's path.

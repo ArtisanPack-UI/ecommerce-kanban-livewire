@@ -21,8 +21,9 @@ The board targets **WCAG 2.2 AA**. Everything staff do on it (choosing a board, 
 
 - **WIP state.** At the limit, the count adds a warning icon, and screen readers hear "1 of 1 cards, WIP limit reached".
 - **Widget tones.** A warning, problem, success, or note tone adds an icon and screen-reader text ("Needs attention", "Problem", "Good", "Note").
-- **Move state.** A card in flight says "Moving…", and a refused move says "Move undone", in a `role="status"` element.
-- **Connection.** The connection indicator says "Live", "Updates every N seconds" (the poll interval), "Offline", or "Not updating automatically" in text.
+- **Move state.** A card in flight says "Moving…" and is marked `aria-busy`, and a refused move says "Move undone", in visible text next to a dashed or error edge, so the state is never color alone. The card keeps full opacity, so its text stays at AA contrast. Drag-and-drop announces the drop and the revert, so the card text isn't a live region.
+- **Dragging.** A picked-up card has a primary edge and ring, the column it would land in gets a soft primary background, and a column that refuses it (at its WIP limit) gets a dashed error outline. Keyboard moves follow the reading direction in right-to-left locales.
+- **Connection.** The connection indicator says "Live", "Updates every N seconds" (the poll interval), "Offline", or "Not updating automatically" in text, and a status region announces each change. The "Add order" search announces how many orders it found, or that none match.
 - **Automation switches.** Each automation's switch is labelled "Active" (its screen-reader name is "Active: " plus the automation, so it starts with the visible label, SC 2.5.3), and the row says "On" or "Off" in text.
 - **Column color is decoration.** The user-set column color is only drawn as a top border. Labels never sit on it, so no color a store picks can fail contrast.
 
@@ -79,24 +80,16 @@ The axe helper is `tests/Browser/Support/Accessibility.php` (`Accessibility::ass
 
 ## Known issues
 
-These come from `artisanpack-ui/livewire-ui-components` markup the board cannot change. They are tracked upstream in [livewire-ui-components#117](https://github.com/ArtisanPack-UI/livewire-ui-components/issues/117):
+These come from `artisanpack-ui/livewire-ui-components` 3.0 markup the board cannot change:
 
-- **Choices search inputs.** The search input of `x-artisanpack-choices` (the customer, tags, and products filters) has no label: the field label is a `<legend>` it isn't linked to.
-- **Select names.** `x-artisanpack-select` labels with a `<legend>`, so the control itself has no accessible name.
-- **Dropdown menus.** `x-artisanpack-dropdown` menus (the card actions and the board switcher) put a `<div>` between the `<ul>` and its `<li>`s, and give items `role="menuitem"` without a `role="menu"` parent.
-- **Drawer toggle.** The drawer's `drawer-toggle` checkbox (the slide-out, the automations panel, the phone filters) is unlabelled.
-- **Color picker.** The native color input of `x-artisanpack-colorpicker` (the column editor) has no label.
+- **Drawer panels** ([livewire-ui-components#164](https://github.com/ArtisanPack-UI/livewire-ui-components/issues/164)). The Drawer's panel is an `<aside>` with `role="dialog"`, a role axe doesn't allow on `<aside>` (`aria-allowed-role`). The card slide-out, the automations panel, and the phone filters use the Drawer. The panel still works as a labelled modal dialog for screen readers.
+- **Color picker label** ([livewire-ui-components#168](https://github.com/ArtisanPack-UI/livewire-ui-components/issues/168)). Once the design system's behavior engine starts the ColorPicker, its label points at the machine's hidden input, so the visible text field loses its label (`label`, `label-title-only`). The column editor's color field uses the ColorPicker.
 
-Tracked in [livewire-ui-components#135](https://github.com/ArtisanPack-UI/livewire-ui-components/issues/135):
-
-- **Close buttons.** The icon-only close buttons of the library's modal and drawer have no accessible name.
-- **Customer and product filters.** On Livewire 4, the library's `x-artisanpack-choices` keeps its options in its Alpine state, so after a server search changes them the control stops responding and shows no results. The tags filter works around this by being replaced, not morphed, when its options change; the server-searched filters can't, because that would drop the text being typed.
-
-Each is excluded from the automated check by axe rule and selector in `Accessibility::LIBRARY_ISSUES`; a node is ignored only when it, or an ancestor, matches that selector. Some selectors are broader than the library markup they target: the `select-name` exclusion, for example, skips any `<select>` inside a `<fieldset>`, including one the board renders itself. A regression of that same rule inside an excluded selector would not fail the suite, so check new markup there by hand. An exclusion is removed when the library fixes it.
+Each is excluded from the automated check by axe rule and selector in `Accessibility::LIBRARY_ISSUES`; a node is ignored only when it, or an ancestor, matches that selector. The selectors cover the whole library part: the `aria-allowed-role` exclusion, for example, skips anything inside a Drawer panel (`[data-scope="drawer"][data-part="content"]`), including markup the board renders there itself. A regression of that same rule inside an excluded selector would not fail the suite, so check new markup there by hand. An exclusion is removed when the library fixes it.
 
 ## What your theme and layout need
 
-The board uses daisyUI theme colors (`base-content`, `primary`, `warning`, `error`, and so on). If you use your own theme, keep text colors at 4.5:1 against the backgrounds they sit on, including `base-content` at 70% opacity for secondary text.
+The board uses the design system's tokens (`--apui-*`). If you change the theme, keep text at 4.5:1 against its background, including muted text (`--apui-text-muted`) on surfaces and the tone badges' text colors.
 
 If the board renders in your own layout (see [Layouts](installation/layouts.md)), its header, skip link, and scroll padding are yours: provide a skip link to the content, set `<html lang>`, and if your header is sticky or fixed, give the page enough `scroll-padding-top` that a focused card never sits under it.
 

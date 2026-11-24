@@ -31,11 +31,23 @@ No. Boards, columns, cards, widgets, and automations are the engine's tables, re
 
 ## Why is the board unstyled?
 
-The package ships no CSS build. Load the design system (`@artisanpack-ui/css`), add the board's `@source` lines to your stylesheet, and rebuild. `php artisan ecommerce-kanban:install` prints every line you need. See [The board is unstyled](troubleshooting.md#the-board-is-unstyled).
+The package ships no CSS build. Load the design system (`@artisanpack-ui/css`) in your stylesheet and rebuild. `php artisan ecommerce-kanban:install` prints every line you need. See [The board is unstyled](troubleshooting.md#the-board-is-unstyled).
+
+## Do I need Tailwind CSS?
+
+No. The board renders with the ArtisanPack UI design system alone: its views use only the package's `ec-kb-*` classes and the design system's classes. If your app builds with Tailwind CSS 4, put the design system's `@layer` line first; the board's `@source` lines are optional. See [Front-End Setup](installation/front-end.md#3-tailwind-css-optional).
 
 ## Does it still need daisyUI?
 
-No. Since 2.0 the board renders on the ArtisanPack UI design system through `livewire-ui-components` 3.0. Remove daisyUI if nothing else uses it.
+No. Since 2.0 the board renders on the ArtisanPack UI design system through `livewire-ui-components` 3.0. Remove daisyUI if nothing else uses it. See [Upgrading](upgrading.md).
+
+## How do I upgrade from 1.x?
+
+Update the packages, load the design system, switch your layout to `<x-artisanpack-toaster />`, and re-publish any overridden views. See [Upgrading](upgrading.md).
+
+## Does it work with a strict Content Security Policy?
+
+Not in 2.0. The board needs Alpine's standard build (`'unsafe-eval'`) and inline style attributes, so it doesn't work with Alpine's CSP build or Livewire 4's `csp_safe` mode. See [Content Security Policy](advanced.md#content-security-policy).
 
 ## Why can't I drag cards?
 
@@ -67,8 +79,8 @@ English, Spanish, French, German, Brazilian Portuguese, Japanese, Simplified Chi
 
 ## Is it accessible?
 
-It targets WCAG 2.2 AA, and the browser suite runs axe on every screen and dialog. Some known issues come from the component library. See [Accessibility](accessibility.md).
+It targets WCAG 2.2 AA, and the browser suite runs axe on every screen and dialog. Two known issues come from the component library. See [Accessibility](accessibility.md).
 
 ## What versions are supported?
 
-PHP 8.3+, Laravel 12 or 13, Livewire 3.6+ or 4, and the `artisanpack-ui/ecommerce` engine 1.2+. See [Requirements](installation/requirements.md).
+PHP 8.3+, Laravel 12 or 13, Livewire 3.6+ or 4, the `artisanpack-ui/ecommerce` engine 1.2+, and `livewire-ui-components` 3.0 with the ArtisanPack UI design system. If you also use `artisanpack-ui/ecommerce-admin-livewire`, it must be 2.0 or later. See [Requirements](installation/requirements.md), and [Upgrading](upgrading.md) when coming from 1.x.

@@ -232,6 +232,22 @@ it( 'refuses columns from other boards and orders that are not on the board', fu
     expect( $component->call( 'moveCard', 999999, $columns['packing']->id )->effects['returns'][0] )->toBe( 'rejected' );
 } );
 
+it( 'refuses an order that is not on the board before the exit-column confirmation, without naming it', function (): void {
+    [ $board, $columns ] = movesBoard( 0 );
+    $stranger            = Order::factory()->create( [ 'order_number' => 'SECRET-10423', 'system_status' => 'processing' ] );
+
+    $component = Livewire::test( Board::class, [ 'board' => $board ] )->call( 'loadBoard', [] );
+
+    expect( $component->call( 'moveCard', $stranger->id, $columns['cancelled']->id )->effects['returns'][0] )->toBe( 'rejected' )
+        ->and( toastsOf( $component ) )->toContain( 'This order is no longer on this board.' );
+
+    $component->assertSet( 'pendingMove', null )
+        ->assertSet( 'confirmingMove', false )
+        ->assertDontSee( 'SECRET-10423' );
+
+    expect( $stranger->fresh()->system_status )->toBe( 'processing' );
+} );
+
 it( 'asks before moving a card into an exit column, then moves it on confirmation', function (): void {
     [ $board, $columns, $orders ] = movesBoard( 1 );
 

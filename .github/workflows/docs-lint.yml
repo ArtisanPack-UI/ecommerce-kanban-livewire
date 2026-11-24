@@ -15,7 +15,7 @@ on:
       - 'composer.json'
       - '.github/workflows/docs-lint.yml'
   push:
-    branches: [main]
+    branches: [main, 'release/**']
     paths:
       - 'docs/**'
       - 'src/**'

@@ -33,7 +33,7 @@
 @php
     $ecommerceKanbanPickerUrl     = \ArtisanPackUI\EcommerceKanbanLivewire\Support\BoardUrls::picker();
     $ecommerceKanbanLocale        = app()->getLocale();
-    $ecommerceKanbanTextDirection = in_array( strtolower( strtok( $ecommerceKanbanLocale, '_-' ) ), [ 'ar', 'ckb', 'dv', 'fa', 'he', 'ps', 'sd', 'ug', 'ur', 'yi' ], true ) ? 'rtl' : 'ltr';
+    $ecommerceKanbanTextDirection = \ArtisanPackUI\EcommerceKanbanLivewire\Support\KanbanStyles::textDirection( $ecommerceKanbanLocale );
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace( '_', '-', $ecommerceKanbanLocale ) }}" dir="{{ $ecommerceKanbanTextDirection }}" class="ec-kb-standalone">

@@ -99,7 +99,7 @@ it( 'shows every connection state as a badge in a status region', function (): v
 
     $html = Livewire::test( Board::class, [ 'board' => $board ] )->html();
 
-    expect( $html )->toMatch( '/role="status"\s+data-ec-kb-connection/' );
+    expect( $html )->toMatch( '/role="status"\s+data-ec-kb-connection-status/' );
 
     foreach ( [ 'success' => 'Live', 'warning' => 'Updates every', 'error' => 'Offline', 'neutral' => 'Not updating automatically' ] as $color => $label ) {
         expect( $html )->toMatch( '/class="apui-badge"[^>]*data-variant="ghost"[^>]*data-color="' . $color . '"[^>]*>.*?' . $label . '/s' );
@@ -139,7 +139,7 @@ it( 'describes the Move to dialog and puts its buttons in the footer', function 
 
     $dialog = dialogHtml( $html, 'data-ec-kb-move-dialog' );
 
-    expect( $dialog )->toContain( 'The keyboard and single-pointer way to move a card.' )
+    expect( $dialog )->toContain( 'Choose a column and where the order goes in it.' )
         ->toContain( 'id="ec-kb-move-form"' )
         ->toMatch( '/data-part="footer".*form="ec-kb-move-form"/s' );
 } );

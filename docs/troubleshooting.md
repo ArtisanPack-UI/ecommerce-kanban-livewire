@@ -7,14 +7,15 @@ menu_order: 99
 
 ## The board is unstyled
 
-**Cause:** Your application's Vite build doesn't load the design system or the board's classes. The package ships no CSS build of its own.
+**Cause:** Your application's Vite build doesn't load the design system, or the page is missing the board's inlined styles. The package ships no CSS build of its own.
 
 **Fix:**
 
-1. Add the stylesheet lines that `php artisan ecommerce-kanban:install` prints to your main stylesheet (for example `resources/css/app.css`): the `@layer` line, `@import '@artisanpack-ui/css';`, and the board's `@source` lines. Check the relative paths from that file to `vendor/`.
-2. Make sure Tailwind 4 and `@artisanpack-ui/css` are installed. `php artisan livewire-ui-components:install --assets=bundler` sets up the design system if your app doesn't load it already.
+1. Add `@import '@artisanpack-ui/css';` to your main stylesheet (for example `resources/css/app.css`), as `php artisan ecommerce-kanban:install` prints it. If the stylesheet also imports Tailwind, `@layer theme, base, apui, components, utilities;` must be its first line. The board's `@source` lines are optional.
+2. Make sure `@artisanpack-ui/css` is installed. `php artisan livewire-ui-components:install --assets=bundler` sets up the design system if your app doesn't load it already. Tailwind isn't required.
 3. Rebuild: `npm run build`, or run `npm run dev`.
-4. The standalone layout loads `resources/css/app.css` and `resources/js/app.js` only when `public/build/manifest.json` or a Vite dev server exists. If your entries have other names, set them with `ap.ecommerceKanbanLivewire.layout.viteEntries`.
+4. The board inlines its own card, column, and filter-bar styles. If a board picker you embedded on its own page is unstyled, add `@include( 'ecommerce-kanban::partials.styles' )` once to that page. See [Embedding Components](extending/embedding-components.md#a-board-on-your-own-route).
+5. The standalone layout loads `resources/css/app.css` and `resources/js/app.js` only when `public/build/manifest.json` or a Vite dev server exists. If your entries have other names, set them with `ap.ecommerceKanbanLivewire.layout.viteEntries`.
 
 See [Front-End Setup](installation/front-end.md).
 
@@ -22,7 +23,7 @@ See [Front-End Setup](installation/front-end.md).
 
 **Cause:** daisyUI is still loaded, or the design system's layer order is missing.
 
-**Fix:** If nothing else uses daisyUI, remove its `@plugin "daisyui"` blocks from your stylesheet and uninstall the `daisyui` package, then make `@layer theme, base, apui, components, utilities;` the first line of your stylesheet, before `@import 'tailwindcss';`. Rebuild.
+**Fix:** If nothing else uses daisyUI, remove its `@plugin "daisyui"` blocks from your stylesheet and uninstall the `daisyui` package. If your stylesheet imports Tailwind, make `@layer theme, base, apui, components, utilities;` its first line, before `@import 'tailwindcss';`. Rebuild. See [Upgrading](upgrading.md).
 
 ## Dialogs, drawers, or the card slide-out don't open
 
@@ -107,9 +108,15 @@ See [Authorization](advanced/authorization.md).
 
 ## Classes from `cardClasses` have no effect
 
-**Cause:** Tailwind only generates classes it finds in your sources.
+**Cause:** Nothing styles the classes. The board only styles its own `ec-kb-*` classes, and daisyUI colors such as `border-l-warning` no longer exist in 2.0. With Tailwind utilities, Tailwind only generates classes it finds in your sources.
 
-**Fix:** Add the file that returns the classes to your Tailwind `@source` lines, or use classes your app already uses. Rebuild.
+**Fix:** Add a rule for your class to your main stylesheet, built on the design tokens, for example `.ec-kb-card.shop-card-large { border-inline-start: 4px solid var(--apui-color-warning); }`. If you return Tailwind utilities instead, add the file that returns them to your Tailwind `@source` lines. Rebuild. See [Hooks](reference/hooks.md#cards).
+
+## The board renders but nothing works under a Content Security Policy
+
+**Cause:** The board's Alpine expressions need Alpine's standard build (`'unsafe-eval'`) and inline style attributes. Alpine's CSP build and Livewire 4's `csp_safe` mode don't evaluate them, so nothing drags, columns don't load, and dialogs don't close.
+
+**Fix:** Allow `'unsafe-eval'` in `script-src` and `'unsafe-inline'` in `style-src-attr` on the board's pages, and turn `csp_safe` off for them. See [Content Security Policy](advanced.md#content-security-policy).
 
 ## A fix from a new release doesn't show up
 

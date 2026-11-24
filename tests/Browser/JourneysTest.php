@@ -5,6 +5,7 @@ declare( strict_types=1 );
 use ArtisanPackUI\Ecommerce\Models\KanbanColumn;
 use ArtisanPackUI\Ecommerce\Models\Order;
 use ArtisanPackUI\Ecommerce\Models\OrderBoardAssignment;
+use Tests\Browser\Support\CardMenu;
 use Tests\Browser\Support\JavaScript;
 use Tests\Browser\Support\Locators;
 
@@ -75,8 +76,7 @@ function columnOf( string $number ): string
  */
 function openMoveDialog( object $page, string $number ): object
 {
-    return $page->click( Locators::role( 'Actions for order ' . $number ) )
-        ->click( Locators::menuItem( 'move' ) )
+    return CardMenu::choose( $page, $number, 'move' )
         ->assertVisible( '[data-ec-kb-move-submit]' );
 }
 
@@ -90,8 +90,7 @@ it( 'drags a card to another column and runs the automation (plan §15.4)', func
     expect( columnOf( '1001' ) )->toBe( 'Ready to ship' )
         ->and( $this->orders['1001']->refresh()->meta['priority'] ?? null )->toBe( 'high' );
 
-    $page->click( Locators::role( 'Actions for order 1001' ) )
-        ->click( Locators::menuItem( 'open' ) )
+    CardMenu::choose( $page, '1001', 'open' )
         ->assertSeeIn( '[data-ec-kb-detail-timeline]', 'Moved to Ready to ship' );
 
     JavaScript::assertNoErrors( $page );

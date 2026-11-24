@@ -367,6 +367,21 @@ it( 'sends the status options and satellite select options in the design system\
         ->assertSee( 'Online store' );
 } );
 
+it( 'accepts satellite select options given in the design system\'s value and label shape', function (): void {
+    [ $board ] = filterBoard();
+    addFilter( FilterControls::FILTER, fn ( array $controls ): array => [
+        ...$controls,
+        [ 'key' => 'channel', 'label' => 'Sales channel', 'type' => 'select', 'options' => [ [ 'value' => 'pos', 'label' => 'Point of sale' ], [ 'value' => [ 'bad' ], 'label' => 'Dropped' ] ] ],
+    ] );
+
+    Livewire::test( Board::class, [ 'board' => $board ] )
+        ->call( 'loadBoard', [] )
+        ->assertSee( 'Sales channel' )
+        ->assertSeeHtml( 'value="pos"' )
+        ->assertSee( 'Point of sale' )
+        ->assertDontSee( 'Dropped' );
+} );
+
 it( 'searches as empty when the combobox search text is not a string', function (): void {
     [ $board ] = filterBoard();
 

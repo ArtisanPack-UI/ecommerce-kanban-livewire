@@ -207,6 +207,30 @@ it( 'leaves out Move to… and Remove from board without the abilities', functio
         ->assertDontSeeHtml( 'data-ec-kb-action="remove"' );
 } );
 
+it( 'keeps the built-in actions when a satellite action reuses their keys', function (): void {
+    grantAbilities( [ 'kanbanCard.move', 'kanbanBoard.update' ] );
+    addFilter( CardActions::FILTER, static function ( array $actions ): array {
+        array_unshift( $actions, [ 'key' => 'remove', 'label' => 'Archive order', 'event' => 'archive.order' ] );
+        $actions[] = [ 'key' => 'open', 'label' => 'Open elsewhere', 'url' => 'https://example.test/elsewhere' ];
+
+        return $actions;
+    } );
+
+    $component = cardBoard( [] )
+        ->assertSee( 'Remove from board' )
+        ->assertDontSee( 'Archive order' )
+        ->assertDontSee( 'Open elsewhere' );
+
+    $html    = $component->html();
+    $targets = html_entity_decode( $html );
+
+    expect( substr_count( $html, 'data-ec-kb-action="remove"' ) )->toBe( 1 )
+        ->and( substr_count( $html, 'data-ec-kb-action="open"' ) )->toBe( 1 )
+        ->and( $targets )->toContain( CardActions::REMOVE_EVENT )
+        ->and( $targets )->not->toContain( 'archive.order' )
+        ->and( $targets )->not->toContain( 'example.test/elsewhere' );
+} );
+
 it( 'adds satellite card actions, checking their abilities and dropping malformed ones', function (): void {
     grantAbilities( [ 'order.update' ] );
     addFilter( CardActions::FILTER, static function ( array $actions ): array {
@@ -246,7 +270,7 @@ it( 'has hooks for the moving and reverting states', function (): void {
         ->assertSeeHtml( 'x-on:ec-kb-card-state.window' )
         ->assertSeeHtml( 'x-bind:data-ec-kb-state="state"' )
         ->assertSeeHtml( 'class="ec-kb-spinner"' )
-        ->assertSeeHtml( 'class="ec-kb-card-state" role="status"' )
+        ->assertSeeHtml( 'class="ec-kb-card-state" aria-hidden="true"' )
         ->assertSee( 'Moving…' )
         ->assertSee( 'Move undone' );
 } );

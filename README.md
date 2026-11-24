@@ -11,13 +11,13 @@ ecommerce admin when either is installed, and as a standalone page otherwise.
 
 ## Screenshots
 
-![The Fulfillment board: a filter bar with search, customer, tags, products, placed dates, payment and fulfillment status, and stale cards, above four columns — To pack with three order cards, Packing at its WIP limit of 1 of 1, Ready to ship, and Cancelled — each card showing its order number, customer, placed date, and detail badges](docs/images/board.png)
+![The Fulfillment board: a header with the board switcher, the polling status, and Automations, Edit board, and Add order buttons; a filter card with search, customer, tags, products, and a More filters button; and four columns with a color dot, icon, and card count: To pack with three order cards, Packing at its WIP limit of 1 of 1, Ready to ship with one automation, and Cancelled, the last two empty. Each card shows its order number, customer, placed date, an actions menu, and total and item badges](docs/images/board.png)
 
-![The card slide-out for order 1004: status and column badges, Move to and Remove from board buttons, the customer's name and email, the shipping address, the items and totals, payment and fulfillment status, the other boards the order is on, and recent activity](docs/images/card-detail.png)
+![The card slide-out for order 1004: Processing and Packing badges, Move to and Remove from board actions, the customer's name, email, and placed date, the shipping address, the items table and totals, a Paid badge with a check icon and an Unfulfilled badge, the other boards the order is on, and recent activity](docs/images/card-detail.png)
 
-![The "Move order 1001" dialog: a Column select and Position radio buttons for top of the column, bottom of the column, or after a card, with Cancel and Move buttons](docs/images/move-dialog.png)
+![The "Move order 1001" dialog: a Column select set to the current column and Position radio buttons for top of the column, bottom of the column, or after a card, with Cancel and Move buttons](docs/images/move-dialog.png)
 
-![The board in edit mode: each column header has buttons to move the column left or right, edit it, choose its card widgets, open its automations, and remove it, and an Add column button follows the last column](docs/images/edit-board.png)
+![The board in edit mode: an "Editing the board" banner explains how to reorder columns; each column header has a drag handle and buttons to move the column left or right, edit it, choose its card widgets, open its automations, and remove it; the header has Default card widgets and Done editing buttons; and an Add column button follows the last column](docs/images/edit-board.png)
 
 ## Requirements
 
@@ -25,12 +25,13 @@ ecommerce admin when either is installed, and as a standalone page otherwise.
 - Laravel 12 or 13
 - Livewire 3.6+ or 4
 - `artisanpack-ui/ecommerce` 1.2+
-- `artisanpack-ui/livewire-ui-components` 2.1
-- Tailwind CSS 4 and daisyUI 5 (`~5.0`) in your application's Vite build
+- `artisanpack-ui/livewire-ui-components` 3.0
+- The ArtisanPack UI design system (`@artisanpack-ui/css` 1.x and `@artisanpack-ui/behavior` 1.x) in your application's
+  Vite build, as set up for livewire-ui-components 3.0. Tailwind CSS 4 is optional.
 - `@artisanpack-ui/livewire-drag-and-drop` 2.1+ imported in your main script
 
-Optional: `artisanpack-ui/ecommerce-admin-livewire`, `artisanpack-ui/cms-framework`, `laravel/reverb` (or any Laravel
-broadcaster with Laravel Echo). See [Requirements](docs/installation/requirements.md).
+Optional: `artisanpack-ui/ecommerce-admin-livewire` (2.0 or later), `artisanpack-ui/cms-framework`, `laravel/reverb` (or
+any Laravel broadcaster with Laravel Echo). See [Requirements](docs/installation/requirements.md).
 
 ## Installation
 
@@ -42,15 +43,36 @@ php artisan ecommerce-kanban:install
 The install command publishes `config/artisanpack/ecommerce-kanban-livewire.php`, prints the front-end lines, and checks
 the engine version, the active boards, and real-time sync. It never edits your files.
 
+Upgrading from 1.x? See [Upgrading](docs/upgrading.md).
+
 ## Quick start
 
-1. **Add the board to your front end.** Add the `@source` lines the install command prints to your Tailwind entry,
-   then install and import drag-and-drop:
+1. **Add the board to your front end.** Load the ArtisanPack UI design system, if your app doesn't already for
+   livewire-ui-components 3.0:
+
+   ```bash
+   php artisan livewire-ui-components:install --assets=bundler
+   ```
+
+   Or set it up by hand:
+
+   ```bash
+   npm install --save-dev @artisanpack-ui/css@^1 @artisanpack-ui/behavior@^1
+   ```
 
    ```css
-   @source "../../vendor/artisanpack-ui/ecommerce-kanban-livewire/resources/views/**/*.blade.php";
-   @source "../../vendor/artisanpack-ui/ecommerce-kanban-livewire/src/**/*.php";
+   /* resources/css/app.css */
+   @import '@artisanpack-ui/css';
    ```
+
+   ```js
+   // resources/js/app.js
+   import apuiBehavior from '@artisanpack-ui/behavior/alpine';
+
+   document.addEventListener( 'alpine:init', () => window.Alpine.plugin( apuiBehavior ) );
+   ```
+
+   Either way, install drag-and-drop and import it in your main script:
 
    ```bash
    npm install @artisanpack-ui/livewire-drag-and-drop@^2.1.0
@@ -61,7 +83,10 @@ the engine version, the active boards, and real-time sync. It never edits your f
    import '@artisanpack-ui/livewire-drag-and-drop';
    ```
 
-   Then run `npm run build`. See [Front-End Setup](docs/installation/front-end.md).
+   Put `@apuiThemeScript` in your layout's `<head>` before `@vite` (the package's standalone layout already does). If
+   your app builds with Tailwind CSS 4, put `@layer theme, base, apui, components, utilities;` first in the stylesheet,
+   before `@import 'tailwindcss';`; the board's `@source` lines the install command prints are optional. Then run
+   `npm run build`. See [Front-End Setup](docs/installation/front-end.md).
 
 2. **Grant access.** The engine denies every ability by default, so the board returns 403 until you grant access. In a
    service provider's `boot()`:
@@ -89,6 +114,7 @@ broadcaster, and set up Laravel Echo on `window.Echo`. See [Real-Time Updates](d
 
 - [Documentation home](docs/home.md)
 - [Quick start guide](docs/getting-started.md)
+- [Upgrading from 1.x](docs/upgrading.md)
 - [Installation](docs/installation.md): [requirements](docs/installation/requirements.md),
   [configuration](docs/installation/configuration.md), [front-end setup](docs/installation/front-end.md),
   [layouts](docs/installation/layouts.md)
@@ -101,7 +127,8 @@ broadcaster, and set up Laravel Echo on `window.Echo`. See [Real-Time Updates](d
   [filter controls](docs/extending/filter-controls.md), [embedding components](docs/extending/embedding-components.md)
 - [Accessibility](docs/accessibility.md) and [localization](docs/localization.md)
 - [Advanced](docs/advanced.md): [authorization](docs/advanced/authorization.md), [performance](docs/advanced/performance.md)
-- [Reference](docs/reference.md): [hooks](docs/reference/hooks.md), [Artisan commands](docs/reference/commands.md)
+- [Reference](docs/reference.md): [hooks](docs/reference/hooks.md), [Artisan commands](docs/reference/commands.md),
+  [PHP API](docs/reference/php-api.md)
 - [FAQ](docs/faq.md) and [troubleshooting](docs/troubleshooting.md)
 
 ## Contributing

@@ -10,9 +10,16 @@
     Doe, 3 items, $124.00"). It is a `div`: `role="group"` isn't allowed on
     an `article`. While a move is in flight the board dispatches
     `ec-kb-card-state` on `window` with `{ orderId, state }`, where `state`
-    is `moving`, `reverting`, or `idle`; the card dims and shows a spinner
-    while moving and gets an error edge after a move was undone, each with a
-    status line, so the state is never shown by color alone.
+    is `moving`, `reverting`, or `idle`; the card steps onto the sunken
+    surface with a dashed edge and shows a spinner while moving (at full
+    opacity, so its text keeps AA contrast) and gets an error edge after a
+    move was undone, each with a visible line of text, so the state is never
+    shown by color alone. That line is `aria-hidden`: livewire-drag-and-drop
+    announces the drop and the revert, and the card carries `aria-busy`.
+
+    With `preview` (the widget picker's preview), the card is a plain group:
+    no tab stop, no `data-ec-kb-card` and no move-state wiring, so it never
+    stands in for the board's copy of the card.
 
     `$card` is the board component's card array (see `CardPresenter`, plus
     `actions` from `CardActions`); `classes` from the
@@ -26,7 +33,12 @@
     The actions menu lists Open, Move to…, the satellites' actions, then a
     separator and Remove from board in the error color. Menu items report a
     `select` with their key: an action with an event dispatches it to the
-    board's Livewire component, an action with only a URL follows it.
+    board's Livewire component, an action with only a URL follows it. An
+    action with both follows its URL in a new tab when the item was chosen
+    with Ctrl, Cmd, Shift or Alt held (the board records the modifiers of
+    the choosing click or key press in `window.ecommerceKanbanModified`,
+    since the menu's `select` carries only the value), and dispatches the
+    event otherwise.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceKanbanLivewire
@@ -35,9 +47,16 @@
 --}}
 @props( [
     'card',
+    'preview' => false,
 ] )
 @php
     $orderId     = (int) $card['order_id'];
+    // Explicit ids for the parts the component library would otherwise hash
+    // from their props: a single-card or single-column refresh renders
+    // without the board's id claims, so a tooltip with the same text as one
+    // on another card would get that card's id (F10). The preview has its
+    // own prefix, since it shows a card that is also on the board.
+    $partPrefix  = ( $preview ? 'ec-kb-preview-' : 'ec-kb-card-' ) . $orderId;
     $columnId    = (int) $card['column_id'];
     $actions     = $card['actions'] ?? [];
     $menuActions = array_values( array_filter( $actions, static fn ( array $action ): bool => 'remove' !== $action['key'] ) );
@@ -57,15 +76,19 @@
 @endphp
 <div
     {{ $attributes->class( [ 'ec-kb-card', ...( $card['classes'] ?? [] ) ] ) }}
-    tabindex="0"
+    @unless ( $preview ) tabindex="0" @endunless
     role="group"
     aria-label="{{ $card['label'] }}"
-    data-ec-kb-card="{{ $orderId }}"
-    data-ec-kb-state="idle"
-    x-data="{ state: 'idle' }"
-    x-on:ec-kb-card-state.window="if ( Number( $event.detail?.orderId ) === {{ $orderId }} ) { state = $event.detail.state ?? 'idle' }"
-    x-bind:aria-busy="'moving' === state ? 'true' : 'false'"
-    x-bind:data-ec-kb-state="state"
+    @if ( $preview )
+        data-ec-kb-card-preview="{{ $orderId }}"
+    @else
+        data-ec-kb-card="{{ $orderId }}"
+        data-ec-kb-state="idle"
+        x-data="{ state: 'idle' }"
+        x-on:ec-kb-card-state.window="if ( Number( $event.detail?.orderId ) === {{ $orderId }} ) { state = $event.detail.state ?? 'idle' }"
+        x-bind:aria-busy="'moving' === state ? 'true' : 'false'"
+        x-bind:data-ec-kb-state="state"
+    @endif
 >
     <div class="ec-kb-card-header">
         <div class="ec-kb-card-summary">
@@ -80,11 +103,12 @@
 
         @if ( [] !== $actions )
             <x-artisanpack-dropdown-menu
+                :id="$partPrefix . '-actions'"
                 align="end"
                 :classes="[ 'trigger' => 'ec-kb-card-actions-trigger' ]"
                 data-ec-kb-card-actions
                 data-ec-kb-targets="{{ json_encode( $targets, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) }}"
-                x-on:select="const target = JSON.parse( $el.dataset.ecKbTargets )[ $event.detail.value ]; if ( target && null !== target.event ) { $wire.dispatch( target.event, { orderId: {{ $orderId }}, columnId: {{ $columnId }}, boardId: $wire.boardId } ) } else if ( target && null !== target.url ) { window.location.assign( target.url ) }"
+                x-on:select="const target = JSON.parse( $el.dataset.ecKbTargets )[ $event.detail.value ]; const modified = true === window.ecommerceKanbanModified; window.ecommerceKanbanModified = false; if ( target && null !== target.url && null !== target.event && modified ) { window.open( target.url, '_blank', 'noopener' ) } else if ( target && null !== target.event ) { $wire.dispatch( target.event, { orderId: {{ $orderId }}, columnId: {{ $columnId }}, boardId: $wire.boardId } ) } else if ( target && null !== target.url ) { window.location.assign( target.url ) }"
             >
                 <x-slot:label>
                     <x-artisanpack-icon name="o-ellipsis-vertical" />
@@ -109,16 +133,18 @@
         <ul class="ec-kb-card-widgets" aria-label="{{ __( 'Details' ) }}">
             @foreach ( $card['widgets'] as $widget )
                 <li>
-                    <x-artisanpack-ec-kb-widget :widget="$widget" />
+                    <x-artisanpack-ec-kb-widget :widget="[ ...$widget, 'id_prefix' => $partPrefix ]" />
                 </li>
             @endforeach
         </ul>
     @endif
 
-    <p class="ec-kb-card-state" role="status" x-bind:data-ec-kb-tone="'reverting' === state ? 'error' : null" x-show="'idle' !== state" x-cloak>
-        <span class="ec-kb-spinner" aria-hidden="true" x-show="'moving' === state"></span>
-        <span x-show="'moving' === state">{{ __( 'Moving…' ) }}</span>
-        <x-artisanpack-icon name="undo-2" x-show="'reverting' === state" />
-        <span x-show="'reverting' === state">{{ __( 'Move undone' ) }}</span>
-    </p>
+    @unless ( $preview )
+        <p class="ec-kb-card-state" aria-hidden="true" x-bind:data-ec-kb-tone="'reverting' === state ? 'error' : null" x-show="'idle' !== state" x-cloak data-ec-kb-card-state>
+            <span class="ec-kb-spinner" x-show="'moving' === state"></span>
+            <span x-show="'moving' === state">{{ __( 'Moving…' ) }}</span>
+            <x-artisanpack-icon name="undo-2" :mirror="true" x-show="'reverting' === state" />
+            <span x-show="'reverting' === state">{{ __( 'Move undone' ) }}</span>
+        </p>
+    @endunless
 </div>

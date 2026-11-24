@@ -38,7 +38,7 @@ addFilter( 'ap.ecommerceKanbanLivewire.filters', function ( array $controls, Kan
 | `key` | Lowercase letters, digits, and underscores, starting with a letter, up to 40 characters. It can't be one of the engine's own filter keys (`search`, `customer_id`, `tags`, `tag_match`, `product_ids`, `placed_from`, `placed_to`, `moved_before`, `stale`, `payment_status`, `fulfillment_status`). The first control with a key wins. |
 | `label` | Required. Translate it with `__()`. |
 | `type` | `toggle`, `select`, or `text` (the default) |
-| `options` | For `select`: a list of `[ 'id' => …, 'name' => … ]`. A `select` without options is dropped. |
+| `options` | For `select`: a list of `[ 'id' => …, 'name' => … ]`, or `[ 'value' => …, 'label' => … ]` (livewire-ui-components 3.0's keys). An option without a scalar id and name is skipped, and a `select` left without options is dropped. |
 
 A control that breaks a rule is dropped. Controls appear after the built-in ones, in the inline bar and the phone drawer alike.
 
@@ -61,6 +61,8 @@ addFilter( 'ap.ecommerce.kanban.cardQuery', function ( Builder $query, KanbanCar
 ```
 
 Because the board reads every card through the engine's card query, the filter applies to column counts, "Show more" paging, polls, and live card refreshes alike.
+
+The same `cardQuery` filter also runs with the filter bar cleared to decide which cards the viewer may see at all, and the board enforces that on moves, removes, the slide-out, the filter options, and the widget preview. A filter that reads only `$filters->extra` (as above) narrows nothing when the bar is cleared, so it stays a plain display filter. A filter that narrows the cards unconditionally, for example by the user's warehouse, hides those cards everywhere. See [Restricting which cards people see](../usage/filters.md#restricting-which-cards-people-see).
 
 ## In the URL
 

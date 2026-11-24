@@ -2,6 +2,7 @@
 
 declare( strict_types=1 );
 
+use Tests\Browser\Support\CardMenu;
 use Tests\Browser\Support\Locators;
 
 /*
@@ -112,10 +113,7 @@ it( 'keeps focused controls clear of the sticky header (SC 2.4.11)', function ()
 it( 'returns focus to the card when a confirmation is dismissed with Escape', function (): void {
     $card = '[data-ec-kb-card="' . $this->orders['1001']->id . '"]';
 
-    visit( $this->boardUrl() )
-        ->assertPresent( $card )
-        ->click( Locators::role( 'Actions for order 1001' ) )
-        ->click( Locators::menuItem( 'remove' ) )
+    CardMenu::choose( visit( $this->boardUrl() )->assertPresent( $card ), '1001', 'remove' )
         ->assertVisible( '[data-ec-kb-remove-button]' )
         ->keys( 'html > body', 'Escape' )
         ->wait( 0.5 )

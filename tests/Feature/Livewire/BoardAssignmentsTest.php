@@ -202,6 +202,67 @@ it( 'adds the open order to another board from the slide-out', function (): void
     $component->assertDontSeeHtml( 'data-ec-kb-detail-add-board-select' );
 } );
 
+it( 'refuses a column from another board in the slide-out instead of using the entry column', function (): void {
+    [ $board, $columns ]    = assignmentBoard();
+    [ $shipping, $targets ] = makeBoard( [ [ 'cards' => 0, 'label_override' => 'Awaiting label' ] ], [ 'name' => 'Shipping' ] );
+    $targets[0]->substatus->update( [ 'system_status' => 'processing' ] );
+    $card = addCard( $columns[0], [ 'order_number' => 'S-2', 'system_status' => 'processing' ] );
+
+    $component = Livewire::test( CardDetail::class, [ 'boardId' => $board->id ] )
+        ->call( 'show', $card->order_id )
+        ->set( 'addBoardId', $shipping->id )
+        ->set( 'addBoardColumnId', $columns[1]->id )
+        ->call( 'addToBoard' )
+        ->assertHasErrors( [ 'addBoardColumnId' ] )
+        ->assertSee( 'Choose a column on that board.' );
+
+    expect( onBoardIn( $card->order, $shipping ) )->toBeNull()
+        ->and( toastsOf( $component ) )->not->toContain( 'added to Shipping' );
+} );
+
+it( 'says an order is already on the board instead of adding it again from the slide-out', function (): void {
+    [ $board, $columns ]    = assignmentBoard();
+    [ $shipping, $targets ] = makeBoard( [ [ 'cards' => 0, 'label_override' => 'Awaiting label' ] ], [ 'name' => 'Shipping' ] );
+    $targets[0]->substatus->update( [ 'system_status' => 'processing' ] );
+    $card = addCard( $columns[0], [ 'order_number' => 'S-3', 'system_status' => 'processing' ] );
+
+    $component = Livewire::test( CardDetail::class, [ 'boardId' => $board->id ] )
+        ->call( 'show', $card->order_id )
+        ->set( 'addBoardId', $shipping->id );
+
+    // Someone else adds it meanwhile; the dialog is stale.
+    addCardFor( $card->order, $targets[0] );
+    $entries = ArtisanPackUI\Ecommerce\Models\OrderTimelineEntry::query()->where( 'order_id', $card->order_id )->count();
+
+    $component->call( 'addToBoard' )->assertHasNoErrors();
+
+    expect( toastsOf( $component ) )->toContain( 'Order S-3 is already on Shipping.' )
+        ->and( toastsOf( $component ) )->not->toContain( 'added to Shipping' )
+        ->and( ArtisanPackUI\Ecommerce\Models\OrderTimelineEntry::query()->where( 'order_id', $card->order_id )->count() )->toBe( $entries )
+        ->and( OrderBoardAssignment::query()->active()->where( 'order_id', $card->order_id )->where( 'board_id', $shipping->id )->count() )->toBe( 1 );
+} );
+
+it( 'says an order is already on the board instead of adding it again from "Add order"', function (): void {
+    [ $board, $columns ] = assignmentBoard();
+    $order               = Order::factory()->create( [ 'order_number' => 'R-3001', 'system_status' => 'processing' ] );
+
+    $component = Livewire::test( Board::class, [ 'board' => $board ] )
+        ->call( 'openAddOrder' )
+        ->set( 'addOrderId', $order->id );
+
+    addCardFor( $order, $columns[1] );
+    $entries = ArtisanPackUI\Ecommerce\Models\OrderTimelineEntry::query()->where( 'order_id', $order->id )->count();
+
+    $component->call( 'submitAddOrder' )
+        ->assertHasNoErrors()
+        ->assertSet( 'addOrderDialog', false );
+
+    expect( toastsOf( $component ) )->toContain( 'Order R-3001 is already on Production.' )
+        ->and( toastsOf( $component ) )->not->toContain( 'added to this board' )
+        ->and( ArtisanPackUI\Ecommerce\Models\OrderTimelineEntry::query()->where( 'order_id', $order->id )->count() )->toBe( $entries )
+        ->and( onBoardIn( $order, $board ) )->toBe( $columns[1]->substatus_id );
+} );
+
 it( 'hands "Remove from board" in the slide-out to the board', function (): void {
     [ $board, $columns ] = assignmentBoard();
     $card                = addCard( $columns[0] );

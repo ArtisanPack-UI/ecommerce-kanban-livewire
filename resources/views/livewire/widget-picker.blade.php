@@ -11,6 +11,15 @@
     panel are token-only styles in resources/css/kanban.css. Save sits in
     the dialog footer and submits the form by its id.
 
+    The list sets `role="list"` and each row `role="listitem"` and its
+    label itself, so livewire-drag-and-drop keeps the list semantics instead
+    of making the list a `group` and each row (which holds buttons and
+    fields) a `role="button"`. The list gets the
+    translated widget announcements (`Board::dragMessages( 'widgets' )`). A
+    row's own error is a `role="alert"` the row's buttons point at, and a
+    failed save moves focus to the first one. The preview card is rendered
+    with `preview`, so it is no tab stop and no stand-in for the board's card.
+
     @package    ArtisanPack_UI
     @subpackage EcommerceKanbanLivewire
 
@@ -25,23 +34,28 @@
 
         @if ( $open )
             <div class="ec-kb-widget-picker">
-                <form id="ec-kb-widget-picker-form" wire:submit="save" class="ec-kb-widget-picker-form">
+                <form id="ec-kb-widget-picker-form" x-on:submit.prevent="$wire.save().then( () => $nextTick( () => $el.querySelector( '[data-ec-kb-widget-error]' )?.focus() ) )" class="ec-kb-widget-picker-form">
                     @if ( [] === $rows )
                         <p class="ec-kb-widget-empty" data-ec-kb-widget-empty>{{ __( 'No widgets in this list.' ) }}</p>
                     @else
                         <ol
                             class="ec-kb-widget-list"
+                            role="list"
                             aria-label="{{ __( 'Widgets, in the order cards show them' ) }}"
                             x-drag-context
                             data-drag-group="widgets"
                             data-drag-context-id="widgets"
                             data-drag-label="{{ __( 'Widgets' ) }}"
+                            data-drag-messages="{{ json_encode( \ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Board::dragMessages( 'widgets' ) ) }}"
                             x-on:drag:end="$event.detail.toElement === $el && $event.detail.fromIndex !== $event.detail.toIndex && $wire.reorderWidgets( $event.detail.toOrderedIds.map( Number ) )"
                             data-ec-kb-widget-list
                         >
                             @foreach ( $rows as $index => $row )
+                                @php( $ecKbRowErrorId = $errors->has( 'entries.' . $index ) || $errors->has( 'entries.' . $index . '.config' ) ? 'ec-kb-widget-' . $index . '-error' : null )
                                 <li
                                     class="ec-kb-widget-row"
+                                    role="listitem"
+                                    aria-label="{{ $row['label'] }}"
                                     wire:key="widget-{{ $row['key'] }}"
                                     x-drag-item="{{ $index }}"
                                     data-drag-label="{{ $row['label'] }}"
@@ -84,17 +98,22 @@
                                                 leading-icon="x"
                                                 wire:click="removeWidget( {{ $index }} )"
                                                 aria-label="{{ __( 'Remove :widget', [ 'widget' => $row['label'] ] ) }}"
+                                                :aria-describedby="$ecKbRowErrorId"
                                                 data-ec-kb-widget-remove
                                             />
                                         </div>
                                     </div>
 
-                                    @error( 'entries.' . $index )
-                                        <p class="ec-kb-widget-error" data-ec-kb-widget-error>{{ $message }}</p>
-                                    @enderror
-                                    @error( 'entries.' . $index . '.config' )
-                                        <p class="ec-kb-widget-error" data-ec-kb-widget-error>{{ $message }}</p>
-                                    @enderror
+                                    @if ( null !== $ecKbRowErrorId )
+                                        <div id="{{ $ecKbRowErrorId }}" class="ec-kb-widget-errors" role="alert" tabindex="-1" data-ec-kb-widget-error>
+                                            @error( 'entries.' . $index )
+                                                <p class="ec-kb-widget-error">{{ $message }}</p>
+                                            @enderror
+                                            @error( 'entries.' . $index . '.config' )
+                                                <p class="ec-kb-widget-error">{{ $message }}</p>
+                                            @enderror
+                                        </div>
+                                    @endif
 
                                     @if ( [] !== $row['fields'] )
                                         <div class="ec-kb-widget-config" data-ec-kb-widget-config="{{ $row['key'] }}">
@@ -147,7 +166,7 @@
                     @elseif ( null === $preview )
                         <p class="ec-kb-widget-preview-note">{{ __( 'Put an order on this board to preview its card.' ) }}</p>
                     @else
-                        <x-artisanpack-ec-kb-card :card="$preview" />
+                        <x-artisanpack-ec-kb-card :card="$preview" preview />
                         <p class="ec-kb-widget-preview-note">{{ $previewSource }}</p>
                     @endif
                 </section>

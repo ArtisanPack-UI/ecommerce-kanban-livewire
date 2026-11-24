@@ -23,7 +23,7 @@ It registers board routes that work right after install, and every screen is als
 
 ## Requirements
 
-PHP 8.3+, Laravel 12 or 13, Livewire 3.6+ or 4, the `artisanpack-ui/ecommerce` engine 1.2+, and a Vite build with Tailwind CSS 4. See [Requirements](installation/requirements.md).
+PHP 8.3+, Laravel 12 or 13, Livewire 3.6+ or 4, the `artisanpack-ui/ecommerce` engine 1.2+, `artisanpack-ui/livewire-ui-components` 3.0, and a Vite build that loads the ArtisanPack UI design system (Tailwind CSS is optional). See [Requirements](installation/requirements.md). Coming from 1.x? See [Upgrading](upgrading.md).
 
 ## Quick install
 
@@ -44,6 +44,11 @@ Then:
 
 - [Getting started](getting-started.md): from `composer require` to a working board.
 - [Installation](installation.md): requirements, configuration, the front-end build, and layouts.
+- [Real-Time Updates](realtime.md): live boards over Laravel Echo, and the polling fallback.
 - [Usage](usage.md): the board picker, moving cards, filters, the card slide-out, editing the board, and automations.
 - [Extending](extending.md): card actions, toolbar buttons, widgets, filter controls, and embedding the board.
-- [Reference](reference.md): hooks, Artisan commands, and configuration.
+- [Reference](reference.md): hooks, Artisan commands, and the PHP API.
+- [Accessibility](accessibility.md) and [Localization](localization.md): WCAG 2.2 AA, the nine shipped languages, and right-to-left layouts.
+- [Advanced](advanced.md): authorization, performance, rate limits, and Content Security Policy.
+- [Upgrading](upgrading.md): moving from 1.x to 2.0.
+- [FAQ](faq.md) and [Troubleshooting](troubleshooting.md).

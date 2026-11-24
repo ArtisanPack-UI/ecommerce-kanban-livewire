@@ -36,9 +36,13 @@ final class ColumnCardsQuery
     /**
      * Card counts per column on `$board`, keyed by column id: `count` is
      * what the filters leave, `total` every card (what the WIP limit is
-     * checked against).
+     * checked against). `count` never includes a card the
+     * `ap.ecommerce.kanban.cardQuery` filter hides, even with no filter set
+     * (the engine then reports every card), so "Show more" isn't offered for
+     * hidden cards.
      *
      * @since 1.0.0
+     * @since 2.0.0 `count` leaves out hidden cards when no filter is set.
      *
      * @param  KanbanBoard                    $board    The board.
      * @param  Collection<int, KanbanColumn>  $columns  The board's columns.
@@ -48,7 +52,36 @@ final class ColumnCardsQuery
      */
     public static function counts( KanbanBoard $board, Collection $columns, ?KanbanCardFilters $filters = null ): array
     {
-        return KanbanCardQuery::for( $board )->filter( $filters ?? KanbanCardFilters::none() )->countsByColumn( $columns );
+        $filters ??= KanbanCardFilters::none();
+
+        if ( ! $filters->isEmpty() ) {
+            return KanbanCardQuery::for( $board )->filter( $filters )->countsByColumn( $columns );
+        }
+
+        // With no filter set the engine reports every card as matching, so
+        // count the visible ones alongside the total in the same query.
+        $query   = OrderBoardAssignment::query()->active()->where( 'board_id', $board->id );
+        $visible = VisibleCards::ids( $board )->toBase();
+        $rows    = $query
+            ->select( $query->qualifyColumn( 'substatus_id' ) )
+            ->selectRaw( 'COUNT(*) as total' )
+            ->selectRaw( 'SUM(CASE WHEN ' . $query->getQuery()->getGrammar()->wrap( $query->qualifyColumn( 'id' ) ) . ' IN (' . $visible->toSql() . ') THEN 1 ELSE 0 END) as visible', $visible->getBindings() )
+            ->groupBy( $query->qualifyColumn( 'substatus_id' ) )
+            ->toBase()
+            ->get()
+            ->keyBy( 'substatus_id' );
+        $counts  = [];
+
+        foreach ( $columns as $column ) {
+            $row = $rows[ $column->substatus_id ] ?? null;
+
+            $counts[ (int) $column->id ] = [
+                'count' => (int) ( $row->visible ?? 0 ),
+                'total' => (int) ( $row->total ?? 0 ),
+            ];
+        }
+
+        return $counts;
     }
 
     /**
@@ -78,9 +111,13 @@ final class ColumnCardsQuery
      * them), so it changes when a card joins, leaves, or moves within the
      * column (a reorder included), or when one of its orders is updated.
      * One query of a few narrow columns per card; columns without cards get
-     * an empty string.
+     * an empty string. Cards the `ap.ecommerce.kanban.cardQuery` filter
+     * hides ({@see VisibleCards}) add only how many there are, so a hidden
+     * card joining or leaving still refreshes the column's total and WIP
+     * state without its details reaching the fingerprint.
      *
      * @since 1.0.0
+     * @since 2.0.0 Hidden cards add only their count.
      *
      * @param  KanbanBoard                     $board    The board.
      * @param  Collection<int, KanbanColumn>  $columns  Its columns.
@@ -93,30 +130,48 @@ final class ColumnCardsQuery
         $orders      = ( new Order() )->getTable();
         $sequences   = [];
 
+        $visible = VisibleCards::ids( $board )->toBase();
+        $hidden  = [];
+
         $rows = OrderBoardAssignment::query()
             ->active()
             ->where( $assignments . '.board_id', $board->id )
             ->join( $orders, $orders . '.id', '=', $assignments . '.order_id' )
+            ->selectRaw( 'case when ' . $assignments . '.id in (' . $visible->toSql() . ') then 1 else 0 end as visible', $visible->getBindings() )
             ->orderBy( $assignments . '.position' )
             ->orderBy( $assignments . '.assigned_at' )
             ->orderBy( $assignments . '.id' )
-            ->toBase()
-            ->get( [
+            ->addSelect( [
                 $assignments . '.substatus_id as substatus_id',
                 $assignments . '.order_id as order_id',
                 $assignments . '.position as position',
                 $assignments . '.moved_at as moved_at',
                 $orders . '.updated_at as order_updated_at',
-            ] );
+            ] )
+            ->toBase()
+            ->get();
 
         foreach ( $rows as $row ) {
-            $sequences[ (int) $row->substatus_id ][] = implode( ':', [ $row->order_id, $row->position, $row->moved_at, $row->order_updated_at ] );
+            $substatusId = (int) $row->substatus_id;
+
+            if ( 1 !== (int) $row->visible ) {
+                $hidden[ $substatusId ] = ( $hidden[ $substatusId ] ?? 0 ) + 1;
+
+                continue;
+            }
+
+            $sequences[ $substatusId ][] = implode( ':', [ $row->order_id, $row->position, $row->moved_at, $row->order_updated_at ] );
         }
 
         $signatures = [];
 
         foreach ( $columns as $column ) {
             $sequence = $sequences[ (int) $column->substatus_id ] ?? [];
+
+            // Hidden cards add only their count, so a hidden-only change still refreshes the column's total and WIP state.
+            if ( isset( $hidden[ (int) $column->substatus_id ] ) ) {
+                $sequence[] = 'hidden:' . $hidden[ (int) $column->substatus_id ];
+            }
 
             $signatures[ (int) $column->id ] = [] === $sequence ? '' : md5( implode( '|', $sequence ) );
         }

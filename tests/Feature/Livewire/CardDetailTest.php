@@ -233,6 +233,42 @@ it( 'lists only the other boards the viewer can see', function (): void {
         ->assertSee( 'This order is on no other board.' );
 } );
 
+it( 'names only boards the viewer can see in the timeline', function (): void {
+    [ $board, $order ] = detailOrder();
+    [ $fraud ]         = makeBoard( [ [ 'cards' => 0, 'label_override' => 'Fraud check' ] ], [ 'name' => 'Fraud review', 'key' => 'fraud-review' ] );
+    $shipping          = ArtisanPackUI\Ecommerce\Models\KanbanBoard::query()->where( 'name', 'Shipping' )->firstOrFail();
+    $fraudColumn       = $fraud->columns()->firstOrFail();
+
+    OrderTimelineEntry::query()->create( [ 'order_id' => $order->id, 'event_type' => 'kanban.assignment_added', 'payload' => [ 'board_id' => $fraud->id, 'board_key' => 'fraud-review', 'substatus_id' => $fraudColumn->substatus_id ] ] );
+    OrderTimelineEntry::query()->create( [ 'order_id' => $order->id, 'event_type' => 'order.substatus_changed', 'payload' => [ 'to_id' => $fraudColumn->substatus_id, 'board_id' => $fraud->id ] ] );
+    OrderTimelineEntry::query()->create( [ 'order_id' => $order->id, 'event_type' => 'kanban.assignment_removed', 'payload' => [ 'board_id' => $fraud->id, 'board_key' => 'fraud-review', 'substatus_id' => $fraudColumn->substatus_id ] ] );
+    OrderTimelineEntry::query()->create( [ 'order_id' => $order->id, 'event_type' => 'kanban.assignment_added', 'payload' => [ 'board_id' => $shipping->id, 'board_key' => (string) $shipping->key, 'substatus_id' => 1 ] ] );
+
+    Illuminate\Support\Facades\Gate::define( 'ecommerce.kanbanBoard.view', static fn ( $user, $subject = null ): bool => ! ( $subject instanceof ArtisanPackUI\Ecommerce\Models\KanbanBoard && $subject->is( $fraud ) ) );
+
+    $texts = array_column( CardDetailPresenter::timeline( $order, auth()->user() ), 'text' );
+
+    expect( $texts )->toContain( 'Added to another board' )
+        ->and( $texts )->toContain( 'Removed from another board' )
+        ->and( $texts )->toContain( 'Added to board Shipping' )
+        ->and( implode( ' ', $texts ) )->not->toContain( 'fraud-review' )
+        ->and( implode( ' ', $texts ) )->not->toContain( 'Fraud' );
+
+    Livewire::test( CardDetail::class, [ 'boardId' => $board->id ] )
+        ->call( 'show', $order->id )
+        ->assertSee( 'Added to another board' )
+        ->assertDontSee( 'fraud-review' )
+        ->assertDontSee( 'Fraud check' );
+} );
+
+it( 'says "another board" for a board that has since been deleted', function (): void {
+    [ , $order ] = detailOrder();
+
+    OrderTimelineEntry::query()->create( [ 'order_id' => $order->id, 'event_type' => 'kanban.assignment_removed', 'payload' => [ 'board_id' => 999999, 'board_key' => 'gone-board' ] ] );
+
+    expect( array_column( CardDetailPresenter::timeline( $order, auth()->user() ), 'text' ) )->toContain( 'Removed from another board' );
+} );
+
 it( 'announces only a change of status or column, not the whole drawer', function (): void {
     [ $board, $order ] = detailOrder();
 

@@ -29,8 +29,10 @@ it( 'is idempotent and keeps an edited config unless forced', function (): void 
     expect( File::get( $path ) )->not->toContain( 'edited' )->toContain( 'route_prefix' );
 } );
 
-it( 'prints the Tailwind sources and the drag-and-drop install and import with the minimum version', function (): void {
-    $command = $this->artisan( 'ecommerce-kanban:install' );
+it( 'prints the Tailwind sources as optional, and the drag-and-drop install and import with the minimum version', function (): void {
+    $command = $this->artisan( 'ecommerce-kanban:install' )
+        ->expectsOutputToContain( 'Optional, only if your app uses Tailwind CSS (the board doesn\'t need it)' )
+        ->doesntExpectOutputToContain( 'Add these lines to your main stylesheet' );
 
     foreach ( InstallCommand::TAILWIND_SOURCES as $source ) {
         $command->expectsOutputToContain( $source );
