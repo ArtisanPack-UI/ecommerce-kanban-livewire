@@ -260,13 +260,33 @@ it( 'sets dir="rtl" on the board for a right-to-left locale only (F11)', functio
         ->and( KanbanStyles::textDirection( 'pt_BR' ) )->toBe( 'ltr' );
 } );
 
-it( 'inlines its own styles once, so an embedded board is styled (D9)', function (): void {
+it( 'puts its own styles in the page head once, so an embedded board is styled (D9)', function (): void {
     [ $board ] = makeBoard( [ 0 ] );
+    app( 'livewire' )->flushState();
 
-    $html = reviewClean( Blade::render( '<livewire:artisanpack-ecommerce-kanban-board :board="$board" />@include( \'ecommerce-kanban::partials.styles\' )', [ 'board' => $board ] ) );
+    Illuminate\Support\Facades\Route::middleware( 'web' )->get( '/host-embed', fn (): string => Blade::render(
+        '<!DOCTYPE html><html><head><title>Host</title></head><body><livewire:artisanpack-ecommerce-kanban-board :board="$board" />@include( \'ecommerce-kanban::partials.styles\' )</body></html>',
+        [ 'board' => $board ],
+    ) );
+
+    $html = $this->get( '/host-embed' )->assertOk()->getContent();
+    $head = Illuminate\Support\Str::before( $html, '</head>' );
 
     expect( substr_count( $html, 'data-ecommerce-kanban-styles' ) )->toBe( 1 )
-        ->and( $html )->toMatch( '/<div hidden wire:ignore data-ec-kb-board-styles>\s*<style data-ecommerce-kanban-styles/' );
+        ->and( $head )->toContain( 'data-ecommerce-kanban-styles' );
+} );
+
+it( 'registers its styles as a Livewire asset, so a lazy board\'s first render sends them too (D9)', function (): void {
+    [ $board ] = makeBoard( [ 0 ] );
+
+    // Assets already sent earlier in this PHP process are skipped, so start clean.
+    app( 'livewire' )->flushState();
+
+    $component = Livewire::test( Board::class, [ 'board' => $board ] );
+
+    // A registered `@assets` block is remembered in the snapshot, so Livewire sends it with the first render, also a lazy one in a Livewire request, and never again.
+    expect( $component->snapshot['memo']['assets'] ?? [] )->toHaveCount( 1 )
+        ->and( $component->html() )->not->toContain( 'data-ecommerce-kanban-styles' );
 } );
 
 it( 'opens a card action\'s URL in a new tab on a modified click (B7)', function (): void {
@@ -275,7 +295,9 @@ it( 'opens a card action\'s URL in a new tab on a modified click (B7)', function
 
     $html = Livewire::test( Board::class, [ 'board' => $board ] )->call( 'loadBoard', [] )->html();
 
-    expect( $html )->toContain( 'window.ecommerceKanbanModifiedAt' )
+    expect( $html )->toContain( 'true === window.ecommerceKanbanModified' )
+        ->and( $html )->not->toContain( 'ecommerceKanbanModifiedAt' )
+        ->and( $html )->toContain( "window.addEventListener( 'click', track, true )" )
         ->and( $html )->toContain( 'window.open( target.url' )
         ->and( $html )->toContain( 'watchModifiers()' );
 } );

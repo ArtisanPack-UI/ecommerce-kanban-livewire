@@ -38,7 +38,7 @@ addFilter( 'ap.ecommerceKanbanLivewire.filters', function ( array $controls, Kan
 | `key` | Lowercase letters, digits, and underscores, starting with a letter, up to 40 characters. It can't be one of the engine's own filter keys (`search`, `customer_id`, `tags`, `tag_match`, `product_ids`, `placed_from`, `placed_to`, `moved_before`, `stale`, `payment_status`, `fulfillment_status`). The first control with a key wins. |
 | `label` | Required. Translate it with `__()`. |
 | `type` | `toggle`, `select`, or `text` (the default) |
-| `options` | For `select`: a list of `[ 'id' => …, 'name' => … ]`. A `select` without options is dropped. |
+| `options` | For `select`: a list of `[ 'id' => …, 'name' => … ]`, or `[ 'value' => …, 'label' => … ]` (livewire-ui-components 3.0's keys). An option without a scalar id and name is skipped, and a `select` left without options is dropped. |
 
 A control that breaks a rule is dropped. Controls appear after the built-in ones, in the inline bar and the phone drawer alike.
 

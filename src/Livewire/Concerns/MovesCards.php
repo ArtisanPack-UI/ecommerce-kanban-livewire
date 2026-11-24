@@ -334,6 +334,14 @@ trait MovesCards
             return [ 'moveColumns' => [], 'moveCards' => [], 'moveCardsTruncated' => false, 'moveNumber' => null ];
         }
 
+        // The card may have been hidden since the dialog opened.
+        if ( null === VisibleCards::assignment( $this->board, $this->moveOrderId ) ) {
+            $this->moveDialog  = false;
+            $this->moveOrderId = null;
+
+            return [ 'moveColumns' => [], 'moveCards' => [], 'moveCardsTruncated' => false, 'moveNumber' => null ];
+        }
+
         $current = $this->cardColumn( $this->moveOrderId );
         $counts  = [] === $counts ? ColumnCardsQuery::counts( $this->board, $this->columns ) : $counts;
         $options = [];
@@ -382,6 +390,13 @@ trait MovesCards
     protected function confirmMoveData(): array
     {
         if ( null === $this->pendingMove ) {
+            return [ 'pending' => null ];
+        }
+
+        // The card may have been hidden since the confirmation opened.
+        if ( null === VisibleCards::assignment( $this->board, (int) $this->pendingMove['order_id'] ) ) {
+            $this->pendingMove = null;
+
             return [ 'pending' => null ];
         }
 

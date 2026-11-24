@@ -64,7 +64,7 @@ The page needs what the package's layouts provide (see [Layouts](../installation
 - `<x-artisanpack-toaster />`;
 - `@include( 'ecommerce-kanban::partials.rate-limit-notice' )` after `@livewireScripts`.
 
-The board brings its own styles: it inlines its stylesheet (cards, columns, filter bar), with the Vite CSP nonce, once per page on the first render. A page that embeds only the board picker should add `@include( 'ecommerce-kanban::partials.styles' )` once, since the picker's cards use the same stylesheet.
+The board brings its own styles: it registers its stylesheet (cards, columns, filter bar), with the Vite CSP nonce, as a Livewire `@assets` block, which Livewire adds to the page's `<head>` once per page, including for a `lazy` board. A page that embeds only the board picker should add `@include( 'ecommerce-kanban::partials.styles' )` once, since the picker's cards use the same stylesheet.
 
 ## Pointing links at your routes
 

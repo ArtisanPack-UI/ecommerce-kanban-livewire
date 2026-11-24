@@ -13,7 +13,10 @@
     `checked` attribute, so a refused or failed `setActive()` would leave the
     switch flipped while the badge says otherwise (F12). Each toggle resets
     itself to the rendered state once its request settles, and every toggle
-    does when a Livewire request fails (`ec-kb-request-failed`).
+    does when a Livewire request fails (`ec-kb-request-failed`). That
+    rendered state is the saved one: a request fails before `setActive()`
+    saves (authorization, the rate limit), and nothing after the save can
+    fail it.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceKanbanLivewire

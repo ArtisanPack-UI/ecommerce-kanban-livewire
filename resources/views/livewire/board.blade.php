@@ -60,12 +60,16 @@
     puts them back otherwise): the "next" column sits to the left there.
 
     Card menus (B7): `select` carries only the chosen value, so the board
-    records, once per page, when the last pointer press or key press had
-    Ctrl, Cmd, Shift or Alt held (`window.ecommerceKanbanModifiedAt`); a
-    card action with a URL and an event then opens the URL in a new tab.
+    records, once per page, whether the release (pointerup / click, or
+    Enter / Space press) that chose an item had Ctrl, Cmd, Shift or Alt held
+    (`window.ecommerceKanbanModified`, read from a capture-phase listener
+    that runs before the menu's own handler); a card action with a URL and
+    an event then opens the URL in a new tab.
 
-    The board inlines its own stylesheet (`partials.styles`, once per page),
-    so a board embedded in a host's page is styled without extra includes.
+    The board inlines its own stylesheet (`partials.styles`) through
+    Livewire's `@assets`, so it lands in the page's `<head>` once per page,
+    also when a lazy board first renders in a Livewire request, and a board
+    embedded in a host's page is styled without extra includes.
     It sits in a `wire:ignore` wrapper and is only sent with the first
     render, not with every Livewire update.
 
@@ -165,12 +169,18 @@
 
             window.ecommerceKanbanModifierHook = true;
 
+            // Captured before the menu handles the same event, so the click that chooses an item sets it, however long the press was.
             const track = ( event ) => {
-                window.ecommerceKanbanModifiedAt = event.metaKey || event.ctrlKey || event.shiftKey || event.altKey ? Date.now() : 0;
+                window.ecommerceKanbanModified = event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
             };
 
-            window.addEventListener( 'pointerdown', track, true );
-            window.addEventListener( 'keydown', track, true );
+            window.addEventListener( 'pointerup', track, true );
+            window.addEventListener( 'click', track, true );
+            window.addEventListener( 'keydown', ( event ) => {
+                if ( 'Enter' === event.key || ' ' === event.key ) {
+                    track( event );
+                }
+            }, true );
         },
         watchFailures() {
             // Once per page: tell every board when a Livewire request fails.
@@ -585,11 +595,9 @@
 >
     <div class="apui-sr-only" aria-live="assertive" x-text="announcement" data-ec-kb-announcer></div>
 
-    <div hidden wire:ignore data-ec-kb-board-styles>
-        @unless ( app( 'livewire' )->isLivewireRequest() )
-            @include( 'ecommerce-kanban::partials.styles' )
-        @endunless
-    </div>
+    @assets
+        @include( 'ecommerce-kanban::partials.styles' )
+    @endassets
 
     {{-- How many cards the filters leave, announced when it changes. --}}
     <p class="apui-sr-only" role="status" data-ec-kb-filter-status>

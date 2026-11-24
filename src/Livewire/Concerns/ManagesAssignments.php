@@ -274,6 +274,13 @@ trait ManagesAssignments
             return;
         }
 
+        // The card may have been hidden since the confirmation opened.
+        if ( ! $this->onBoard( (int) $order->id ) ) {
+            $this->error( MoveErrors::message( 'not-on-board', '' ) );
+
+            return;
+        }
+
         try {
             $removed = $this->withActionToken( $token, 'remove-card', $this->boardId . ':' . $order->id, fn (): bool => (bool) app( KanbanRoutingService::class )->remove( $order, $this->board, self::actorId() ) );
         } catch ( EcommerceException $exception ) {
@@ -296,6 +303,12 @@ trait ManagesAssignments
      */
     protected function assignmentData(): array
     {
+        // The card may have been hidden since the confirmation opened.
+        if ( null !== $this->removingOrderId && ! $this->onBoard( $this->removingOrderId ) ) {
+            $this->removingOrderId  = null;
+            $this->confirmingRemove = false;
+        }
+
         $removing = null === $this->removingOrderId ? null : Order::query()->whereKey( $this->removingOrderId )->value( 'order_number' );
 
         return [

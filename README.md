@@ -54,11 +54,10 @@ Upgrading from 1.x? See [Upgrading](docs/upgrading.md).
    php artisan livewire-ui-components:install --assets=bundler
    ```
 
-   Or set it up by hand, and install drag-and-drop:
+   Or set it up by hand:
 
    ```bash
    npm install --save-dev @artisanpack-ui/css@^1 @artisanpack-ui/behavior@^1
-   npm install @artisanpack-ui/livewire-drag-and-drop@^2.1.0
    ```
 
    ```css
@@ -69,9 +68,19 @@ Upgrading from 1.x? See [Upgrading](docs/upgrading.md).
    ```js
    // resources/js/app.js
    import apuiBehavior from '@artisanpack-ui/behavior/alpine';
-   import '@artisanpack-ui/livewire-drag-and-drop';
 
    document.addEventListener( 'alpine:init', () => window.Alpine.plugin( apuiBehavior ) );
+   ```
+
+   Either way, install drag-and-drop and import it in your main script:
+
+   ```bash
+   npm install @artisanpack-ui/livewire-drag-and-drop@^2.1.0
+   ```
+
+   ```js
+   // resources/js/app.js
+   import '@artisanpack-ui/livewire-drag-and-drop';
    ```
 
    Put `@apuiThemeScript` in your layout's `<head>` before `@vite` (the package's standalone layout already does). If

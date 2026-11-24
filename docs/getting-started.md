@@ -30,11 +30,10 @@ The package ships no CSS or JavaScript build. The board renders with the Artisan
 php artisan livewire-ui-components:install --assets=bundler
 ```
 
-Or install the packages by hand, with drag-and-drop:
+Or install the packages by hand:
 
 ```bash
 npm install --save-dev @artisanpack-ui/css@^1 @artisanpack-ui/behavior@^1
-npm install @artisanpack-ui/livewire-drag-and-drop@^2.1.0
 ```
 
 Import the design system in your main stylesheet (for example `resources/css/app.css`):
@@ -43,13 +42,22 @@ Import the design system in your main stylesheet (for example `resources/css/app
 @import '@artisanpack-ui/css';
 ```
 
-Register the behavior engine and import drag-and-drop in your main script (for example `resources/js/app.js`):
+Register the behavior engine in your main script (for example `resources/js/app.js`):
 
 ```js
 import apuiBehavior from '@artisanpack-ui/behavior/alpine';
-import '@artisanpack-ui/livewire-drag-and-drop';
 
 document.addEventListener( 'alpine:init', () => window.Alpine.plugin( apuiBehavior ) );
+```
+
+Either way, install drag-and-drop, which the component library's installer doesn't add, and import it in your main script:
+
+```bash
+npm install @artisanpack-ui/livewire-drag-and-drop@^2.1.0
+```
+
+```js
+import '@artisanpack-ui/livewire-drag-and-drop';
 ```
 
 Put `@apuiThemeScript` in your layout's `<head>`, before `@vite`. The package's standalone layout already does. Then build:

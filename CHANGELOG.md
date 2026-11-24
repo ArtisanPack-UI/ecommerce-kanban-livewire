@@ -63,7 +63,7 @@ A major release that moves the board onto the ArtisanPack UI design system throu
 - The install command prints the board's Tailwind `@source` lines as an optional step, for apps that use Tailwind.
 - Fewer repeated queries per request: the board's filters are built once while their values don't change, the automations panel and widget picker read their board once per request, and the slide-out eager-loads sub-statuses (its query budget drops from 18 to 17).
 - The board sets `dir="rtl"` on its own root for right-to-left locales (`KanbanStyles::textDirection()`, `KanbanStyles::RTL_LANGUAGES`), so it lays out and drags right to left in host layouts that don't set `dir`. Its dialogs and drawers still follow the page's `dir`.
-- The board inlines its own stylesheet once per page, so a page that embeds `<livewire:artisanpack-ecommerce-kanban-board>` needs no `partials.styles` include.
+- The board adds its own stylesheet to the page's `<head>` through Livewire's `@assets` (once per page, lazy boards included), so a page that embeds `<livewire:artisanpack-ecommerce-kanban-board>` needs no `partials.styles` include.
 - The "Move to…" dialog's description reads "Choose a column and where the order goes in it." 
 
 ### Fixed
@@ -92,6 +92,11 @@ A major release that moves the board onto the ArtisanPack UI design system throu
 - An automation toggle goes back to its real state after a refused or failed request.
 - The Customer and Products filter comboboxes keep searching and accept a pick after the first search on Livewire 4 (worked around a livewire-ui-components 3.0 Combobox re-init).
 - The browser test suite no longer hangs.
+- A card that the `cardQuery` filter hides while "Move to…", the exit-column confirmation, or the remove confirmation is open closes that dialog instead of naming it, and a confirmed removal of it is refused.
+- Polling refreshes a column when only hidden cards joined or left it, so its total and WIP badge stay current.
+- Satellite filter-control options may use livewire-ui-components 3.0's `value` / `label` keys as well as `id` / `name`.
+- Switching an automation on or off no longer fails after saving when a board-change listener throws; the error is reported instead.
+- A card action chosen with a long modified press still opens its URL in a new tab: the modifiers come from the press that chose the item.
 
 ### Known issues
 

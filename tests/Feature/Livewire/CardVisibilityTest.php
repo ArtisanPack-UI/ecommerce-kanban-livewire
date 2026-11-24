@@ -229,3 +229,71 @@ it( 'leaves hidden cards out of the polling signatures', function (): void {
 
     expect( ColumnCardsQuery::signatures( $setup['board'], $columns ) )->toBe( $before );
 } );
+
+it( 're-renders a column on poll when only a hidden card joins it, so its total and WIP state stay current', function (): void {
+    $setup     = hiddenCardBoard();
+    $packing   = $setup['columns'][1];
+    $component = Livewire::test( Board::class, [ 'board' => $setup['board'] ] )->call( 'loadBoard', [] );
+
+    $secret = addCard( $packing, [ 'order_number' => 'SECRET-2', 'system_status' => 'processing' ] )->order;
+    hideOrder( (int) $secret->id );
+
+    $polled = $component->call( 'poll' )->effects['returns'][0];
+
+    expect( $polled['refresh'] )->toBeFalse()
+        ->and( array_keys( $polled['columns'] ) )->toBe( [ (int) $packing->id ] )
+        ->and( implode( '', $polled['columns'] ) )->not->toContain( 'SECRET-2' );
+} );
+
+it( 'closes "Move to…" and the exit-column confirmation when their card is hidden while open', function (): void {
+    $setup     = hiddenCardBoard();
+    $component = Livewire::test( Board::class, [ 'board' => $setup['board'] ] )
+        ->call( 'loadBoard', [] )
+        ->call( 'openMoveDialog', $setup['shown']->id )
+        ->assertSet( 'moveDialog', true );
+
+    expect( $component->call( 'moveCard', $setup['shown']->id, $setup['columns'][2]->id )->effects['returns'][0] )->toBe( 'confirm' );
+    $component->assertSet( 'confirmingMove', true )->assertSee( 'SHOWN' );
+
+    hideOrder( (int) $setup['shown']->id );
+
+    $component->call( '$refresh' )
+        ->assertSet( 'moveDialog', false )
+        ->assertSet( 'moveOrderId', null )
+        ->assertSet( 'pendingMove', null )
+        ->assertDontSee( 'SHOWN' );
+} );
+
+it( 'refuses a confirmed removal when the card was hidden after the confirmation opened', function (): void {
+    $setup     = hiddenCardBoard();
+    $component = Livewire::test( Board::class, [ 'board' => $setup['board'] ] )
+        ->call( 'loadBoard', [] )
+        ->call( 'confirmRemoveCard', $setup['shown']->id )
+        ->assertSet( 'confirmingRemove', true );
+
+    $token = $component->viewData( 'removeToken' );
+
+    hideOrder( (int) $setup['shown']->id );
+
+    $component->call( 'removeCard', $token )
+        ->assertSet( 'confirmingRemove', false )
+        ->assertSet( 'removingOrderId', null );
+
+    expect( OrderBoardAssignment::query()->active()->where( 'order_id', $setup['shown']->id )->exists() )->toBeTrue()
+        ->and( toastsOf( $component ) )->toContain( 'This order is no longer on this board.' );
+} );
+
+it( 'stops naming a pending removal once its card is hidden', function (): void {
+    $setup     = hiddenCardBoard();
+    $component = Livewire::test( Board::class, [ 'board' => $setup['board'] ] )
+        ->call( 'loadBoard', [] )
+        ->call( 'confirmRemoveCard', $setup['shown']->id )
+        ->assertSee( 'Remove order SHOWN from this board?' );
+
+    hideOrder( (int) $setup['shown']->id );
+
+    $component->call( '$refresh' )
+        ->assertSet( 'confirmingRemove', false )
+        ->assertSet( 'removingOrderId', null )
+        ->assertDontSee( 'Remove order SHOWN from this board?' );
+} );

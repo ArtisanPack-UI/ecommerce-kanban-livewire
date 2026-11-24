@@ -35,9 +35,10 @@
     `select` with their key: an action with an event dispatches it to the
     board's Livewire component, an action with only a URL follows it. An
     action with both follows its URL in a new tab when the item was chosen
-    with Ctrl, Cmd, Shift or Alt held (the board records the modifiers in
-    `window.ecommerceKanbanModifiedAt`, since the menu's `select` carries
-    only the value), and dispatches the event otherwise.
+    with Ctrl, Cmd, Shift or Alt held (the board records the modifiers of
+    the choosing click or key press in `window.ecommerceKanbanModified`,
+    since the menu's `select` carries only the value), and dispatches the
+    event otherwise.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceKanbanLivewire
@@ -107,7 +108,7 @@
                 :classes="[ 'trigger' => 'ec-kb-card-actions-trigger' ]"
                 data-ec-kb-card-actions
                 data-ec-kb-targets="{{ json_encode( $targets, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) }}"
-                x-on:select="const target = JSON.parse( $el.dataset.ecKbTargets )[ $event.detail.value ]; const modified = Date.now() - ( window.ecommerceKanbanModifiedAt ?? 0 ) < 1000; if ( target && null !== target.url && null !== target.event && modified ) { window.open( target.url, '_blank', 'noopener' ) } else if ( target && null !== target.event ) { $wire.dispatch( target.event, { orderId: {{ $orderId }}, columnId: {{ $columnId }}, boardId: $wire.boardId } ) } else if ( target && null !== target.url ) { window.location.assign( target.url ) }"
+                x-on:select="const target = JSON.parse( $el.dataset.ecKbTargets )[ $event.detail.value ]; const modified = true === window.ecommerceKanbanModified; window.ecommerceKanbanModified = false; if ( target && null !== target.url && null !== target.event && modified ) { window.open( target.url, '_blank', 'noopener' ) } else if ( target && null !== target.event ) { $wire.dispatch( target.event, { orderId: {{ $orderId }}, columnId: {{ $columnId }}, boardId: $wire.boardId } ) } else if ( target && null !== target.url ) { window.location.assign( target.url ) }"
             >
                 <x-slot:label>
                     <x-artisanpack-icon name="o-ellipsis-vertical" />

@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\Event;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use Throwable;
 
 /**
  * The automations panel (spec §7.9, D6): what fires when a card enters or
@@ -372,9 +373,12 @@ class AutomationsPanel extends Component
     }
 
     /**
-     * Re-renders the board here and tells other open boards.
+     * Re-renders the board here and tells other open boards. Runs after the
+     * change is saved, so a listener that throws is reported instead of
+     * failing the request.
      *
      * @since 1.0.0
+     * @since 2.0.0 Reports a failing listener instead of failing the request.
      *
      * @param  KanbanBoard  $board  The board.
      *
@@ -386,7 +390,12 @@ class AutomationsPanel extends Component
 
         $actor = auth()->id();
 
-        Event::dispatch( new KanbanBoardConfigChanged( $board, KanbanBoardConfigChanged::BOARD_UPDATED, null, is_numeric( $actor ) ? (int) $actor : null ) );
+        // The change is already saved: a failing listener (a broadcaster that is down, say) is reported, not turned into a failed request, so the panel never shows a state the database doesn't hold.
+        try {
+            Event::dispatch( new KanbanBoardConfigChanged( $board, KanbanBoardConfigChanged::BOARD_UPDATED, null, is_numeric( $actor ) ? (int) $actor : null ) );
+        } catch ( Throwable $exception ) {
+            report( $exception );
+        }
     }
 
     /**

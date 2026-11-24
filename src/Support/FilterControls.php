@@ -81,7 +81,12 @@ final class FilterControls
     }
 
     /**
+     * Validates a raw control. Select options may use `id` / `name` or
+     * livewire-ui-components 3.0's `value` / `label`; both are normalized to
+     * `id` / `name` here.
+     *
      * @since 1.0.0
+     * @since 2.0.0 Accepts `value` / `label` options.
      *
      * @param  array<string, mixed>  $control  Raw control.
      *
@@ -101,8 +106,15 @@ final class FilterControls
         $options = [];
 
         foreach ( is_array( $control['options'] ?? null ) ? $control['options'] : [] as $option ) {
-            if ( is_array( $option ) && is_scalar( $option['id'] ?? null ) && is_scalar( $option['name'] ?? null ) ) {
-                $options[] = [ 'id' => (string) $option['id'], 'name' => (string) $option['name'] ];
+            if ( ! is_array( $option ) ) {
+                continue;
+            }
+
+            $id   = $option['id'] ?? $option['value'] ?? null;
+            $name = $option['name'] ?? $option['label'] ?? null;
+
+            if ( is_scalar( $id ) && is_scalar( $name ) ) {
+                $options[] = [ 'id' => (string) $id, 'name' => (string) $name ];
             }
         }
 

@@ -100,7 +100,7 @@ Return an empty array to load nothing. When the board renders in the ecommerce a
 
 ## Embedding the board on your own pages
 
-The board component inlines its own stylesheet (`ecommerce-kanban::partials.styles`, with the Vite CSP nonce) once per page on its first render, so a page of yours that embeds `<livewire:artisanpack-ecommerce-kanban-board>` needs no extra include. A page that embeds only the board picker should add `@include( 'ecommerce-kanban::partials.styles' )` once. See [Embedding Components](../extending/embedding-components.md#a-board-on-your-own-route).
+The board component registers its own stylesheet (`ecommerce-kanban::partials.styles`, with the Vite CSP nonce) as a Livewire `@assets` block, so Livewire puts it in the page's `<head>` once per page, also when a `lazy` board first renders. A page of yours that embeds `<livewire:artisanpack-ecommerce-kanban-board>` needs no extra include. A page that embeds only the board picker should add `@include( 'ecommerce-kanban::partials.styles' )` once. See [Embedding Components](../extending/embedding-components.md#a-board-on-your-own-route).
 
 ## Real-time
 
