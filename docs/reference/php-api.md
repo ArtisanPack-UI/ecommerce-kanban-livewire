@@ -220,7 +220,7 @@ Links into the ecommerce admin. Every method returns null when the admin isn't i
 
 ### `Support\KanbanStyles`
 
-The board's own stylesheet (`resources/css/kanban.css`), which `ecommerce-kanban::partials.styles` inlines once per page, and the text direction the board and the standalone layout use. Since 2.0.0.
+The board's own stylesheet (`resources/css/kanban.css`), which `ecommerce-kanban::partials.styles` inlines (the board loads it once per page through Livewire `@assets`), and the text direction the board and the standalone layout use. Since 2.0.0.
 
 | Member | Signature | Description |
 | --- | --- | --- |

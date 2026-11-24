@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 
-## [2.0.0] - 2026-11-XX
+## [2.0.0] - 2026-11-23
 
 A major release that moves the board onto the ArtisanPack UI design system through `artisanpack-ui/livewire-ui-components` 3.0. daisyUI is no longer used, and Tailwind CSS is now optional. Every screen is rebuilt from the v2 designs, and the board ships five more languages. The engine contract is unchanged: 2.0 still runs on `artisanpack-ui/ecommerce` 1.2 or later. See [Upgrading](docs/upgrading.md).
 
