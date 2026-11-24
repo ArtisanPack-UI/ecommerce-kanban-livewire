@@ -1,5 +1,6 @@
 ---
 title: Card and Toolbar Actions
+menu_order: 20
 ---
 
 # Card and Toolbar Actions
@@ -10,16 +11,22 @@ Add items to every card's actions menu with `ap.ecommerceKanbanLivewire.cardActi
 
 | Key | Required | Meaning |
 | --- | --- | --- |
-| `key` | Yes | A unique key. The menu item carries it as `data-ec-kb-action="{key}"` (`data-ec-kb-toolbar-action` in the header). |
+| `key` | Yes | A unique key. The menu item carries it as `data-ec-kb-action="{key}"` (`data-ec-kb-toolbar-action` in the header). See [Unique keys](#unique-keys). |
 | `label` | Yes | The visible text. Translate it with `__()`. |
 | `icon` | No | A component library icon name, such as `o-printer`. An unknown icon is dropped. |
 | `ability` | No | `{resource}.{action}`, such as `kanbanBoard.update`. The action is left out for viewers who don't hold it with the board as the subject. For an order-level ability such as `order.update`, check it in your filter callback with the order instead (see the example below). |
 | `url` | One of `url` and `event` | A link. Only `http`, `https`, `mailto`, and relative URLs are kept. |
 | `event` | One of `url` and `event` | A Livewire event dispatched on the page when the action is clicked |
 
-An action with neither a `url` nor an `event`, or without a `key` or `label`, is dropped. With both a `url` and an `event`, a plain click dispatches the event and a modified click (Ctrl, Cmd, Shift, or Alt) follows the link, so "open in a new tab" still works.
+An action with neither a `url` nor an `event`, or without a `key` or `label`, is dropped. With both a `url` and an `event`, a plain click dispatches the event and a modified click (Ctrl, Cmd, Shift, or Alt) opens the link in a new tab. On macOS, Ctrl-click opens the context menu, so use Cmd-click there.
 
 Abilities are checked once per board render, not per card. The action itself must check again when it runs.
+
+## Unique keys
+
+The menu keeps one action per key. When two actions share a key, the first one wins and the rest are dropped; the kept action stays where the first action with that key was. The core card actions are protected: a satellite action keyed `open`, `move`, or `remove` can't replace the built-in one, even if it comes first in the list. To change what a core action does, give your action its own key, and remove the built-in from the list if you don't want both.
+
+`icon` accepts livewire-ui-components 3.0 registry icons (its Lucide set, such as `printer` or `external-link`) as well as Heroicon names (`o-printer`). A name in both sets renders the registry icon.
 
 ## Card actions
 
@@ -81,7 +88,7 @@ class ReprintLabel extends Component
 }
 ```
 
-Render that component on the board pages, for example from your layout or by [embedding](Extending-Embedding-Components) the board in your own page.
+Render that component on the board pages, for example from your layout or by [embedding](embedding-components.md) the board in your own page.
 
 ## Toolbar actions
 

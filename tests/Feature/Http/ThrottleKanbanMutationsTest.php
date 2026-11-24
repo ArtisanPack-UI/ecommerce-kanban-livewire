@@ -2,16 +2,19 @@
 
 declare( strict_types=1 );
 
+use ArtisanPackUI\EcommerceKanbanLivewire\EcommerceKanbanLivewireServiceProvider;
 use ArtisanPackUI\EcommerceKanbanLivewire\Http\Middleware\ThrottleKanbanMutations;
+use ArtisanPackUI\EcommerceKanbanLivewire\Support\CardActions;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Livewire\Attributes\On;
 use Livewire\Mechanisms\HandleRequests\HandleRequests;
 
 /**
  * A Livewire update request with one component making `$calls`.
  *
- * @param  array<int, string>    $calls    Method names.
+ * @param  array<int, array<string, mixed>|string>  $calls  Method names, or raw call payloads.
  * @param  array<string, mixed>  $updates  Property updates.
  * @param  string                $name     The component's name.
  */
@@ -21,7 +24,7 @@ function kanbanUpdate( $user, array $calls, array $updates = [], string $name = 
         'components' => [ [
             'snapshot' => (string) json_encode( [ 'data' => [], 'memo' => [ 'name' => $name ] ] ),
             'updates'  => $updates,
-            'calls'    => array_map( static fn ( string $method ): array => [ 'path' => '', 'method' => $method, 'params' => [] ], $calls ),
+            'calls'    => array_map( static fn ( string|array $call ): array => is_array( $call ) ? $call : [ 'path' => '', 'method' => $call, 'params' => [] ], $calls ),
         ] ],
     ] );
     $request->setUserResolver( static fn () => $user );
@@ -122,6 +125,73 @@ it( 'counts writes from the slide-out and panels, but not their reads', function
     expect( throttle( kanbanUpdate( $user, [ 'addToBoard' ], [], 'artisanpack-ecommerce-kanban-card-detail' ) ) )->toBe( 200 )
         ->and( throttle( kanbanUpdate( $user, [ 'setActive' ], [], 'artisanpack-ecommerce-kanban-automations' ) ) )->toBe( 200 )
         ->and( throttle( kanbanUpdate( $user, [ 'save' ], [], 'artisanpack-ecommerce-kanban-widget-picker' ) ) )->toBe( 429 );
+} );
+
+/**
+ * The call Livewire sends when a component's listener for `$event` runs.
+ *
+ * @return array<string, mixed>
+ */
+function listenerCall( string $event, array $params = [] ): array
+{
+    return [ 'path' => '', 'method' => '__dispatch', 'params' => [ $event, $params ] ];
+}
+
+it( 'does not count the package\'s own event listeners, sent as __dispatch calls', function ( string $event, array $params, string $component ): void {
+    $user = makeUser();
+
+    foreach ( range( 1, 5 ) as $attempt ) {
+        expect( throttle( kanbanUpdate( $user, [ listenerCall( $event, $params ) ], [], $component ) ) )->toBe( 200 );
+    }
+} )->with( [
+    'open card'          => [ CardActions::OPEN_EVENT, [ 'orderId' => 1 ], 'artisanpack-ecommerce-kanban-card-detail' ],
+    'card updated'       => [ 'ec-kb-card-updated', [ 'orderId' => 1 ], 'artisanpack-ecommerce-kanban-card-detail' ],
+    'board refreshed'    => [ 'ec-kb-board-refreshed', [], 'artisanpack-ecommerce-kanban-card-detail' ],
+    'move card'          => [ CardActions::MOVE_EVENT, [ 'orderId' => 1 ], 'artisanpack-ecommerce-kanban-board' ],
+    'remove card'        => [ CardActions::REMOVE_EVENT, [ 'orderId' => 1 ], 'artisanpack-ecommerce-kanban-board' ],
+    'board changed'      => [ 'ec-kb-board-changed', [], 'artisanpack-ecommerce-kanban-board' ],
+    'edit widgets'       => [ 'ec-kb-edit-widgets', [], 'artisanpack-ecommerce-kanban-widget-picker' ],
+    'edit automations'   => [ 'ec-kb-edit-automations', [], 'artisanpack-ecommerce-kanban-automations' ],
+] );
+
+it( 'maps every read event to a read call that listens for it on a package component', function (): void {
+    expect( array_diff( ThrottleKanbanMutations::READ_EVENTS, ThrottleKanbanMutations::READ_CALLS ) )->toBe( [] );
+
+    $listeners = [];
+
+    foreach ( EcommerceKanbanLivewireServiceProvider::LIVEWIRE_COMPONENTS as $class ) {
+        foreach ( ( new ReflectionClass( $class ) )->getMethods() as $method ) {
+            foreach ( $method->getAttributes( On::class ) as $attribute ) {
+                $listeners[ $attribute->getArguments()[0] ][] = $method->getName();
+            }
+        }
+    }
+
+    foreach ( ThrottleKanbanMutations::READ_EVENTS as $event => $method ) {
+        expect( $listeners[ $event ] ?? [] )->toContain( $method );
+    }
+} );
+
+it( 'counts __dispatch calls for unknown events or without an event', function ( array $call ): void {
+    $user = makeUser();
+
+    expect( throttle( kanbanUpdate( $user, [ $call ] ) ) )->toBe( 200 )
+        ->and( throttle( kanbanUpdate( $user, [ $call ] ) ) )->toBe( 200 )
+        ->and( throttle( kanbanUpdate( $user, [ $call ] ) ) )->toBe( 429 );
+} )->with( [
+    'satellite event' => [ [ 'path' => '', 'method' => '__dispatch', 'params' => [ 'print-provider.reprint', [ 'orderId' => 1 ] ] ] ],
+    'missing params'  => [ [ 'path' => '', 'method' => '__dispatch' ] ],
+    'empty params'    => [ [ 'path' => '', 'method' => '__dispatch', 'params' => [] ] ],
+    'non-string name' => [ [ 'path' => '', 'method' => '__dispatch', 'params' => [ [ 'ec-kb-open-card' ], [] ] ] ],
+] );
+
+it( 'counts a listener call batched with a write', function (): void {
+    $user  = makeUser();
+    $calls = [ listenerCall( 'ec-kb-board-refreshed' ), 'moveCard' ];
+
+    expect( throttle( kanbanUpdate( $user, $calls ) ) )->toBe( 200 )
+        ->and( throttle( kanbanUpdate( $user, $calls ) ) )->toBe( 200 )
+        ->and( throttle( kanbanUpdate( $user, $calls ) ) )->toBe( 429 );
 } );
 
 it( 'ignores page loads', function (): void {

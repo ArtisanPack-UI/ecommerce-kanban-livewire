@@ -93,6 +93,29 @@ final class Statuses
     }
 
     /**
+     * The widget tone (see `WidgetViews::TONES`) that a payment or
+     * fulfillment status reads in: paid and fulfilled are success, pending
+     * and partial states a warning or note, failed a danger.
+     *
+     * @since 2.0.0
+     *
+     * @param  string       $type   `payment` or `fulfillment`.
+     * @param  string|null  $value  Stored status.
+     *
+     * @return string
+     */
+    public static function tone( string $type, ?string $value ): string
+    {
+        return match ( $type . ':' . (string) $value ) {
+            'payment:paid', 'fulfillment:fulfilled'             => 'success',
+            'payment:pending'                                   => 'warning',
+            'payment:partially_refunded', 'fulfillment:partial' => 'info',
+            'payment:failed'                                    => 'danger',
+            default                                             => 'neutral',
+        };
+    }
+
+    /**
      * `$type`'s statuses as `[ id, name ]` options.
      *
      * @since 1.0.0

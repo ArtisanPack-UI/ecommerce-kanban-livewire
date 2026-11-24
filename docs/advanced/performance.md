@@ -1,5 +1,6 @@
 ---
 title: Performance
+menu_order: 30
 ---
 
 # Performance
@@ -11,7 +12,7 @@ The board is built to stay fast with thousands of cards. Every card query is fix
 - **Headers first.** The first render draws the column headers only. The page then loads the cards of the columns on screen.
 - **Lazy columns.** Columns further along show skeletons and load their cards when they scroll into view, in batches.
 - **Collapsed columns never load.** A column the user collapsed (remembered per board in the browser) runs no card queries until it is expanded.
-- **Paging.** A column shows `cards.per_column` cards (25 by default); "Show more" adds the same number again.
+- **Paging.** A column shows `cards.per_column` cards (25 by default); "Show more" adds the same number again, up to 500 cards per column (`Board::MAX_CARDS_PER_COLUMN`).
 - **Tag options load with the cards**, not on every request.
 
 ## Re-rendering only what changed
@@ -43,7 +44,7 @@ A 1,000-card board with five columns loads in 24 queries (9 + 5 × 3) and render
 
 ## Polling cost
 
-A poll compares a fingerprint of each column's cards with the last poll, in one query of a few narrow columns per card, and renders nothing when nothing changed. Lengthen `realtime.poll_interval` on stores with many open boards, or turn on broadcasting so boards don't poll at all. See [Real-Time Updates](Realtime).
+A poll compares a fingerprint of each column's cards with the last poll, in one query of a few narrow columns per card, and renders nothing when nothing changed. Lengthen `realtime.poll_interval` on stores with many open boards, or turn on broadcasting so boards don't poll at all. See [Real-Time Updates](../realtime.md).
 
 ## Writing extensions
 

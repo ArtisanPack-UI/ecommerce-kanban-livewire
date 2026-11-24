@@ -1,0 +1,1240 @@
+/*
+ * The kanban board's own styles: the token-only pieces the ArtisanPack UI
+ * design system has no component for (the card, the column, the compact
+ * empty state, the filter bar). Every color, radius and size is an
+ * `--apui-*` token, so light, dark and high-contrast themes follow the
+ * page's `data-theme`, and logical properties keep right-to-left layouts
+ * right. Inlined by `partials/styles` (KanbanStyles), so a host needs no
+ * build step for it. Not in a layer: it sits on top of the design system's
+ * `apui` layer.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage EcommerceKanbanLivewire
+ *
+ * @since      2.0.0
+ */
+
+/* Shared helpers: muted text and an inline text link. */
+.ec-kb-muted {
+	color: var(--apui-text-muted);
+}
+
+.ec-kb-text-link {
+	color: var(--apui-color-primary-text);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.ec-kb-text-link:hover {
+	text-decoration-thickness: 2px;
+}
+
+.ec-kb-focus-ring:focus-visible,
+.ec-kb-card:focus-visible,
+.ec-kb-column-cards:focus-visible,
+.ec-kb-strip:focus-visible {
+	outline: var(--apui-focus-ring-width) solid transparent;
+	box-shadow:
+		0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+		0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+}
+
+/* The page and the board strip. */
+.ec-kb-page {
+	min-block-size: 100vh;
+	margin: 0;
+	background: var(--apui-surface-page);
+	color: var(--apui-text-default);
+	font-family: var(--apui-font-family-sans);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+/*
+ * The standalone layout: a full-width sticky Navbar, a skip link held
+ * off-canvas until focused, and scroll padding the Navbar's height so a
+ * focused control never sits under it (WCAG 2.2 SC 2.4.11).
+ */
+.ec-kb-standalone {
+	scroll-padding-block-start: calc(var(--apui-navbar-height) + 16px);
+}
+
+.ec-kb-skip-link.apui-button {
+	position: fixed;
+	inset-block-start: 8px;
+	inset-inline-start: 8px;
+	z-index: calc(var(--apui-z-sticky) + 1);
+	translate: 0 calc(-100% - 16px);
+}
+
+.ec-kb-skip-link.apui-button:focus,
+.ec-kb-skip-link.apui-button:focus-visible {
+	translate: none;
+}
+
+.ec-kb-standalone-nav.apui-navbar {
+	border-radius: 0;
+	border-inline: 0;
+}
+
+.ec-kb-brand {
+	display: inline-flex;
+	align-items: center;
+	gap: 12px;
+	color: var(--apui-text-default);
+	font-weight: 600;
+	text-decoration: none;
+}
+
+a.ec-kb-brand:hover > span {
+	text-decoration: underline;
+}
+
+a.ec-kb-brand:focus-visible {
+	border-radius: var(--apui-radius-sm);
+	outline: var(--apui-focus-ring-width) solid transparent;
+	box-shadow:
+		0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+		0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+}
+
+.ec-kb-brand-mark.apui-icon-tile {
+	background: var(--apui-surface-inverse);
+	color: var(--apui-text-inverse);
+}
+
+.ec-kb-standalone-main {
+	box-sizing: border-box;
+	inline-size: 100%;
+	padding: 24px;
+	outline: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.ec-kb-skip-link.apui-button {
+		transition: translate var(--apui-motion-duration-fast) var(--apui-motion-ease-standard);
+	}
+}
+
+/* Board picker (#53): a centered column of Cards in an auto-fill grid. */
+.ec-kb-picker {
+	display: flex;
+	flex-direction: column;
+	gap: 24px;
+	box-sizing: border-box;
+	inline-size: 100%;
+	max-inline-size: 896px;
+	margin-inline: auto;
+}
+
+.ec-kb-picker-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr));
+	gap: 12px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.ec-kb-picker-grid > li {
+	display: flex;
+}
+
+.ec-kb-picker-card.apui-card {
+	flex: 1;
+}
+
+.ec-kb-picker-card [data-scope='card'][data-part='title'] {
+	font-family: var(--apui-type-heading-sm-font-family);
+	font-size: var(--apui-type-heading-sm-font-size);
+	font-weight: var(--apui-type-heading-sm-font-weight);
+	line-height: var(--apui-type-heading-sm-line-height);
+	letter-spacing: var(--apui-type-heading-sm-letter-spacing);
+}
+
+.ec-kb-picker-card [data-scope='card'][data-part='header'] + .ec-kb-picker-card-body {
+	padding-block-start: 8px;
+}
+
+.ec-kb-picker-last {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin: 0;
+	color: var(--apui-text-muted);
+	font-size: var(--apui-type-body-sm-font-size);
+	line-height: var(--apui-type-body-sm-line-height);
+}
+
+/* Board (#54): the header, the notices and the strip stack with 16px gaps. */
+.ec-kb-board-page {
+	inline-size: 100%;
+	max-inline-size: none;
+}
+
+.ec-kb-board {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	min-inline-size: 0;
+}
+
+/*
+ * The board switcher is the header's meta part; it sits after the title on
+ * the title's line, with the description below both.
+ */
+.ec-kb-board-header [data-scope='page-header'][data-part='row'] > :first-child {
+	display: grid;
+	grid-template-columns: minmax(0, auto) auto;
+	align-items: center;
+	justify-content: start;
+	column-gap: 8px;
+}
+
+.ec-kb-board-header [data-scope='page-header'][data-part='meta'] {
+	grid-row: 1;
+	grid-column: 2;
+	margin: 0;
+}
+
+.ec-kb-board-header [data-scope='page-header'][data-part='title'] {
+	grid-row: 1;
+	grid-column: 1;
+}
+
+.ec-kb-board-header [data-scope='page-header'][data-part='description'] {
+	grid-column: 1 / -1;
+}
+
+.ec-kb-switcher-trigger.apui-button {
+	--apui-_h: var(--apui-control-height-sm);
+	--apui-_border: transparent;
+
+	inline-size: var(--apui-_h);
+	padding-inline: 0;
+	background-color: transparent;
+	color: var(--apui-text-muted);
+}
+
+.ec-kb-switcher-trigger [data-part='iconEnd'] {
+	display: none;
+}
+
+.ec-kb-toolbar-filters {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--apui-space-2);
+}
+
+/*
+ * Edit mode (#56): cards stay put and step back onto the sunken surface (not
+ * opacity, which would take their muted text below AA contrast); the column
+ * header shows a grip.
+ */
+.ec-kb-board[data-ec-kb-editing] .ec-kb-card {
+	background: var(--apui-surface-sunken);
+	box-shadow: none;
+}
+
+.ec-kb-column-grip {
+	flex: none;
+	color: var(--apui-text-muted);
+	cursor: grab;
+}
+
+.ec-kb-add-column {
+	display: flex;
+	flex: none;
+	align-items: flex-start;
+	inline-size: 240px;
+}
+
+.ec-kb-add-column-button.apui-button {
+	inline-size: 100%;
+	border-style: dashed;
+}
+
+/* Dialog bodies (#55, #56): fields stacked with 16px gaps. */
+.ec-kb-dialog-form {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	margin: 0;
+}
+
+.ec-kb-dialog-note {
+	margin: 0;
+	color: var(--apui-text-muted);
+	font-size: var(--apui-type-body-sm-font-size);
+	line-height: var(--apui-type-body-sm-line-height);
+}
+
+.ec-kb-strip {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+	overflow-x: auto;
+	padding-block-end: var(--apui-space-4);
+	border-radius: var(--apui-radius-lg);
+	scroll-snap-type: x mandatory;
+}
+
+@media (min-width: 768px) {
+	.ec-kb-strip {
+		scroll-snap-type: none;
+	}
+}
+
+/* Card (#44). */
+.ec-kb-card {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	box-sizing: border-box;
+	padding: 12px;
+	border: var(--apui-border-width) solid var(--apui-border-muted);
+	border-radius: var(--apui-radius-md);
+	background: var(--apui-surface-raised);
+	color: var(--apui-text-default);
+	font-family: var(--apui-font-family-sans);
+	/* Only opacity and the edge: livewire-drag-and-drop moves its floating copy with transform. */
+	transition:
+		opacity var(--apui-motion-duration-fast) var(--apui-motion-ease-standard),
+		border-color var(--apui-motion-duration-fast) var(--apui-motion-ease-standard),
+		box-shadow var(--apui-motion-duration-fast) var(--apui-motion-ease-standard);
+}
+
+.ec-kb-card[data-ec-kb-draggable] {
+	cursor: grab;
+}
+
+.ec-kb-card[data-ec-kb-draggable]:active {
+	cursor: grabbing;
+}
+
+.ec-kb-card[data-ec-kb-state='moving'] {
+	/*
+	 * While the move request runs (F8): the sunken surface and a dashed edge
+	 * in the primary color, at full opacity so the muted text keeps AA
+	 * contrast; the spinner and "Moving…" say it in text.
+	 */
+	border-style: dashed;
+	border-color: var(--apui-color-primary);
+	background: var(--apui-surface-sunken);
+	box-shadow: none;
+}
+
+/*
+ * Drag and drop (F5). A picked-up card (keyboard or pointer) gets a
+ * primary edge and ring, so a keyboard user sees it is held; the column a
+ * card would land in gets the soft primary surface, and one that refuses
+ * it (at its WIP limit) a dashed error outline. The WIP badge says why in
+ * text. livewire-drag-and-drop draws its drop line in
+ * `--drag-indicator-color`, set to the primary token here.
+ */
+.ec-kb-card[data-dragging] {
+	border-color: var(--apui-color-primary);
+	box-shadow:
+		0 0 0 var(--apui-border-width) var(--apui-color-primary),
+		var(--apui-elevation-raised);
+}
+
+.ec-kb-strip,
+.ec-kb-column-cards,
+.ec-kb-widget-list {
+	--drag-indicator-color: var(--apui-color-primary);
+}
+
+.ec-kb-column-cards[data-drag-over] {
+	background: var(--apui-color-primary-soft);
+}
+
+.ec-kb-column-cards[data-drag-disallowed] {
+	outline: var(--apui-border-width) dashed var(--apui-color-error);
+	outline-offset: 2px;
+}
+
+.ec-kb-column[data-dragging] {
+	border-color: var(--apui-color-primary);
+	box-shadow: 0 0 0 var(--apui-border-width) var(--apui-color-primary);
+}
+
+.ec-kb-card[data-ec-kb-state='reverting'] {
+	border-color: var(--apui-color-error);
+	box-shadow: 0 0 0 var(--apui-border-width) var(--apui-color-error);
+}
+
+.ec-kb-card-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.ec-kb-card-summary {
+	display: grid;
+	gap: 2px;
+	min-inline-size: 0;
+}
+
+.ec-kb-card-summary > p {
+	margin: 0;
+}
+
+.ec-kb-card-order {
+	font-size: var(--apui-type-label-md-font-size);
+	font-weight: var(--apui-font-weight-medium);
+	line-height: var(--apui-type-label-md-line-height);
+}
+
+.ec-kb-card-number {
+	font-family: var(--apui-font-family-mono);
+}
+
+.ec-kb-card-customer {
+	overflow: hidden;
+	font-size: var(--apui-type-body-sm-font-size);
+	line-height: var(--apui-type-body-sm-line-height);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.ec-kb-card-date {
+	color: var(--apui-text-muted);
+	font-size: var(--apui-type-caption-font-size);
+	line-height: var(--apui-type-caption-line-height);
+}
+
+.ec-kb-card-widgets {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.ec-kb-card-state {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin: 0;
+	color: var(--apui-text-muted);
+	font-size: var(--apui-type-caption-font-size);
+	line-height: var(--apui-type-caption-line-height);
+}
+
+.ec-kb-card-state[data-ec-kb-tone='error'] {
+	color: var(--apui-color-error-text);
+}
+
+.ec-kb-card-state svg {
+	flex: none;
+	inline-size: var(--apui-icon-size-sm);
+	block-size: var(--apui-icon-size-sm);
+}
+
+/*
+ * The actions trigger is the DropdownMenu's own Button, which is always an
+ * outline button with a chevron; the card shows it as a ghost, icon-only xs
+ * button.
+ */
+.ec-kb-card-actions-trigger.apui-button {
+	--apui-_h: var(--apui-control-height-xs);
+	--apui-_border: transparent;
+
+	flex: none;
+	inline-size: var(--apui-_h);
+	/* Never under the 24px target size (SC 2.5.8), even at compact density (F17). */
+	min-inline-size: 24px;
+	min-block-size: 24px;
+	padding-inline: 0;
+	background-color: transparent;
+	color: var(--apui-text-default);
+}
+
+/* The column header's xs buttons (collapse, automations count): 24px at least, as above (F17). */
+.ec-kb-column-header .apui-button {
+	min-inline-size: 24px;
+	min-block-size: 24px;
+}
+
+.ec-kb-card-actions-trigger [data-part='iconEnd'] {
+	display: none;
+}
+
+.ec-kb-card-actions-trigger svg {
+	inline-size: var(--apui-icon-size-sm);
+	block-size: var(--apui-icon-size-sm);
+}
+
+.ec-kb-spinner {
+	display: inline-block;
+	flex: none;
+	inline-size: 12px;
+	block-size: 12px;
+	box-sizing: border-box;
+	border: 2px solid var(--apui-border-default);
+	border-block-start-color: var(--apui-color-primary);
+	border-radius: var(--apui-radius-full);
+	animation: ec-kb-spin 0.8s linear infinite;
+}
+
+@keyframes ec-kb-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/* Column (#46). */
+.ec-kb-column {
+	position: relative;
+	display: flex;
+	flex: none;
+	flex-direction: column;
+	box-sizing: border-box;
+	inline-size: 304px;
+	max-inline-size: 85vw;
+	border: var(--apui-border-width) solid var(--apui-border-muted);
+	border-radius: var(--apui-radius-lg);
+	background: var(--apui-surface-default);
+	color: var(--apui-text-default);
+	scroll-snap-align: start;
+}
+
+.ec-kb-column[data-ec-kb-collapsed] {
+	inline-size: 56px;
+}
+
+.ec-kb-column-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	box-sizing: border-box;
+	min-block-size: 48px;
+	padding-block: 8px;
+	padding-inline: 8px 10px;
+}
+
+.ec-kb-column[data-ec-kb-collapsed] .ec-kb-column-header {
+	flex-direction: column;
+	padding-inline: 0;
+}
+
+.ec-kb-column-dot {
+	flex: none;
+	inline-size: 10px;
+	block-size: 10px;
+	border-radius: var(--apui-radius-full);
+	background: var(--ec-kb-column-color, var(--apui-border-strong));
+}
+
+.ec-kb-column-icon {
+	flex: none;
+	inline-size: var(--apui-icon-size-sm);
+	block-size: var(--apui-icon-size-sm);
+	color: var(--apui-text-muted);
+}
+
+.ec-kb-column-title {
+	flex: 1;
+	min-inline-size: 0;
+	margin: 0;
+	overflow: hidden;
+	font-size: var(--apui-type-label-md-font-size);
+	font-weight: var(--apui-font-weight-semibold);
+	line-height: var(--apui-type-label-md-line-height);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.ec-kb-column[data-ec-kb-collapsed] .ec-kb-column-title {
+	flex: none;
+	overflow: visible;
+	writing-mode: vertical-rl;
+}
+
+.ec-kb-column-matching {
+	color: var(--apui-text-muted);
+	font-size: var(--apui-type-caption-font-size);
+	line-height: var(--apui-type-caption-line-height);
+	white-space: nowrap;
+}
+
+.ec-kb-column-tools {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px;
+	padding: 0 10px 8px;
+	border-block-end: var(--apui-border-width) solid var(--apui-border-muted);
+}
+
+.ec-kb-column[data-ec-kb-collapsed] .ec-kb-column-tools {
+	flex-direction: column;
+	padding-inline: 0;
+}
+
+.ec-kb-column-body {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 0 10px 10px;
+}
+
+.ec-kb-column-body[hidden] {
+	display: none;
+}
+
+.ec-kb-column-cards {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	min-block-size: 64px;
+	border-radius: var(--apui-radius-md);
+}
+
+/* The compact empty state is the drop target hint until a card lands. */
+.ec-kb-column-cards:has([data-ec-kb-card]) > [data-ec-kb-empty-column] {
+	display: none;
+}
+
+.ec-kb-column-loading {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.ec-kb-column-loading .apui-skeleton {
+	display: block;
+	inline-size: 100%;
+	block-size: 92px;
+	border-radius: var(--apui-radius-md);
+}
+
+.ec-kb-column-more.apui-button {
+	inline-size: 100%;
+}
+
+/* Empty state (#45): the full one sits in a Card; the compact one in a column. */
+.ec-kb-empty-card {
+	inline-size: 100%;
+}
+
+.ec-kb-empty[data-ec-kb-compact] {
+	display: grid;
+	justify-items: center;
+	gap: 6px;
+	box-sizing: border-box;
+	padding: 24px 12px;
+	border: var(--apui-border-width) dashed var(--apui-border-default);
+	border-radius: var(--apui-radius-md);
+	color: var(--apui-text-muted);
+	font-size: var(--apui-type-body-sm-font-size);
+	line-height: var(--apui-type-body-sm-line-height);
+	text-align: center;
+}
+
+.ec-kb-empty[data-ec-kb-compact] > .apui-icon {
+	color: var(--apui-text-subtle);
+}
+
+.ec-kb-empty[data-ec-kb-compact] > p {
+	margin: 0;
+}
+
+/* Filter bar (#47). */
+.ec-kb-filters > [data-scope='card'][data-part='body'] {
+	padding: 12px 16px;
+}
+
+.ec-kb-filters-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: 12px 16px;
+}
+
+.ec-kb-filters-row > * {
+	flex: 1 1 10rem;
+	min-inline-size: 0;
+}
+
+.ec-kb-filters-row > .ec-kb-filters-search {
+	flex-grow: 2;
+	flex-basis: 14rem;
+}
+
+.ec-kb-filters-row > .ec-kb-filters-more {
+	flex: none;
+	align-self: flex-end;
+}
+
+.ec-kb-filters-extra {
+	margin-block-start: 12px;
+	padding-block-start: 12px;
+	border-block-start: var(--apui-border-width) solid var(--apui-border-muted);
+}
+
+.ec-kb-filters-extra[hidden] {
+	display: none;
+}
+
+.ec-kb-filters-toggles {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px 24px;
+	margin-block-start: 12px;
+}
+
+.ec-kb-filters-footer {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px 16px;
+	margin-block-start: 12px;
+}
+
+.ec-kb-filters-summary {
+	margin: 0;
+	color: var(--apui-text-muted);
+	font-size: var(--apui-type-body-sm-font-size);
+	line-height: var(--apui-type-body-sm-line-height);
+}
+
+/* In the drawer the fields stack, with the two dates side by side. */
+.ec-kb-filters-stack {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.ec-kb-filters-dates {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12px;
+}
+
+.ec-kb-filter-count {
+	display: inline-grid;
+	place-items: center;
+	min-inline-size: 20px;
+	block-size: 20px;
+	box-sizing: border-box;
+	padding-inline: 6px;
+	border-radius: var(--apui-radius-full);
+	background: var(--apui-color-primary-soft);
+	color: var(--apui-color-primary-soft-foreground);
+	font-size: var(--apui-type-caption-font-size);
+	font-weight: var(--apui-font-weight-semibold);
+	line-height: 1;
+}
+
+.ec-kb-filters-drawer.apui-drawer {
+	inline-size: min(340px, 100%);
+}
+
+@media (min-width: 768px) {
+	.ec-kb-below-md {
+		display: none;
+	}
+}
+
+@media (max-width: 767.98px) {
+	.ec-kb-from-md {
+		display: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ec-kb-card {
+		transition: none;
+	}
+
+	.ec-kb-spinner {
+		animation-duration: 2.4s;
+	}
+}
+
+/*
+ * Card widgets: the tone icon and the widget's own icon sit side by side; a
+ * linked badge is underlined (a neutral one reads in the link color) and
+ * shows the focus ring, as does a badge with a tooltip.
+ */
+.ec-kb-widget-icons[data-part='icon'] {
+	inline-size: auto;
+	gap: 4px;
+}
+
+.ec-kb-widget-icons > .apui-icon {
+	--apui-_icon-size: var(--apui-_ic);
+}
+
+.ec-kb-widget-link,
+.ec-kb-widget-tip {
+	display: inline-flex;
+	border-radius: var(--apui-radius-full);
+	color: inherit;
+	text-decoration: none;
+}
+
+.ec-kb-widget-link [data-part='label'] {
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.ec-kb-widget-link .apui-badge[data-color='neutral'] {
+	color: var(--apui-color-primary-text);
+}
+
+.ec-kb-widget-link:hover [data-part='label'] {
+	text-decoration-thickness: 2px;
+}
+
+.ec-kb-widget-link:focus-visible,
+.ec-kb-widget-tip:focus-visible {
+	outline: var(--apui-focus-ring-width) solid transparent;
+	box-shadow:
+		0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+		0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+}
+
+/* Section headings in the drawers and dialogs: the design system's eyebrow type. */
+.ec-kb-eyebrow {
+	margin: 0;
+	color: var(--apui-text-muted);
+	font-family: var(--apui-font-family-sans);
+	font-size: var(--apui-type-eyebrow-font-size);
+	font-weight: var(--apui-type-eyebrow-font-weight);
+	line-height: var(--apui-type-eyebrow-line-height);
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.ec-kb-mono {
+	font-family: var(--apui-font-family-mono);
+	font-size: var(--apui-type-code-sm-font-size);
+}
+
+/* A label / value list with the values at the end (the order totals). */
+.ec-kb-meta {
+	display: grid;
+	gap: 4px;
+	margin: 0;
+	margin-inline-start: auto;
+	inline-size: min(100%, 45%);
+	min-inline-size: 14rem;
+	font-size: var(--apui-type-body-sm-font-size);
+	line-height: var(--apui-type-body-sm-line-height);
+}
+
+.ec-kb-meta-row {
+	display: flex;
+	justify-content: space-between;
+	gap: 16px;
+}
+
+.ec-kb-meta-row > dt {
+	color: var(--apui-text-muted);
+}
+
+.ec-kb-meta-row > dd {
+	margin: 0;
+	font-variant-numeric: tabular-nums;
+	text-align: end;
+}
+
+.ec-kb-meta-strong > dt,
+.ec-kb-meta-strong > dd {
+	color: var(--apui-text-default);
+	font-weight: 600;
+}
+
+/* The card detail drawer. */
+.ec-kb-detail-drawer.apui-drawer {
+	inline-size: min(540px, 92%);
+}
+
+.ec-kb-detail-badges[data-part='description'] {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-block-start: 8px;
+}
+
+.ec-kb-detail {
+	display: grid;
+	gap: 24px;
+	min-inline-size: 0;
+}
+
+.ec-kb-detail p {
+	margin: 0;
+}
+
+.ec-kb-detail-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+.ec-kb-detail-remove.apui-button {
+	margin-inline-start: auto;
+}
+
+.ec-kb-detail-pair {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+	gap: 24px;
+}
+
+.ec-kb-detail-section {
+	display: grid;
+	align-content: start;
+	gap: 8px;
+	min-inline-size: 0;
+}
+
+.ec-kb-detail-section > .ec-kb-eyebrow {
+	margin-block-end: 4px;
+}
+
+.ec-kb-detail-strong {
+	font-weight: 600;
+}
+
+.ec-kb-detail-small {
+	font-size: var(--apui-type-body-sm-font-size);
+	line-height: var(--apui-type-body-sm-line-height);
+}
+
+.ec-kb-detail-address {
+	font-style: normal;
+	overflow-wrap: anywhere;
+}
+
+.ec-kb-detail-variant {
+	display: block;
+	color: var(--apui-text-muted);
+	font-size: var(--apui-type-caption-font-size);
+	line-height: var(--apui-type-caption-line-height);
+}
+
+.ec-kb-detail-states {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	align-items: center;
+	gap: 8px 24px;
+	margin: 0;
+}
+
+.ec-kb-detail-states > dd {
+	margin: 0;
+}
+
+.ec-kb-detail-boards-list > .apui-list-item {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	column-gap: 12px;
+}
+
+.ec-kb-detail-boards-list [data-part='title'] {
+	font-weight: 600;
+}
+
+.ec-kb-detail-boards-list [data-part='description'] {
+	color: var(--apui-text-muted);
+}
+
+.ec-kb-detail-add {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: 12px;
+	padding: 12px 16px;
+	border-radius: var(--apui-radius-md);
+	background: var(--apui-surface-sunken);
+}
+
+.ec-kb-detail-add-board,
+.ec-kb-detail-add-column {
+	flex: 1 1 9rem;
+	min-inline-size: 0;
+}
+
+/* The automations panel. */
+.ec-kb-automations-drawer.apui-drawer {
+	inline-size: min(540px, 92%);
+}
+
+.ec-kb-automations {
+	display: grid;
+	gap: 24px;
+	min-inline-size: 0;
+}
+
+.ec-kb-automations p {
+	margin: 0;
+}
+
+.ec-kb-automations-intro {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.ec-kb-automations-intro > p {
+	flex: 1 1 16rem;
+	font-size: var(--apui-type-body-sm-font-size);
+	line-height: var(--apui-type-body-sm-line-height);
+}
+
+.ec-kb-automations-group {
+	display: grid;
+	gap: 8px;
+	min-inline-size: 0;
+}
+
+.ec-kb-automations-heading:focus {
+	outline: none;
+}
+
+.ec-kb-automations-empty {
+	padding: 16px;
+	border: var(--apui-border-width) dashed var(--apui-border-default);
+	border-radius: var(--apui-radius-md);
+	color: var(--apui-text-muted);
+	font-size: var(--apui-type-body-sm-font-size);
+	line-height: var(--apui-type-body-sm-line-height);
+	text-align: center;
+}
+
+.ec-kb-automation {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	gap: 4px 12px;
+	align-items: start;
+	padding: 16px;
+}
+
+.ec-kb-automation-summary {
+	display: grid;
+	gap: 2px;
+	min-inline-size: 0;
+}
+
+.ec-kb-automation-trigger {
+	font-weight: 600;
+	overflow-wrap: anywhere;
+}
+
+.ec-kb-automation-route {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px 8px;
+	font-size: var(--apui-type-body-sm-font-size);
+	line-height: var(--apui-type-body-sm-line-height);
+}
+
+.ec-kb-automation-arrow {
+	color: var(--apui-text-muted);
+}
+
+.ec-kb-automation-conditions {
+	color: var(--apui-text-muted);
+	font-size: var(--apui-type-caption-font-size);
+	line-height: var(--apui-type-caption-line-height);
+}
+
+.ec-kb-automation-controls {
+	display: flex;
+	flex-wrap: wrap;
+	grid-column: 2 / -1;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	margin-block-start: 8px;
+}
+
+.ec-kb-automation-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+
+.ec-kb-delete-automation:focus {
+	outline: none;
+}
+
+/* The card widget picker. */
+.ec-kb-widget-picker-dialog.apui-dialog {
+	inline-size: min(980px, 100%);
+}
+
+.ec-kb-widget-picker {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 288px;
+	align-items: start;
+	gap: 24px;
+}
+
+@media (max-width: 47.99rem) {
+	.ec-kb-widget-picker {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+.ec-kb-widget-picker p {
+	margin: 0;
+}
+
+.ec-kb-widget-picker-form {
+	display: grid;
+	gap: 16px;
+	min-inline-size: 0;
+}
+
+.ec-kb-widget-list {
+	display: grid;
+	gap: 8px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.ec-kb-widget-row {
+	display: grid;
+	gap: 12px;
+	padding: 12px 16px;
+	border: var(--apui-border-width) solid var(--apui-border-muted);
+	border-radius: var(--apui-radius-lg);
+	background: var(--apui-surface-default);
+}
+
+.ec-kb-widget-row[data-dragging] {
+	/* Held, not dimmed: opacity would take the row's text below AA contrast. */
+	border-color: var(--apui-color-primary);
+	box-shadow: 0 0 0 var(--apui-border-width) var(--apui-color-primary);
+}
+
+.ec-kb-widget-row-head {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 12px;
+}
+
+.ec-kb-widget-handle {
+	color: var(--apui-text-muted);
+	cursor: grab;
+}
+
+.ec-kb-widget-row-label {
+	font-weight: 600;
+	overflow-wrap: anywhere;
+}
+
+.ec-kb-widget-provider {
+	color: var(--apui-text-muted);
+	font-size: var(--apui-type-body-sm-font-size);
+	line-height: var(--apui-type-body-sm-line-height);
+}
+
+.ec-kb-widget-missing {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	color: var(--apui-color-warning-text);
+	font-size: var(--apui-type-body-sm-font-size);
+	line-height: var(--apui-type-body-sm-line-height);
+}
+
+.ec-kb-widget-row-tools {
+	display: flex;
+	gap: 4px;
+}
+
+.ec-kb-widget-errors {
+	display: grid;
+	gap: 4px;
+	border-radius: var(--apui-radius-sm);
+}
+
+.ec-kb-widget-errors:focus-visible {
+	outline: var(--apui-focus-ring-width) solid var(--apui-focus-ring-color);
+	outline-offset: var(--apui-focus-ring-offset);
+}
+
+.ec-kb-widget-error {
+	margin: 0;
+	color: var(--apui-color-error-text);
+	font-size: var(--apui-type-body-sm-font-size);
+	line-height: var(--apui-type-body-sm-line-height);
+}
+
+.ec-kb-widget-config {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+	align-items: start;
+	gap: 16px 24px;
+	padding-block-start: 16px;
+	border-block-start: var(--apui-border-width) solid var(--apui-border-muted);
+}
+
+.ec-kb-widget-config-wide {
+	grid-column: 1 / -1;
+}
+
+.ec-kb-widget-config-note,
+.ec-kb-widget-empty {
+	color: var(--apui-text-muted);
+	font-size: var(--apui-type-body-sm-font-size);
+	line-height: var(--apui-type-body-sm-line-height);
+}
+
+.ec-kb-widget-empty {
+	padding: 16px;
+	border: var(--apui-border-width) dashed var(--apui-border-default);
+	border-radius: var(--apui-radius-md);
+	text-align: center;
+}
+
+.ec-kb-widget-add {
+	display: flex;
+	align-items: flex-end;
+	gap: 12px;
+}
+
+.ec-kb-widget-add-select {
+	flex: 1 1 auto;
+	min-inline-size: 0;
+}
+
+.ec-kb-widget-preview {
+	display: grid;
+	gap: 12px;
+	padding: 16px;
+	border-radius: var(--apui-radius-lg);
+	background: var(--apui-surface-sunken);
+}
+
+.ec-kb-widget-preview-note {
+	color: var(--apui-text-muted);
+	font-size: var(--apui-type-body-sm-font-size);
+	line-height: var(--apui-type-body-sm-line-height);
+}
+
+/* How the board keeps up with changes made elsewhere: one ghost Badge per state. */
+.ec-kb-connection {
+	display: inline-flex;
+	align-items: center;
+}

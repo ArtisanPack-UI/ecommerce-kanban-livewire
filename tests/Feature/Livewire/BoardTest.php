@@ -41,8 +41,8 @@ it( 'renders columns in position order as labelled regions with overrides, then 
         ->assertSeeInOrder( [ 'Awaiting label', 'Packing' ] )
         ->assertSeeHtml( 'aria-labelledby="ec-kb-column-' . $columns[0]->id . '-title"' )
         ->assertSeeHtml( 'id="ec-kb-column-' . $columns[0]->id . '-title"' )
-        ->assertSeeHtml( 'border-top-color: #112233' )
-        ->assertSeeHtml( 'border-top-color: #445566' );
+        ->assertSeeHtml( '--ec-kb-column-color: #112233' )
+        ->assertSeeHtml( '--ec-kb-column-color: #445566' );
 } );
 
 it( 'drops unsafe colours', function (): void {
@@ -51,7 +51,8 @@ it( 'drops unsafe colours', function (): void {
     Livewire::test( Board::class, [ 'board' => $board ] )
         ->call( 'loadBoard', [] )
         ->assertDontSeeHtml( 'url(x)' )
-        ->assertSeeHtml( 'border-top-color: transparent' );
+        ->assertDontSeeHtml( '--ec-kb-column-color' )
+        ->assertSeeHtml( 'data-ec-kb-column-color' );
 } );
 
 it( 'shows the count, and n / limit with a text equivalent when the column has a WIP limit', function (): void {
@@ -117,6 +118,30 @@ it( 'pages a column with Show more', function (): void {
     $component->assertDontSeeHtml( 'data-ec-kb-show-more' );
 } );
 
+it( 'caps Show more at MAX_CARDS_PER_COLUMN', function (): void {
+    [ $board, $columns ] = makeBoard( [ 1 ] );
+    $columnId            = $columns[0]->id;
+    $component           = Livewire::test( Board::class, [ 'board' => $board ] )->call( 'loadBoard', [] );
+
+    foreach ( range( 1, 30 ) as $press ) {
+        $component->call( 'showMore', $columnId );
+    }
+
+    expect( $component->get( 'limits' )[ $columnId ] )->toBe( Board::MAX_CARDS_PER_COLUMN );
+} );
+
+it( 'hides Show more once a column shows MAX_CARDS_PER_COLUMN cards', function (): void {
+    config()->set( 'artisanpack.ecommerce-kanban-livewire.cards.per_column', 300 );
+    [ $board, $columns ] = makeBoard( [ Board::MAX_CARDS_PER_COLUMN + 1 ] );
+
+    $component = Livewire::test( Board::class, [ 'board' => $board ] )->call( 'loadBoard', [] );
+
+    $component->assertSeeHtml( 'data-ec-kb-show-more' )->call( 'showMore', $columns[0]->id );
+
+    expect( substr_count( $component->html(), 'data-ec-kb-card=' ) )->toBe( Board::MAX_CARDS_PER_COLUMN );
+    $component->assertDontSeeHtml( 'data-ec-kb-show-more' );
+} );
+
 it( 'restores collapsed columns, which load no cards', function (): void {
     [ $board, $columns ] = makeBoard( [ [ 'cards' => 2, 'label_override' => 'Packing' ], [ 'cards' => 1, 'label_override' => 'Shipped' ] ] );
 
@@ -163,8 +188,7 @@ it( 'scrolls horizontally with the keyboard and snaps on small screens', functio
     [ $board ] = makeBoard( [ 0 ] );
 
     Livewire::test( Board::class, [ 'board' => $board ] )
-        ->assertSeeHtml( 'overflow-x-auto' )
-        ->assertSeeHtml( 'snap-x' )
+        ->assertSeeHtml( 'class="ec-kb-strip"' )
         ->assertSeeHtml( 'tabindex="0"' )
         ->assertSeeHtml( 'aria-labelledby="ec-kb-board-title"' );
 } );
@@ -195,15 +219,20 @@ it( 'lists the other boards in the header switcher and marks the current one', f
     [ $shipping ]   = makeBoard( [ 0 ], [ 'name' => 'Shipping', 'position' => 1 ] );
     makeBoard( [ 0 ], [ 'name' => 'Archive', 'is_active' => false ] );
 
-    Livewire::test( Board::class, [ 'board' => $production ] )
+    $component = Livewire::test( Board::class, [ 'board' => $production ] )
         ->assertSeeHtml( 'data-ec-kb-switcher' )
         ->assertSee( 'Switch board' )
         ->assertSeeInOrder( [ 'Production', 'Shipping', 'All boards' ] )
-        ->assertSeeHtml( 'href="' . route( 'artisanpack.ecommerce.kanban.boards.show', [ 'board' => $shipping->id ] ) . '"' )
-        ->assertSeeHtml( 'aria-current="page"' )
-        ->assertSeeHtml( 'x-on:click.stop' )
-        ->assertSeeHtml( route( 'artisanpack.ecommerce.kanban.boards.index', [ 'pick' => 1 ] ) )
         ->assertDontSee( 'Archive' );
+
+    $html    = $component->html();
+    $targets = html_entity_decode( $html );
+
+    expect( $html )->toMatch( '/data-ec-kb-switch="' . $production->id . '"[^>]*role="menuitemradio"[^>]*aria-checked="true"/' )
+        ->and( $html )->toMatch( '/data-ec-kb-switch="' . $shipping->id . '"[^>]*role="menuitemradio"[^>]*aria-checked="false"/' )
+        ->and( $html )->toContain( 'data-ec-kb-switch="' . $shipping->id . '"' )
+        ->and( $targets )->toContain( route( 'artisanpack.ecommerce.kanban.boards.show', [ 'board' => $shipping->id ] ) )
+        ->and( $targets )->toContain( route( 'artisanpack.ecommerce.kanban.boards.index', [ 'pick' => 1 ] ) );
 } );
 
 it( 'loads a board from its id and 404s for one that does not exist', function (): void {

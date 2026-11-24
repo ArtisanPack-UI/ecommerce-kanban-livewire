@@ -13,6 +13,7 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\EcommerceKanbanLivewire\Support;
 
+use ArtisanPack\LivewireUiComponents\Support\IconRegistry;
 use BladeUI\Icons\Factory;
 use Throwable;
 
@@ -20,10 +21,12 @@ use Throwable;
  * Turns the icon names the engine stores (sub-status icons, column overrides,
  * widget payloads) into names `x-artisanpack-icon` can render.
  *
- * The engine's widgets use bare Heroicon names (`tag`, `truck`); the
- * component library expects a style prefix (`o-tag`). A name that doesn't
- * resolve to an SVG is dropped, because rendering it would throw and blank
- * the card.
+ * A name in the component library's icon registry (LUC 3.0's Lucide set,
+ * such as `settings` or `external-link`) is kept as it is, since that is
+ * what `x-artisanpack-icon` resolves first. Otherwise a bare name is taken
+ * as a Heroicon (`tag`, `truck`) and given the style prefix the component
+ * expects (`o-tag`). A name that doesn't resolve to an SVG is dropped,
+ * because rendering it would throw and blank the card.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceKanbanLivewire
@@ -45,6 +48,7 @@ final class Icons
      * The `x-artisanpack-icon` name for `$name`, or null when there is none.
      *
      * @since 1.0.0
+     * @since 2.0.0 Keeps names in the component library's icon registry.
      *
      * @param  string|null  $name  Raw icon name.
      *
@@ -56,6 +60,10 @@ final class Icons
 
         if ( '' === $name ) {
             return null;
+        }
+
+        if ( ! array_key_exists( $name, self::$resolved ) && IconRegistry::has( $name ) ) {
+            self::$resolved[ $name ] = $name;
         }
 
         if ( ! array_key_exists( $name, self::$resolved ) ) {

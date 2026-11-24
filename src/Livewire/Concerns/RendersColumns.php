@@ -253,7 +253,7 @@ trait RendersColumns
             'lazy'        => $this->loaded && ! $open,
             'automations' => $automations,
             'cards'       => $cards,
-            'has_more'    => $open && null !== $count && $count > count( $cards ),
+            'has_more'    => $open && null !== $count && $count > count( $cards ) && count( $cards ) < self::MAX_CARDS_PER_COLUMN,
         ];
     }
 

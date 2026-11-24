@@ -144,14 +144,30 @@ it( 'switches an automation on and off and tells the board', function (): void {
         ->assertDispatched( 'ec-kb-board-changed' );
 
     expect( $automations['email']->fresh()->is_active )->toBeFalse()
-        ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Automation switched off.' );
+        ->and( toastsOf( $component ) )->toContain( 'Automation switched off.' );
 
     $component->call( 'setActive', $automations['email']->id, true );
 
     expect( $automations['email']->fresh()->is_active )->toBeTrue()
-        ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Automation switched on.' );
+        ->and( toastsOf( $component ) )->toContain( 'Automation switched on.' );
 
     Event::assertDispatched( KanbanBoardConfigChanged::class, fn ( KanbanBoardConfigChanged $event ): bool => (int) $event->board->id === (int) $board->id && KanbanBoardConfigChanged::BOARD_UPDATED === $event->change );
+} );
+
+it( 'reports a failing board-change listener instead of failing a saved switch', function (): void {
+    [ $board, , $automations ] = automatedBoard();
+    Event::listen( KanbanBoardConfigChanged::class, function (): void {
+        throw new RuntimeException( 'Broadcaster is down.' );
+    } );
+
+    $component = Livewire::test( AutomationsPanel::class, [ 'boardId' => $board->id ] )
+        ->call( 'openFor', null )
+        ->call( 'setActive', $automations['email']->id, false )
+        ->assertOk()
+        ->assertSeeHtml( 'data-ec-kb-automation-state' );
+
+    expect( $automations['email']->fresh()->is_active )->toBeFalse()
+        ->and( toastsOf( $component ) )->toContain( 'Automation switched off.' );
 } );
 
 it( 'sets the state rather than flipping it, so a repeated request changes nothing', function (): void {
@@ -219,13 +235,13 @@ it( 'deletes an automation once per confirmation token', function (): void {
     $component->call( 'deleteAutomation', $token )->assertDispatched( 'ec-kb-board-changed' )->assertSet( 'deletingId', null );
 
     expect( KanbanAutomation::query()->find( $automations['packing']->id ) )->toBeNull()
-        ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Automation deleted.' );
+        ->and( toastsOf( $component ) )->toContain( 'Automation deleted.' );
 
     $component->call( 'confirmDelete', $automations['email']->id );
     $replayed = $component->call( 'deleteAutomation', $token );
 
     expect( KanbanAutomation::query()->find( $automations['email']->id ) )->not->toBeNull()
-        ->and( json_encode( $replayed->effects['xjs'] ?? [] ) )->toContain( 'This action has expired.' );
+        ->and( toastsOf( $replayed ) )->toContain( 'This action has expired.' );
 } );
 
 it( 'refuses a second use of the same token for the same automation', function (): void {
@@ -245,7 +261,7 @@ it( 'refuses a second use of the same token for the same automation', function (
     $replayed = $component->call( 'confirmDelete', $automations['email']->id )->call( 'deleteAutomation', $token );
 
     expect( $automations['email']->fresh() )->not->toBeNull()
-        ->and( json_encode( $replayed->effects['xjs'] ?? [] ) )->toContain( 'That action was already submitted.' );
+        ->and( toastsOf( $replayed ) )->toContain( 'That action was already submitted.' );
 } );
 
 it( 'does nothing when deleting without a confirmation', function (): void {
@@ -344,4 +360,38 @@ it( 'mounts the panel on the board for viewers who cannot edit', function (): vo
     Livewire::test( Board::class, [ 'board' => $board ] )
         ->assertSeeLivewire( AutomationsPanel::class )
         ->assertSeeHtml( 'data-ec-kb-automations' );
+} );
+
+it( 'shows each automation with a tile colored by its state and a dashed empty group', function (): void {
+    [ $board, $columns, $automations ] = automatedBoard();
+
+    $html = Livewire::test( AutomationsPanel::class, [ 'boardId' => $board->id ] )
+        ->call( 'openFor', $columns[1]->id )
+        ->assertSeeHtml( 'class="apui-drawer ec-kb-automations-drawer"' )
+        ->assertSeeHtml( 'class="ec-kb-automations-empty"' )
+        ->html();
+
+    $on  = (string) strstr( (string) strstr( $html, 'data-ec-kb-automation="' . $automations['email']->id . '"' ), '</li>', true );
+    $off = (string) strstr( (string) strstr( $html, 'data-ec-kb-automation="' . $automations['webhook']->id . '"' ), '</li>', true );
+
+    expect( $on )->toMatch( '/apui-icon-tile[^>]*data-variant="tile"[^>]*data-color="primary"/' )
+        ->and( $off )->toMatch( '/apui-icon-tile[^>]*data-variant="tile"[^>]*data-color="neutral"/' )
+        ->and( $off )->toContain( 'data-ec-kb-automation-off' )
+        ->and( $on )->toContain( 'data-mirror' );
+} );
+
+it( 'confirms a delete in an error alert that is an alertdialog, with Delete before Cancel', function (): void {
+    [ $board, , $automations ] = automatedBoard();
+
+    $html = Livewire::test( AutomationsPanel::class, [ 'boardId' => $board->id ] )
+        ->call( 'openFor', null )
+        ->call( 'confirmDelete', $automations['email']->id )
+        ->html();
+
+    $dialog = (string) strstr( $html, 'class="apui-alert ec-kb-delete-automation"' );
+
+    expect( $dialog )->toContain( 'data-color="error"' )
+        ->and( $dialog )->toContain( 'role="alertdialog"' )
+        ->and( substr_count( (string) strstr( $dialog, '</div>', true ) . '>', 'role=' ) )->toBe( 1 )
+        ->and( strpos( $dialog, 'data-ec-kb-delete-automation-button="' ) )->toBeLessThan( strpos( $dialog, 'data-ec-kb-cancel-delete-automation="' ) );
 } );

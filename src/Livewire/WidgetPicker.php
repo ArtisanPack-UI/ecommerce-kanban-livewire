@@ -19,12 +19,13 @@ use ArtisanPackUI\Ecommerce\Kanban\KanbanWidgetList;
 use ArtisanPackUI\Ecommerce\Models\KanbanBoard;
 use ArtisanPackUI\Ecommerce\Models\KanbanCardWidget;
 use ArtisanPackUI\Ecommerce\Models\KanbanColumn;
-use ArtisanPackUI\Ecommerce\Models\OrderBoardAssignment;
 use ArtisanPackUI\Ecommerce\Registries\KanbanCardWidgetRegistry;
 use ArtisanPackUI\Ecommerce\Services\KanbanCardWidgetService;
 use ArtisanPackUI\Ecommerce\Services\KanbanColumnService;
 use ArtisanPackUI\Ecommerce\Support\ConfigSchema;
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Concerns\AuthorizesKanban;
+use ArtisanPackUI\EcommerceKanbanLivewire\Queries\VisibleCards;
+use ArtisanPackUI\EcommerceKanbanLivewire\Support\Authorization;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\CardPresenter;
 use Closure;
 use Illuminate\Contracts\View\View;
@@ -118,7 +119,17 @@ class WidgetPicker extends Component
     public mixed $addKey = '';
 
     /**
+     * The board, once read in this request.
+     *
+     * @since 2.0.0
+     *
+     * @var KanbanBoard|null
+     */
+    private ?KanbanBoard $boardModel = null;
+
+    /**
      * @since 1.0.0
+     * @since 2.0.0 A switched-off board is a 404 for anyone who can't edit it.
      *
      * @param  int  $boardId  The board's id.
      *
@@ -129,18 +140,23 @@ class WidgetPicker extends Component
         $this->boardId = $boardId;
 
         $this->authorizeKanban( 'kanbanBoard.view', $this->board() );
+
+        abort_unless( Authorization::canOpenBoard( auth()->user(), $this->board() ), 404 );
     }
 
     /**
      * Re-checks access to the board on every update.
      *
      * @since 1.0.0
+     * @since 2.0.0 A switched-off board is a 404 for anyone who can't edit it.
      *
      * @return void
      */
     public function hydrate(): void
     {
         $this->authorizeKanban( 'kanbanBoard.view', $this->board() );
+
+        abort_unless( Authorization::canOpenBoard( auth()->user(), $this->board() ), 404 );
     }
 
     /**
@@ -313,7 +329,7 @@ class WidgetPicker extends Component
 
         if ( null !== $this->columnId && null === $column ) {
             $this->open = false;
-            $this->error( e( __( 'That column no longer exists, so its widgets were not saved.' ) ) );
+            $this->error( __( 'That column no longer exists, so its widgets were not saved.' ) );
 
             return;
         }
@@ -338,7 +354,7 @@ class WidgetPicker extends Component
 
         $this->open = false;
         $this->dispatch( 'ec-kb-board-changed' );
-        $this->success( e( __( 'Card widgets saved.' ) ) );
+        $this->success( __( 'Card widgets saved.' ) );
     }
 
     /**
@@ -351,7 +367,7 @@ class WidgetPicker extends Component
     public function render(): View
     {
         if ( ! $this->open ) {
-            return view( 'ecommerce-kanban::livewire.widget-picker', [ 'title' => '', 'catalog' => [], 'rows' => [], 'addOptions' => [], 'source' => '', 'preview' => null, 'previewInvalid' => false ] );
+            return view( 'ecommerce-kanban::livewire.widget-picker', [ 'title' => '', 'catalog' => [], 'rows' => [], 'addOptions' => [], 'source' => '', 'preview' => null, 'previewInvalid' => false, 'previewSource' => '' ] );
         }
 
         $this->authorizeEditing();
@@ -383,6 +399,7 @@ class WidgetPicker extends Component
             'source'         => $this->sourceText( $board, $column ),
             'preview'        => $valid ? $this->preview( $board, $column ) : null,
             'previewInvalid' => ! $valid,
+            'previewSource'  => null === $column ? __( 'Uses the first card on the board.' ) : __( 'Uses the first card in this column, or on the board when the column is empty.' ),
         ] );
     }
 
@@ -518,9 +535,11 @@ class WidgetPicker extends Component
 
     /**
      * A card from the board rendered with the list as it stands, or null
-     * when the board has no cards.
+     * when the board has no cards the `ap.ecommerce.kanban.cardQuery` filter
+     * leaves visible.
      *
      * @since 1.0.0
+     * @since 2.0.0 Only previews a card the card query leaves visible.
      *
      * @param  KanbanBoard        $board   The board.
      * @param  KanbanColumn|null  $column  The column, or null for the board default.
@@ -529,8 +548,9 @@ class WidgetPicker extends Component
      */
     private function preview( KanbanBoard $board, ?KanbanColumn $column ): ?array
     {
-        $cards = OrderBoardAssignment::query()->active()->where( 'board_id', $board->id )->with( 'order' )->orderBy( 'position' )->orderBy( 'id' );
-        $card  = null === $column ? null : ( clone $cards )->where( 'substatus_id', $column->substatus_id )->first();
+        $cards = VisibleCards::query( $board )->with( 'order' );
+        $cards->orderBy( $cards->qualifyColumn( 'position' ) )->orderBy( $cards->qualifyColumn( 'id' ) );
+        $card  = null === $column ? null : ( clone $cards )->where( $cards->qualifyColumn( 'substatus_id' ), $column->substatus_id )->first();
         $card ??= $cards->first();
 
         if ( null === $card || null === $card->order ) {
@@ -569,15 +589,16 @@ class WidgetPicker extends Component
     }
 
     /**
-     * The board.
+     * The board, read once per request.
      *
      * @since 1.0.0
+     * @since 2.0.0 Read once per request.
      *
      * @return KanbanBoard
      */
     private function board(): KanbanBoard
     {
-        return KanbanBoard::query()->findOrFail( $this->boardId );
+        return $this->boardModel ??= KanbanBoard::query()->findOrFail( $this->boardId );
     }
 
     /**

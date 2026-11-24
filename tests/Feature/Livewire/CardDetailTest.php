@@ -84,7 +84,7 @@ it( 'opens on the card menu event with the order summary', function (): void {
         ->assertSee( [ 'Tour shirt', 'Large', 'SHIRT-L', '$120.00' ] )
         ->assertSee( [ 'Subtotal', 'Shipping', '$4.00', 'Total', '$124.00' ] )
         ->assertSee( [ 'Paid', 'Unfulfilled' ] )
-        ->assertSee( 'Shipping: Awaiting label' )
+        ->assertSeeInOrder( [ 'Other boards', 'Shipping', 'Column:', 'Awaiting label' ] )
         ->assertSee( [ 'Moved to Printing', 'Order placed' ] );
 } );
 
@@ -132,13 +132,13 @@ it( 'needs order.view and the order on this board', function (): void {
         ->assertSet( 'open', false )
         ->assertSet( 'orderId', null );
 
-    expect( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'This order is not on this board.' );
+    expect( toastsOf( $component ) )->toContain( 'This order is not on this board.' );
 
     denyAbilities( [ 'order.view' ] );
 
     $component->call( 'show', $order->id )->assertSet( 'open', false );
 
-    expect( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'You are not allowed to view this order.' );
+    expect( toastsOf( $component ) )->toContain( 'You are not allowed to view this order.' );
 
     Livewire::withQueryParams( [ 'card' => $order->id ] )
         ->test( CardDetail::class, [ 'boardId' => $board->id ] )
@@ -158,13 +158,14 @@ it( 'closes, clears the URL, and hands focus back to the card', function (): voi
         ->assertDontSeeHtml( 'data-ec-kb-detail=' );
 } );
 
-it( 'traps focus and closes on Escape', function (): void {
+it( 'opens in the design system\'s modal drawer, which traps focus and closes on Escape', function (): void {
     [ $board, $order ] = detailOrder();
 
     Livewire::test( CardDetail::class, [ 'boardId' => $board->id ] )
         ->call( 'show', $order->id )
-        ->assertSeeHtml( 'x-trap="open"' )
-        ->assertSeeHtml( '@keydown.window.escape="close()"' );
+        ->assertSeeHtml( 'apuiDrawer(' )
+        ->assertSeeHtml( 'modal: true' )
+        ->assertSeeHtml( 'data-side="end"' );
 } );
 
 it( 'hands off to the board\'s Move to… dialog', function (): void {
@@ -227,8 +228,45 @@ it( 'lists only the other boards the viewer can see', function (): void {
 
     Livewire::test( CardDetail::class, [ 'boardId' => $board->id ] )
         ->call( 'show', $order->id )
-        ->assertDontSee( 'Shipping: Awaiting label' )
+        ->assertDontSeeHtml( 'data-ec-kb-detail-other-boards' )
+        ->assertDontSee( 'Awaiting label' )
         ->assertSee( 'This order is on no other board.' );
+} );
+
+it( 'names only boards the viewer can see in the timeline', function (): void {
+    [ $board, $order ] = detailOrder();
+    [ $fraud ]         = makeBoard( [ [ 'cards' => 0, 'label_override' => 'Fraud check' ] ], [ 'name' => 'Fraud review', 'key' => 'fraud-review' ] );
+    $shipping          = ArtisanPackUI\Ecommerce\Models\KanbanBoard::query()->where( 'name', 'Shipping' )->firstOrFail();
+    $fraudColumn       = $fraud->columns()->firstOrFail();
+
+    OrderTimelineEntry::query()->create( [ 'order_id' => $order->id, 'event_type' => 'kanban.assignment_added', 'payload' => [ 'board_id' => $fraud->id, 'board_key' => 'fraud-review', 'substatus_id' => $fraudColumn->substatus_id ] ] );
+    OrderTimelineEntry::query()->create( [ 'order_id' => $order->id, 'event_type' => 'order.substatus_changed', 'payload' => [ 'to_id' => $fraudColumn->substatus_id, 'board_id' => $fraud->id ] ] );
+    OrderTimelineEntry::query()->create( [ 'order_id' => $order->id, 'event_type' => 'kanban.assignment_removed', 'payload' => [ 'board_id' => $fraud->id, 'board_key' => 'fraud-review', 'substatus_id' => $fraudColumn->substatus_id ] ] );
+    OrderTimelineEntry::query()->create( [ 'order_id' => $order->id, 'event_type' => 'kanban.assignment_added', 'payload' => [ 'board_id' => $shipping->id, 'board_key' => (string) $shipping->key, 'substatus_id' => 1 ] ] );
+
+    Illuminate\Support\Facades\Gate::define( 'ecommerce.kanbanBoard.view', static fn ( $user, $subject = null ): bool => ! ( $subject instanceof ArtisanPackUI\Ecommerce\Models\KanbanBoard && $subject->is( $fraud ) ) );
+
+    $texts = array_column( CardDetailPresenter::timeline( $order, auth()->user() ), 'text' );
+
+    expect( $texts )->toContain( 'Added to another board' )
+        ->and( $texts )->toContain( 'Removed from another board' )
+        ->and( $texts )->toContain( 'Added to board Shipping' )
+        ->and( implode( ' ', $texts ) )->not->toContain( 'fraud-review' )
+        ->and( implode( ' ', $texts ) )->not->toContain( 'Fraud' );
+
+    Livewire::test( CardDetail::class, [ 'boardId' => $board->id ] )
+        ->call( 'show', $order->id )
+        ->assertSee( 'Added to another board' )
+        ->assertDontSee( 'fraud-review' )
+        ->assertDontSee( 'Fraud check' );
+} );
+
+it( 'says "another board" for a board that has since been deleted', function (): void {
+    [ , $order ] = detailOrder();
+
+    OrderTimelineEntry::query()->create( [ 'order_id' => $order->id, 'event_type' => 'kanban.assignment_removed', 'payload' => [ 'board_id' => 999999, 'board_key' => 'gone-board' ] ] );
+
+    expect( array_column( CardDetailPresenter::timeline( $order, auth()->user() ), 'text' ) )->toContain( 'Removed from another board' );
 } );
 
 it( 'announces only a change of status or column, not the whole drawer', function (): void {
@@ -249,4 +287,71 @@ it( 'announces only a change of status or column, not the whole drawer', functio
     $component->call( 'cardUpdated', $order->id );
 
     expect( $component->viewData( 'announcement' ) )->toBe( 'Order 1042 is now Complete in Printing.' );
+} );
+
+it( 'puts the status and column badges under the drawer title', function (): void {
+    [ $board, $order ] = detailOrder();
+
+    $html = Livewire::test( CardDetail::class, [ 'boardId' => $board->id ] )
+        ->dispatch( CardActions::OPEN_EVENT, orderId: $order->id )
+        ->assertSeeHtml( 'class="apui-drawer ec-kb-detail-drawer"' )
+        ->html();
+
+    $description = (string) strstr( (string) strstr( $html, 'class="ec-kb-detail-badges"' ), '</p>', true );
+
+    expect( $description )->toContain( 'data-ec-kb-detail-status' )
+        ->and( $description )->toContain( 'data-ec-kb-detail-column' )
+        ->and( $description )->toContain( 'Column:</span> Printing' );
+} );
+
+it( 'shows payment and fulfillment as toned badges and colors the activity markers', function (): void {
+    [ $board, $order ] = detailOrder();
+
+    $html = Livewire::test( CardDetail::class, [ 'boardId' => $board->id ] )
+        ->dispatch( CardActions::OPEN_EVENT, orderId: $order->id )
+        ->assertSeeHtml( 'data-ec-kb-detail-state="payment" data-ec-kb-tone="success"' )
+        ->assertSeeHtml( 'data-ec-kb-detail-state="fulfillment" data-ec-kb-tone="neutral"' )
+        ->assertSeeHtml( 'class="apui-timeline ec-kb-detail-timeline"' )
+        ->html();
+
+    expect( $html )->toMatch( '/data-part="marker" data-color="info"/' )
+        ->and( $html )->toMatch( '/data-part="marker" data-color="primary"/' )
+        ->and( $html )->toContain( 'aria-label="Items"' )
+        ->and( $html )->toContain( 'class="ec-kb-mono">SHIRT-L' );
+} );
+
+it( 'maps payment and fulfillment states to widget tones', function ( string $type, ?string $value, string $tone ): void {
+    expect( ArtisanPackUI\EcommerceKanbanLivewire\Support\Statuses::tone( $type, $value ) )->toBe( $tone );
+} )->with( [
+    [ 'payment', 'paid', 'success' ],
+    [ 'payment', 'pending', 'warning' ],
+    [ 'payment', 'partially_refunded', 'info' ],
+    [ 'payment', 'failed', 'danger' ],
+    [ 'payment', 'refunded', 'neutral' ],
+    [ 'fulfillment', 'fulfilled', 'success' ],
+    [ 'fulfillment', 'partial', 'info' ],
+    [ 'fulfillment', 'unfulfilled', 'neutral' ],
+    [ 'fulfillment', null, 'neutral' ],
+] );
+
+it( 'gives every timeline event a marker, with a plain neutral dot for unknown ones', function (): void {
+    expect( CardDetailPresenter::marker( 'kanban.automation_fired' ) )->toBe( [ 'icon' => 'o-bolt', 'color' => 'success' ] )
+        ->and( CardDetailPresenter::marker( 'kanban.automation_failed' )['color'] )->toBe( 'error' )
+        ->and( CardDetailPresenter::marker( 'order.substatus_changed' )['color'] )->toBe( 'info' )
+        ->and( CardDetailPresenter::marker( 'something.else' ) )->toBe( [ 'icon' => null, 'color' => 'neutral' ] );
+} );
+
+it( 'links only a valid customer email, encoded so it cannot add mail headers', function (): void {
+    [ $board, $order ] = detailOrder();
+
+    Livewire::test( CardDetail::class, [ 'boardId' => $board->id ] )
+        ->dispatch( CardActions::OPEN_EVENT, orderId: $order->id )
+        ->assertSeeHtml( 'href="mailto:jane%40example.test"' );
+
+    $order->forceFill( [ 'email' => 'jane@example.test?bcc=evil@example.test' ] )->save();
+
+    Livewire::test( CardDetail::class, [ 'boardId' => $board->id ] )
+        ->dispatch( CardActions::OPEN_EVENT, orderId: $order->id )
+        ->assertDontSeeHtml( 'mailto:' )
+        ->assertSee( 'jane@example.test?bcc=evil@example.test' );
 } );

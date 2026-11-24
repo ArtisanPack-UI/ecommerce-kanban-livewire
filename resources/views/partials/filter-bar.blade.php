@@ -1,131 +1,112 @@
 {{--
-    The board's filter controls (spec §7.5). Rendered twice by the board
-    view: inline above the columns on medium screens and up, and inside a
-    drawer on small screens; `$prefix` keeps the two sets of ids apart.
+    The board's filter controls (spec §7.5; #47), on the design system.
+
+    Rendered twice by the board view. Inline (medium screens and up) it is a
+    Card with `role="search"`: Search, Customer, Tags and Products stay
+    visible, and everything else (the placed dates, the payment and
+    fulfillment statuses, the satellites' controls and "Stale cards only")
+    sits in a second row behind "More filters", which opens by itself when
+    one of those is set: on load, and whenever the count goes from none to
+    some (say, one set in the drawer before the window widened), read from
+    the re-rendered `data-ec-kb-more-count` because Alpine keeps `more`
+    across renders. The person can still close it afterwards. While filters
+    are on, a footer line says how many orders show and offers Clear
+    filters. With `$inDrawer` (small screens) the same fields stack in the
+    Filters drawer, which brings its own summary and footer; `$prefix` keeps
+    the two sets of ids apart.
 
     Every control writes a `FiltersCards` property, all of which live in the
-    query string. `$extraControls` are the controls satellites add through
-    `ap.ecommerceKanbanLivewire.filters`.
-
-    The date fields repeat their label as `aria-label`: the library's
-    datetime prints the label as a legend the input isn't linked to.
+    query string. The customer and product comboboxes search on the server
+    (`customerSearch` / `productSearch`). `$extraControls` are the controls
+    satellites add through `ap.ecommerceKanbanLivewire.filters`: toggles join
+    "Stale cards only", selects and inputs join the second row.
 
     The tags control is keyed by its options, so it is replaced rather than
-    morphed when the board's tags load: the library keeps the options in
-    its `x-data`, and a morph that changes them leaves the control without
-    its Alpine state, so tags couldn't be picked.
+    morphed when the board's tags load.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceKanbanLivewire
 
     @since      1.0.0
 --}}
-<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" role="search" aria-label="{{ __( 'Filter orders' ) }}" data-ec-kb-filters="{{ $prefix }}">
-    <x-artisanpack-input
-        id="{{ $prefix }}-search"
-        type="search"
-        wire:model.live.debounce.400ms="search"
-        :label="__( 'Search' )"
-        :placeholder="__( 'Order number, email, or name' )"
-        icon="o-magnifying-glass"
-        data-ec-kb-filter="search"
-    />
+@php
+    $inDrawer       = $inDrawer ?? false;
+    $extraToggles   = array_values( array_filter( $extraControls, static fn ( array $control ): bool => 'toggle' === $control['type'] ) );
+    $extraFields    = array_values( array_filter( $extraControls, static fn ( array $control ): bool => 'toggle' !== $control['type'] ) );
+    $moreId         = $prefix . '-more';
+    $showingSummary = trans_choice( ':shown of :total order shown|:shown of :total orders shown', $totalCards, [ 'shown' => $matchingCards, 'total' => $totalCards ] );
+@endphp
+@if ( ! $inDrawer )
+    <x-artisanpack-card
+        class="ec-kb-filters"
+        role="search"
+        aria-label="{{ __( 'Filter orders' ) }}"
+        data-ec-kb-filters="{{ $prefix }}"
+        data-ec-kb-more-count="{{ $moreFilters }}"
+        x-data="{ more: {{ $moreFilters > 0 ? 'true' : 'false' }}, count: {{ (int) $moreFilters }} }"
+        x-init="new MutationObserver( () => { const next = Number( $el.dataset.ecKbMoreCount ) || 0; if ( 0 === count && next > 0 ) { more = true } count = next } ).observe( $el, { attributes: true, attributeFilter: [ 'data-ec-kb-more-count' ] } )"
+    >
+        <div class="ec-kb-filters-row">
+            @include( 'ecommerce-kanban::partials.filter-fields.primary' )
 
-    <x-artisanpack-choices
-        id="{{ $prefix }}-customer"
-        wire:model.live="customerId"
-        :options="$customerOptions"
-        :label="__( 'Customer' )"
-        :placeholder="__( 'Search customers' )"
-        :no-result-text="__( 'No customers found.' )"
-        search-function="searchCustomers"
-        single
-        searchable
-        clearable
-        data-ec-kb-filter="customer"
-    />
+            <div class="ec-kb-filters-more">
+                <x-artisanpack-button
+                    variant="outline"
+                    color="neutral"
+                    size="sm"
+                    leading-icon="o-adjustments-horizontal"
+                    aria-controls="{{ $moreId }}"
+                    aria-expanded="{{ $moreFilters > 0 ? 'true' : 'false' }}"
+                    x-bind:aria-expanded="more ? 'true' : 'false'"
+                    x-on:click="more = ! more"
+                    data-ec-kb-more-filters
+                >
+                    {{ __( 'More filters' ) }}
+                    @if ( $moreFilters > 0 )
+                        <span class="ec-kb-filter-count" aria-hidden="true">{{ $moreFilters }}</span>
+                        <span class="apui-sr-only">{{ trans_choice( ':count filter active|:count filters active', $moreFilters, [ 'count' => $moreFilters ] ) }}</span>
+                    @endif
+                </x-artisanpack-button>
+            </div>
+        </div>
 
-    <div wire:key="{{ $prefix }}-tags-{{ md5( (string) json_encode( $tagOptions ) ) }}">
-        <x-artisanpack-choices-offline
-            id="{{ $prefix }}-tags"
-            wire:model.live="tags"
-            :options="$tagOptions"
-            :label="__( 'Tags' )"
-            :no-result-text="__( 'No tags on this board.' )"
-            searchable
-            clearable
-            data-ec-kb-filter="tags"
-        />
-    </div>
+        <div
+            id="{{ $moreId }}"
+            class="ec-kb-filters-extra"
+            role="group"
+            aria-label="{{ __( 'More filters' ) }}"
+            @if ( 0 === $moreFilters ) hidden @endif
+            x-bind:hidden="! more"
+            data-ec-kb-filters-extra
+        >
+            <div class="ec-kb-filters-row">
+                @include( 'ecommerce-kanban::partials.filter-fields.dates' )
+                @include( 'ecommerce-kanban::partials.filter-fields.secondary' )
+            </div>
 
-    <x-artisanpack-choices
-        id="{{ $prefix }}-products"
-        wire:model.live="productIds"
-        :options="$productOptions"
-        :label="__( 'Products' )"
-        :placeholder="__( 'Search products' )"
-        :no-result-text="__( 'No products found.' )"
-        search-function="searchProducts"
-        searchable
-        clearable
-        data-ec-kb-filter="products"
-    />
+            <div class="ec-kb-filters-toggles">
+                @include( 'ecommerce-kanban::partials.filter-fields.toggles' )
+            </div>
+        </div>
 
-    <x-artisanpack-datetime
-        id="{{ $prefix }}-placed-from"
-        type="date"
-        wire:model.live="placedFrom"
-        :label="__( 'Placed from' )"
-        :aria-label="__( 'Placed from' )"
-        data-ec-kb-filter="placed-from"
-    />
-
-    <x-artisanpack-datetime
-        id="{{ $prefix }}-placed-to"
-        type="date"
-        wire:model.live="placedTo"
-        :label="__( 'Placed to' )"
-        :aria-label="__( 'Placed to' )"
-        data-ec-kb-filter="placed-to"
-    />
-
-    <x-artisanpack-choices-offline
-        id="{{ $prefix }}-payment"
-        wire:model.live="paymentStatus"
-        :options="$paymentOptions"
-        :label="__( 'Payment status' )"
-        clearable
-        data-ec-kb-filter="payment"
-    />
-
-    <x-artisanpack-choices-offline
-        id="{{ $prefix }}-fulfillment"
-        wire:model.live="fulfillmentStatus"
-        :options="$fulfillmentOptions"
-        :label="__( 'Fulfillment status' )"
-        clearable
-        data-ec-kb-filter="fulfillment"
-    />
-
-    @foreach ( $extraControls as $control )
-        @php( $controlId = $prefix . '-extra-' . $control['key'] )
-        @if ( 'toggle' === $control['type'] )
-            <x-artisanpack-toggle id="{{ $controlId }}" wire:model.live="extraFilters.{{ $control['key'] }}" :label="$control['label']" data-ec-kb-filter="{{ $control['key'] }}" />
-        @elseif ( 'select' === $control['type'] )
-            <x-artisanpack-select
-                id="{{ $controlId }}"
-                wire:model.live="extraFilters.{{ $control['key'] }}"
-                :label="$control['label']"
-                :options="$control['options']"
-                :placeholder="__( 'Any' )"
-                data-ec-kb-filter="{{ $control['key'] }}"
-            />
-        @else
-            <x-artisanpack-input id="{{ $controlId }}" wire:model.live.debounce.400ms="extraFilters.{{ $control['key'] }}" :label="$control['label']" data-ec-kb-filter="{{ $control['key'] }}" />
+        @if ( $activeFilters > 0 )
+            <div class="ec-kb-filters-footer" data-ec-kb-filters-footer>
+                @if ( $this->loaded )
+                    <p class="ec-kb-filters-summary" data-ec-kb-filters-summary>{{ $showingSummary }}</p>
+                @endif
+                <x-artisanpack-button variant="ghost" color="neutral" size="sm" leading-icon="x" wire:click="clearFilters" data-ec-kb-clear-filters>{{ __( 'Clear filters' ) }}</x-artisanpack-button>
+            </div>
         @endif
-    @endforeach
+    </x-artisanpack-card>
+@else
+    <div class="ec-kb-filters-stack" role="search" aria-label="{{ __( 'Filter orders' ) }}" data-ec-kb-filters="{{ $prefix }}">
+        @include( 'ecommerce-kanban::partials.filter-fields.primary' )
 
-    <div class="flex items-end gap-3">
-        <x-artisanpack-toggle id="{{ $prefix }}-stale" wire:model.live="stale" :label="__( 'Stale cards only' )" data-ec-kb-filter="stale" />
+        <div class="ec-kb-filters-dates">
+            @include( 'ecommerce-kanban::partials.filter-fields.dates' )
+        </div>
+
+        @include( 'ecommerce-kanban::partials.filter-fields.secondary' )
+        @include( 'ecommerce-kanban::partials.filter-fields.toggles' )
     </div>
-</div>
+@endif

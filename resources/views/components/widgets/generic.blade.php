@@ -1,13 +1,17 @@
 {{--
-    The generic widget payload view: a badge whose colour follows `tone`,
-    with the payload's `icon`, a `tooltip`, and a link when there is a
-    safe `href` (http(s), mailto, or relative). A non-neutral tone also gets
-    an icon and screen-reader text, so it is never conveyed by colour alone.
-    The neutral tone is a plain outline in the text colour: daisyUI's
-    `badge-neutral` outline is dark grey, which fails contrast in dark mode.
+    The generic widget payload view: a soft, small design-system Badge whose
+    color follows `tone`, led by the tone's icon and then the payload's own
+    `icon`, with a `tooltip` and an underlined link when there is a safe
+    `href` (http(s), mailto, or relative). A non-neutral tone also gets
+    screen-reader text, so it is never conveyed by color alone. Tags (see
+    `WidgetViews::TAG_KEYS`) read in the info color with no tone icon.
+
+    A badge with a tooltip is focusable, so keyboard users can open it; the
+    tooltip's text is also part of the badge's name.
 
     Receives `$widget`: `key`, `label`, `value`, `tone`, and optionally
-    `icon`, `tooltip`, `href`.
+    `icon`, `tooltip`, `href`, and `id_prefix` (the card's, so the tooltip
+    gets an id of its own even in a single-card refresh).
 
     @package    ArtisanPack_UI
     @subpackage EcommerceKanbanLivewire
@@ -19,37 +23,23 @@
     use ArtisanPackUI\EcommerceKanbanLivewire\Support\SafeUrl;
     use ArtisanPackUI\EcommerceKanbanLivewire\Support\WidgetViews;
 
-    $tone    = WidgetViews::tone( $widget['tone'] ?? null );
-    $icon    = Icons::name( $widget['icon'] ?? null );
+    $tone    = WidgetViews::tone( $widget['tone'] ?? null, $widget['key'] ?? null );
+    $icons   = array_values( array_unique( array_filter( [ $tone['icon'], Icons::name( $widget['icon'] ?? null ) ] ) ) );
     $label   = (string) ( $widget['label'] ?? '' );
     $value   = (string) ( $widget['value'] ?? '' );
     $tooltip = filled( $widget['tooltip'] ?? null ) ? (string) $widget['tooltip'] : null;
     $href    = SafeUrl::of( $widget['href'] ?? null );
-    $tag     = null !== $href ? 'a' : 'span';
+    $tipId   = filled( $widget['id_prefix'] ?? null ) ? $widget['id_prefix'] . '-tip-' . \Illuminate\Support\Str::slug( (string) ( $widget['key'] ?? 'widget' ) ) : null;
 @endphp
 @if ( '' !== $value )
-    <{{ $tag }}
-        @if ( null !== $href ) href="{{ $href }}" @endif
-        @class( [ 'badge badge-sm gap-1 whitespace-nowrap', $tone['class'], 'tooltip' => null !== $tooltip, 'link link-hover' => null !== $href ] )
-        @if ( null !== $tooltip ) data-tip="{{ $tooltip }}" @endif
-        data-ec-kb-widget="{{ $widget['key'] ?? '' }}"
-        data-ec-kb-tone="{{ $widget['tone'] ?? 'neutral' }}"
-    >
-        @if ( null !== $tone['icon'] )
-            <x-artisanpack-icon :name="$tone['icon']" class="size-3" aria-hidden="true" data-ec-kb-tone-icon />
-        @endif
-        @if ( null !== $icon )
-            <x-artisanpack-icon :name="$icon" class="size-3" aria-hidden="true" />
-        @endif
-        @if ( '' !== $label )
-            <span class="sr-only">{{ $label }}:</span>
-        @endif
-        <span>{{ $value }}</span>
-        @if ( null !== $tone['text'] )
-            <span class="sr-only">({{ $tone['text'] }})</span>
-        @endif
-        @if ( null !== $tooltip )
-            <span class="sr-only">({{ $tooltip }})</span>
-        @endif
-    </{{ $tag }}>
+    @php( $badgeData = [ 'widget' => $widget, 'tone' => $tone, 'icons' => $icons, 'label' => $label, 'value' => $value, 'note' => $tooltip ] )
+    @if ( null !== $href && null !== $tooltip )
+        <x-artisanpack-tooltip :id="$tipId" :content="$tooltip"><a href="{{ $href }}" class="ec-kb-widget-link">@include( 'ecommerce-kanban::components.widgets.partials.badge', $badgeData )</a></x-artisanpack-tooltip>
+    @elseif ( null !== $href )
+        <a href="{{ $href }}" class="ec-kb-widget-link">@include( 'ecommerce-kanban::components.widgets.partials.badge', $badgeData )</a>
+    @elseif ( null !== $tooltip )
+        <x-artisanpack-tooltip :id="$tipId" :content="$tooltip"><span class="ec-kb-widget-tip" tabindex="0">@include( 'ecommerce-kanban::components.widgets.partials.badge', $badgeData )</span></x-artisanpack-tooltip>
+    @else
+        @include( 'ecommerce-kanban::components.widgets.partials.badge', $badgeData )
+    @endif
 @endif

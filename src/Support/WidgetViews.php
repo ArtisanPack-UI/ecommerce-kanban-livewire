@@ -61,21 +61,30 @@ final class WidgetViews
     public const GENERIC = EcommerceKanbanLivewireServiceProvider::VIEW_NAMESPACE . '::components.widgets.generic';
 
     /**
-     * Badge colour, its badge class, and the icon that repeats each tone
-     * without colour. The classes are written out in full so Tailwind finds
-     * them in this file (it can't see a class built from parts).
+     * The design-system Badge color for each tone, and the icon that repeats
+     * the tone without color.
      *
      * @since 1.0.0
      *
-     * @var array<string, array{color: string, class: string, icon: string|null}>
+     * @var array<string, array{color: string, icon: string|null}>
      */
     public const TONES = [
-        'neutral' => [ 'color' => 'neutral', 'class' => 'badge-outline', 'icon' => null ],
-        'success' => [ 'color' => 'success', 'class' => 'badge-success', 'icon' => 'o-check-circle' ],
-        'warning' => [ 'color' => 'warning', 'class' => 'badge-warning', 'icon' => 'o-exclamation-triangle' ],
-        'danger'  => [ 'color' => 'error', 'class' => 'badge-error', 'icon' => 'o-exclamation-circle' ],
-        'info'    => [ 'color' => 'info', 'class' => 'badge-info', 'icon' => 'o-information-circle' ],
+        'neutral' => [ 'color' => 'neutral', 'icon' => null ],
+        'success' => [ 'color' => 'success', 'icon' => 'o-check-circle' ],
+        'warning' => [ 'color' => 'warning', 'icon' => 'o-exclamation-triangle' ],
+        'danger'  => [ 'color' => 'error', 'icon' => 'o-x-circle' ],
+        'info'    => [ 'color' => 'info', 'icon' => 'o-information-circle' ],
     ];
+
+    /**
+     * Widget keys whose values are tags: a neutral tag reads in the info
+     * color, with no tone icon or tone text.
+     *
+     * @since 2.0.0
+     *
+     * @var array<int, string>
+     */
+    public const TAG_KEYS = [ 'tags' ];
 
     /**
      * The view for a payload.
@@ -115,17 +124,25 @@ final class WidgetViews
     }
 
     /**
-     * The badge colour, class, and tone icon for a payload's tone.
+     * The Badge color and tone icon for a payload's tone, with the text
+     * that names the tone for screen readers. A neutral tag (see
+     * `TAG_KEYS`) uses the info color.
      *
      * @since 1.0.0
+     * @since 2.0.0 Added `$key`.
      *
      * @param  string|null  $tone  Payload tone.
+     * @param  string|null  $key   Widget key.
      *
-     * @return array{color: string, class: string, icon: string|null, text: string|null}
+     * @return array{color: string, icon: string|null, text: string|null}
      */
-    public static function tone( ?string $tone ): array
+    public static function tone( ?string $tone, ?string $key = null ): array
     {
         $tone = isset( self::TONES[ (string) $tone ] ) ? (string) $tone : 'neutral';
+
+        if ( 'neutral' === $tone && in_array( (string) $key, self::TAG_KEYS, true ) ) {
+            return [ 'color' => 'info', 'icon' => null, 'text' => null ];
+        }
 
         return self::TONES[ $tone ] + [ 'text' => match ( $tone ) {
             'success' => __( 'Good' ),

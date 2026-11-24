@@ -161,3 +161,22 @@ if ( ! function_exists( 'addCard' ) ) {
         ] );
     }
 }
+
+if ( ! function_exists( 'toastsOf' ) ) {
+    /**
+     * The toasts a Livewire test response dispatched (livewire-ui-components
+     * 3.0 sends each as a `toast` browser event), as JSON.
+     *
+     * @param  mixed  $component  The Livewire test component.
+     */
+    function toastsOf( mixed $component ): string
+    {
+        $toasts = collect( $component->effects['dispatches'] ?? [] )
+            ->filter( static fn ( array $dispatch ): bool => 'toast' === ( $dispatch['name'] ?? null ) )
+            ->map( static fn ( array $dispatch ): array => $dispatch['params'] ?? [] )
+            ->values()
+            ->all();
+
+        return (string) json_encode( $toasts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+    }
+}

@@ -76,7 +76,7 @@ it( 'searches orders that are not on the board and adds one to the entry column'
         ->assertDispatched( 'ec-kb-focus-card', orderId: $reprint->id );
 
     expect( onBoardIn( $reprint, $board ) )->toBe( $columns[0]->substatus_id )
-        ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Order R-2001 added to this board.' );
+        ->and( toastsOf( $component ) )->toContain( 'Order R-2001 added to this board.' );
     Event::assertDispatched( KanbanBoardAssignmentAdded::class, fn ( KanbanBoardAssignmentAdded $event ): bool => auth()->id() === $event->actorUserId );
 } );
 
@@ -121,7 +121,7 @@ it( 'maps engine refusals to toasts', function (): void {
         ->set( 'addOrderColumnId', $columns[1]->id )
         ->call( 'submitAddOrder' );
 
-    expect( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Packing cannot hold this order at its current status.' )
+    expect( toastsOf( $component ) )->toContain( 'Packing cannot hold this order at its current status.' )
         ->and( onBoardIn( $pending, $board ) )->toBeNull();
 
     [ $empty ]  = makeBoard( [] );
@@ -130,7 +130,7 @@ it( 'maps engine refusals to toasts', function (): void {
         ->set( 'addOrderId', $pending->id )
         ->call( 'submitAddOrder' );
 
-    expect( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'This board has no column that can hold this order.' );
+    expect( toastsOf( $component ) )->toContain( 'This board has no column that can hold this order.' );
 } );
 
 it( 'removes a card after confirmation, once per token', function (): void {
@@ -149,7 +149,7 @@ it( 'removes a card after confirmation, once per token', function (): void {
     $component->call( 'removeCard', $token )->assertSet( 'confirmingRemove', false );
 
     expect( onBoardIn( $card->order, $board ) )->toBeNull()
-        ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Order D-1 removed from this board.' );
+        ->and( toastsOf( $component ) )->toContain( 'Order D-1 removed from this board.' );
     Event::assertDispatchedTimes( KanbanBoardAssignmentRemoved::class, 1 );
 
     // A replayed token changes nothing.
@@ -158,7 +158,7 @@ it( 'removes a card after confirmation, once per token', function (): void {
     $replayed = $component->call( 'removeCard', $token );
 
     expect( onBoardIn( $card->order, $board ) )->not->toBeNull()
-        ->and( json_encode( $replayed->effects['xjs'] ?? [] ) )->toContain( 'That action was already submitted.' );
+        ->and( toastsOf( $replayed ) )->toContain( 'That action was already submitted.' );
 } );
 
 it( 'cancels a removal and refuses one for a card not on the board or without the ability', function (): void {
@@ -197,9 +197,70 @@ it( 'adds the open order to another board from the slide-out', function (): void
         ->call( 'addToBoard' );
 
     expect( onBoardIn( $card->order, $shipping ) )->toBe( $targets[0]->substatus_id )
-        ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Order S-1 added to Shipping.' );
+        ->and( toastsOf( $component ) )->toContain( 'Order S-1 added to Shipping.' );
 
     $component->assertDontSeeHtml( 'data-ec-kb-detail-add-board-select' );
+} );
+
+it( 'refuses a column from another board in the slide-out instead of using the entry column', function (): void {
+    [ $board, $columns ]    = assignmentBoard();
+    [ $shipping, $targets ] = makeBoard( [ [ 'cards' => 0, 'label_override' => 'Awaiting label' ] ], [ 'name' => 'Shipping' ] );
+    $targets[0]->substatus->update( [ 'system_status' => 'processing' ] );
+    $card = addCard( $columns[0], [ 'order_number' => 'S-2', 'system_status' => 'processing' ] );
+
+    $component = Livewire::test( CardDetail::class, [ 'boardId' => $board->id ] )
+        ->call( 'show', $card->order_id )
+        ->set( 'addBoardId', $shipping->id )
+        ->set( 'addBoardColumnId', $columns[1]->id )
+        ->call( 'addToBoard' )
+        ->assertHasErrors( [ 'addBoardColumnId' ] )
+        ->assertSee( 'Choose a column on that board.' );
+
+    expect( onBoardIn( $card->order, $shipping ) )->toBeNull()
+        ->and( toastsOf( $component ) )->not->toContain( 'added to Shipping' );
+} );
+
+it( 'says an order is already on the board instead of adding it again from the slide-out', function (): void {
+    [ $board, $columns ]    = assignmentBoard();
+    [ $shipping, $targets ] = makeBoard( [ [ 'cards' => 0, 'label_override' => 'Awaiting label' ] ], [ 'name' => 'Shipping' ] );
+    $targets[0]->substatus->update( [ 'system_status' => 'processing' ] );
+    $card = addCard( $columns[0], [ 'order_number' => 'S-3', 'system_status' => 'processing' ] );
+
+    $component = Livewire::test( CardDetail::class, [ 'boardId' => $board->id ] )
+        ->call( 'show', $card->order_id )
+        ->set( 'addBoardId', $shipping->id );
+
+    // Someone else adds it meanwhile; the dialog is stale.
+    addCardFor( $card->order, $targets[0] );
+    $entries = ArtisanPackUI\Ecommerce\Models\OrderTimelineEntry::query()->where( 'order_id', $card->order_id )->count();
+
+    $component->call( 'addToBoard' )->assertHasNoErrors();
+
+    expect( toastsOf( $component ) )->toContain( 'Order S-3 is already on Shipping.' )
+        ->and( toastsOf( $component ) )->not->toContain( 'added to Shipping' )
+        ->and( ArtisanPackUI\Ecommerce\Models\OrderTimelineEntry::query()->where( 'order_id', $card->order_id )->count() )->toBe( $entries )
+        ->and( OrderBoardAssignment::query()->active()->where( 'order_id', $card->order_id )->where( 'board_id', $shipping->id )->count() )->toBe( 1 );
+} );
+
+it( 'says an order is already on the board instead of adding it again from "Add order"', function (): void {
+    [ $board, $columns ] = assignmentBoard();
+    $order               = Order::factory()->create( [ 'order_number' => 'R-3001', 'system_status' => 'processing' ] );
+
+    $component = Livewire::test( Board::class, [ 'board' => $board ] )
+        ->call( 'openAddOrder' )
+        ->set( 'addOrderId', $order->id );
+
+    addCardFor( $order, $columns[1] );
+    $entries = ArtisanPackUI\Ecommerce\Models\OrderTimelineEntry::query()->where( 'order_id', $order->id )->count();
+
+    $component->call( 'submitAddOrder' )
+        ->assertHasNoErrors()
+        ->assertSet( 'addOrderDialog', false );
+
+    expect( toastsOf( $component ) )->toContain( 'Order R-3001 is already on Production.' )
+        ->and( toastsOf( $component ) )->not->toContain( 'added to this board' )
+        ->and( ArtisanPackUI\Ecommerce\Models\OrderTimelineEntry::query()->where( 'order_id', $order->id )->count() )->toBe( $entries )
+        ->and( onBoardIn( $order, $board ) )->toBe( $columns[1]->substatus_id );
 } );
 
 it( 'hands "Remove from board" in the slide-out to the board', function (): void {

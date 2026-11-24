@@ -3,8 +3,8 @@
 declare( strict_types=1 );
 
 use Tests\Browser\Support\Accessibility;
+use Tests\Browser\Support\CardMenu;
 use Tests\Browser\Support\JavaScript;
-use Tests\Browser\Support\Locators;
 
 /*
  * axe on every board screen, dialog, and panel (#22, #23), against the
@@ -44,16 +44,14 @@ it( 'has no accessibility violations in the card slide-out', function (): void {
     $page = visit( $this->boardUrl( [ 'card' => $this->orders['1001']->id ] ) )->assertPresent( '[data-ec-kb-detail]' );
 
     JavaScript::assertNoErrors( $page );
-    Accessibility::assertAccessible( $page );
+    Accessibility::assertAccessible( $page, Accessibility::OPEN_OVERLAY );
 } );
 
 it( 'has no accessibility violations in the "Move to…" dialog', function (): void {
-    $page = visit( $this->boardUrl() )
-        ->click( Locators::role( 'Actions for order 1001' ) )
-        ->click( '[data-ec-kb-card="' . $this->orders['1001']->id . '"] [data-ec-kb-action="move"]' )
+    $page = CardMenu::choose( visit( $this->boardUrl() )->assertPresent( '[data-ec-kb-card]' ), '1001', 'move' )
         ->assertVisible( '[data-ec-kb-move-submit]' );
 
-    Accessibility::assertAccessible( $page );
+    Accessibility::assertAccessible( $page, Accessibility::OPEN_OVERLAY );
 } );
 
 it( 'has no accessibility violations in the "Add order" dialog', function (): void {
@@ -61,7 +59,7 @@ it( 'has no accessibility violations in the "Add order" dialog', function (): vo
         ->click( '[data-ec-kb-add-order]' )
         ->assertVisible( '[data-ec-kb-add-order-submit]' );
 
-    Accessibility::assertAccessible( $page );
+    Accessibility::assertAccessible( $page, Accessibility::OPEN_OVERLAY );
 } );
 
 it( 'has no accessibility violations in edit mode and its dialogs', function (): void {
@@ -74,7 +72,7 @@ it( 'has no accessibility violations in edit mode and its dialogs', function ():
     $page->click( '[data-ec-kb-column="' . $this->columns['Packing']->id . '"] [data-ec-kb-edit-column]' )
         ->assertVisible( '[data-ec-kb-column-save]' );
 
-    Accessibility::assertAccessible( $page );
+    Accessibility::assertAccessible( $page, Accessibility::OPEN_OVERLAY );
 } );
 
 it( 'has no accessibility violations in the widget picker', function (): void {
@@ -83,7 +81,7 @@ it( 'has no accessibility violations in the widget picker', function (): void {
         ->click( '[data-ec-kb-board-widgets]' )
         ->assertVisible( '[data-ec-kb-widget-save]' );
 
-    Accessibility::assertAccessible( $page );
+    Accessibility::assertAccessible( $page, Accessibility::OPEN_OVERLAY );
 } );
 
 it( 'has no accessibility violations in the automations panel', function (): void {
@@ -91,7 +89,7 @@ it( 'has no accessibility violations in the automations panel', function (): voi
         ->click( '[data-ec-kb-automations]' )
         ->assertVisible( '[data-ec-kb-automation-toggle]' );
 
-    Accessibility::assertAccessible( $page );
+    Accessibility::assertAccessible( $page, Accessibility::OPEN_OVERLAY );
 } );
 
 it( 'has no accessibility violations on a phone with the filters open', function (): void {
@@ -102,7 +100,7 @@ it( 'has no accessibility violations on a phone with the filters open', function
 
     $page->click( '[data-ec-kb-filters-toggle]' )->assertVisible( '[data-ec-kb-filters="ec-kb-filters-drawer"]' );
 
-    Accessibility::assertAccessible( $page );
+    Accessibility::assertAccessible( $page, Accessibility::OPEN_OVERLAY );
 } );
 
 it( 'has no accessibility violations on a read-only board', function (): void {
@@ -124,5 +122,5 @@ it( 'has no accessibility violations with the automation delete confirmation ope
         ->click( '[data-ec-kb-automation] [data-ec-kb-delete-automation]' )
         ->assertVisible( '[data-ec-kb-confirm-delete-automation]' );
 
-    Accessibility::assertAccessible( $page );
+    Accessibility::assertAccessible( $page, Accessibility::OPEN_OVERLAY );
 } );

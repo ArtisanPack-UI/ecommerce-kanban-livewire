@@ -48,10 +48,34 @@ final class CardDetailPresenter
     public const TIMELINE_ENTRIES = 5;
 
     /**
+     * The Timeline marker (icon and color role) for each known event type.
+     *
+     * @since 2.0.0
+     *
+     * @var array<string, array{icon: string, color: string}>
+     */
+    public const MARKERS = [
+        'order.placed'               => [ 'icon' => 'o-shopping-bag', 'color' => 'primary' ],
+        'order.status_changed'       => [ 'icon' => 'o-arrows-right-left', 'color' => 'info' ],
+        'order.substatus_changed'    => [ 'icon' => 'o-arrows-right-left', 'color' => 'info' ],
+        'kanban.assignment_added'    => [ 'icon' => 'o-arrows-right-left', 'color' => 'info' ],
+        'kanban.assignment_removed'  => [ 'icon' => 'o-arrows-right-left', 'color' => 'info' ],
+        'kanban.automation_fired'    => [ 'icon' => 'o-bolt', 'color' => 'success' ],
+        'kanban.automation_failed'   => [ 'icon' => 'o-bolt', 'color' => 'error' ],
+        'payment.captured'           => [ 'icon' => 'o-check-circle', 'color' => 'success' ],
+        'order.cancelled'            => [ 'icon' => 'o-x-circle', 'color' => 'error' ],
+        'order.refunded'             => [ 'icon' => 'o-arrow-uturn-left', 'color' => 'warning' ],
+        'note.added'                 => [ 'icon' => 'o-chat-bubble-left', 'color' => 'neutral' ],
+        'order.edited'               => [ 'icon' => 'o-pencil', 'color' => 'neutral' ],
+        'kanban.order_field_updated' => [ 'icon' => 'o-pencil', 'color' => 'neutral' ],
+    ];
+
+    /**
      * `$order`'s detail as seen from `$board`. "Other boards" lists only
-     * the boards `$user` may view.
+     * the boards `$user` may view, and the timeline names only those.
      *
      * @since 1.0.0
+     * @since 2.0.0 The timeline names only boards `$user` may view.
      *
      * @param  Order                 $order  The order (with `items` loaded).
      * @param  KanbanBoard           $board  The board the slide-out is on.
@@ -64,7 +88,7 @@ final class CardDetailPresenter
         $currency    = (string) $order->currency;
         $money       = static fn ( mixed $amount ): string => MoneyFormatter::format( (int) $amount, $currency );
         $assignments = OrderBoardAssignment::query()->active()->where( 'order_id', $order->id )->with( [ 'board', 'substatus' ] )->get();
-        $columns     = KanbanColumn::query()->whereIn( 'board_id', $assignments->pluck( 'board_id' ) )->get();
+        $columns     = KanbanColumn::query()->whereIn( 'board_id', $assignments->pluck( 'board_id' ) )->with( 'substatus' )->get();
         $column      = static fn ( OrderBoardAssignment $card ): string => $columns
             ->first( static fn ( KanbanColumn $column ): bool => (int) $column->board_id === (int) $card->board_id && (int) $column->substatus_id === (int) $card->substatus_id )
             ?->displayLabel() ?? (string) $card->substatus?->label;
@@ -96,48 +120,77 @@ final class CardDetailPresenter
                 [ 'label' => __( 'Total' ), 'value' => $money( $order->total_amount ), 'strong' => true ],
                 (int) $order->total_refunded_amount > 0 ? [ 'label' => __( 'Refunded' ), 'value' => $money( $order->total_refunded_amount ) ] : null,
             ] ) ),
-            'payment'     => Statuses::label( 'payment', $order->payment_status ),
-            'fulfillment' => Statuses::label( 'fulfillment', $order->fulfillment_status ),
-            'boards'      => $assignments
+            'payment'          => Statuses::label( 'payment', $order->payment_status ),
+            'payment_tone'     => Statuses::tone( 'payment', $order->payment_status ),
+            'fulfillment'      => Statuses::label( 'fulfillment', $order->fulfillment_status ),
+            'fulfillment_tone' => Statuses::tone( 'fulfillment', $order->fulfillment_status ),
+            'boards'           => $assignments
                 ->reject( static fn ( OrderBoardAssignment $card ): bool => (int) $card->board_id === (int) $board->id || null === $card->board )
                 ->filter( static fn ( OrderBoardAssignment $card ): bool => Authorization::allows( $user, 'kanbanBoard.view', $card->board ) )
                 ->map( static fn ( OrderBoardAssignment $card ): array => [ 'board' => (string) $card->board->name, 'column' => $column( $card ) ] )
                 ->values()
                 ->all(),
-            'timeline'    => self::timeline( $order ),
+            'timeline'    => self::timeline( $order, $user ),
             'admin_url'   => AdminLinks::orderUrl( (int) $order->id ),
         ];
     }
 
     /**
-     * The order's latest timeline entries.
+     * The order's latest timeline entries. A board `$user` may not view
+     * (or one since deleted) is never named: "Added to another board"
+     * rather than its key, and a move on it shows the sub-status label
+     * rather than that board's column label. A board `$user` may view is
+     * named by its name.
      *
      * @since 1.0.0
+     * @since 2.0.0 Added `$user`; names only boards `$user` may view, by name.
      *
-     * @param  Order  $order  The order.
+     * @param  Order                 $order  The order.
+     * @param  Authenticatable|null  $user   The viewer.
      *
-     * @return array<int, array{id: int, text: string, date: string, date_iso: string|null}>
+     * @return array<int, array{id: int, text: string, date: string, date_iso: string|null, icon: string|null, color: string}>
      */
-    public static function timeline( Order $order ): array
+    public static function timeline( Order $order, ?Authenticatable $user = null ): array
     {
-        $entries = OrderTimelineEntry::query()->where( 'order_id', $order->id )->latest( 'id' )->limit( self::TIMELINE_ENTRIES )->get();
-        $ids     = $entries->map( static fn ( OrderTimelineEntry $entry ): mixed => $entry->payload['to_id'] ?? null )->filter( static fn ( mixed $id ): bool => is_numeric( $id ) )->all();
-        $labels  = OrderSubstatus::query()->whereKey( $ids )->pluck( 'label', 'id' );
-        $columns = KanbanColumn::query()->whereIn( 'substatus_id', $ids )->with( 'substatus' )->get()
+        $entries  = OrderTimelineEntry::query()->where( 'order_id', $order->id )->latest( 'id' )->limit( self::TIMELINE_ENTRIES )->get();
+        $ids      = $entries->map( static fn ( OrderTimelineEntry $entry ): mixed => $entry->payload['to_id'] ?? null )->filter( static fn ( mixed $id ): bool => is_numeric( $id ) )->all();
+        $boardIds = $entries->map( static fn ( OrderTimelineEntry $entry ): mixed => $entry->payload['board_id'] ?? null )->filter( static fn ( mixed $id ): bool => is_numeric( $id ) )->map( 'intval' )->unique()->values()->all();
+        $labels   = OrderSubstatus::query()->whereKey( $ids )->pluck( 'label', 'id' );
+        $columns  = [] === $ids ? collect() : KanbanColumn::query()->whereIn( 'substatus_id', $ids )->with( 'substatus' )->get()
             ->keyBy( static fn ( KanbanColumn $column ): string => $column->board_id . ':' . $column->substatus_id );
+        $boards   = [] === $boardIds ? collect() : KanbanBoard::query()->whereKey( $boardIds )->get()
+            ->filter( static fn ( KanbanBoard $board ): bool => Authorization::allows( $user, 'kanbanBoard.view', $board ) )
+            ->keyBy( static fn ( KanbanBoard $board ): int => (int) $board->id );
 
-        return $entries->map( static function ( OrderTimelineEntry $entry ) use ( $labels, $columns ): array {
+        return $entries->map( static function ( OrderTimelineEntry $entry ) use ( $labels, $columns, $boards ): array {
             $payload = (array) $entry->payload;
             $to      = $payload['to_id'] ?? null;
-            $column  = $columns->get( ( $payload['board_id'] ?? '' ) . ':' . $to );
+            $boardId = is_numeric( $payload['board_id'] ?? null ) ? (int) $payload['board_id'] : null;
+            $board   = null === $boardId ? null : $boards->get( $boardId );
+            $column  = null !== $boardId && null === $board ? null : $columns->get( ( $payload['board_id'] ?? '' ) . ':' . $to );
 
             return [
                 'id'       => (int) $entry->id,
-                'text'     => self::describe( (string) $entry->event_type, [ ...$payload, 'to_label' => $column?->displayLabel() ?? $labels[ $to ] ?? null ] ),
+                'text'     => self::describe( (string) $entry->event_type, [ ...$payload, 'to_label' => $column?->displayLabel() ?? $labels[ $to ] ?? null, 'board_name' => $board?->name ] ),
                 'date'     => LocalizedDate::format( $entry->created_at ),
                 'date_iso' => $entry->created_at?->toIso8601String(),
+                ...self::marker( (string) $entry->event_type ),
             ];
         } )->all();
+    }
+
+    /**
+     * The Timeline marker for an event: its icon and color role.
+     *
+     * @since 2.0.0
+     *
+     * @param  string  $type  Timeline event type.
+     *
+     * @return array{icon: string|null, color: string}
+     */
+    public static function marker( string $type ): array
+    {
+        return self::MARKERS[ $type ] ?? [ 'icon' => null, 'color' => 'neutral' ];
     }
 
     /**
@@ -165,9 +218,12 @@ final class CardDetailPresenter
     }
 
     /**
-     * A timeline entry in words.
+     * A timeline entry in words. Board entries name the board by
+     * `board_name`, which {@see self::timeline()} sets only for a board the
+     * viewer may view; without it they read "another board".
      *
      * @since 1.0.0
+     * @since 2.0.0 Board entries use `board_name`, never `board_key`.
      *
      * @param  string                $type     Event type.
      * @param  array<string, mixed>  $payload  Event payload.
@@ -187,8 +243,8 @@ final class CardDetailPresenter
             'order.edited'               => __( 'Order edited' ),
             'note.added'                 => __( 'Note added' ),
             'payment.captured'           => __( 'Payment captured' ),
-            'kanban.assignment_added'    => __( 'Added to board :board', [ 'board' => $value( 'board_key' ) ] ),
-            'kanban.assignment_removed'  => __( 'Removed from board :board', [ 'board' => $value( 'board_key' ) ] ),
+            'kanban.assignment_added'    => '' === $value( 'board_name' ) ? __( 'Added to another board' ) : __( 'Added to board :board', [ 'board' => $value( 'board_name' ) ] ),
+            'kanban.assignment_removed'  => '' === $value( 'board_name' ) ? __( 'Removed from another board' ) : __( 'Removed from board :board', [ 'board' => $value( 'board_name' ) ] ),
             'kanban.automation_fired'    => __( 'Automation ran: :trigger', [ 'trigger' => Automations::triggerLabel( $value( 'trigger_key' ) ) ] ),
             'kanban.automation_failed'   => __( 'Automation failed: :trigger', [ 'trigger' => Automations::triggerLabel( $value( 'trigger_key' ) ) ] ),
             'kanban.order_field_updated' => __( 'Order field :field updated', [ 'field' => $value( 'field' ) ] ),

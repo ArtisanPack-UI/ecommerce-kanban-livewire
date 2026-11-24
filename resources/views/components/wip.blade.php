@@ -1,7 +1,8 @@
 {{--
     `x-artisanpack-ec-kb-wip`: a column's card count, as `n / limit` when the
-    column has a WIP limit. At or over the limit it turns to the warning tone,
-    adds an icon, and says so in text, so the state is never colour only.
+    column has a WIP limit, in a soft, small design-system Badge. At or over
+    the limit it turns to the warning color, adds an alert icon, and says so
+    in visually hidden text, so the state is never color only.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceKanbanLivewire
@@ -21,14 +22,12 @@
             ? __( ':count of :limit cards, WIP limit reached', [ 'count' => $count, 'limit' => (int) $limit ] )
             : __( ':count of :limit cards', [ 'count' => $count, 'limit' => (int) $limit ] ) );
 @endphp
-<span
-    {{ $attributes->class( [ 'badge badge-sm gap-1 whitespace-nowrap', 'badge-warning' => $atLimit, 'badge-ghost' => ! $atLimit ] ) }}
+<x-artisanpack-badge
+    {{ $attributes }}
+    variant="soft"
+    size="sm"
+    :color="$atLimit ? 'warning' : 'neutral'"
+    :leading-icon="$atLimit ? 'triangle-alert' : null"
     data-ec-kb-wip
-    @if ( $atLimit ) data-ec-kb-wip-reached @endif
->
-    @if ( $atLimit )
-        <x-artisanpack-icon name="o-exclamation-triangle" class="size-3" aria-hidden="true" />
-    @endif
-    <span aria-hidden="true">{{ null === $limit ? $count : $count . ' / ' . (int) $limit }}</span>
-    <span class="sr-only">{{ $text }}</span>
-</span>
+    :data-ec-kb-wip-reached="$atLimit ? '' : null"
+><span aria-hidden="true">{{ null === $limit ? $count : $count . ' / ' . (int) $limit }}</span><span class="apui-sr-only">{{ $text }}</span></x-artisanpack-badge>

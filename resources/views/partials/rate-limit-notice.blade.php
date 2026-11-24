@@ -1,7 +1,9 @@
 {{--
     Turns a rate-limited Livewire update (HTTP 429 from the
     `ecommerce-kanban.throttle` middleware) into a toast with the retry time,
-    instead of Livewire's error modal.
+    instead of Livewire's error modal. The toast is the design system's
+    `toast` browser event, which the page's `<x-artisanpack-toaster>` shows
+    as text.
 
     Uses Livewire's `request` hook, which Livewire 3 and 4 both support.
 
@@ -14,15 +16,6 @@
     ( () => {
         const fallback = @js( __( 'Too many changes in a short time. Try again shortly.' ) );
         const title    = @js( __( 'Slow down' ) );
-
-        // The toast renders its text as HTML, and any 429 on the page lands here.
-        const escape = ( value ) => {
-            const element = document.createElement( 'div' );
-
-            element.textContent = value;
-
-            return element.innerHTML;
-        };
 
         const register = () => {
             if ( window.ecommerceKanbanRateLimitNotice || ! window.Livewire ) {
@@ -48,9 +41,7 @@
 
                     preventDefault();
 
-                    if ( 'function' === typeof window.toast ) {
-                        window.toast( { toast: { type: 'warning', title: escape( title ), description: escape( message ), icon: '', css: 'alert-warning' } } );
-                    }
+                    window.dispatchEvent( new CustomEvent( 'toast', { detail: { title, description: message, color: 'warning' } } ) );
                 } );
             } );
         };

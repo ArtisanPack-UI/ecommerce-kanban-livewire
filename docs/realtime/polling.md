@@ -1,5 +1,6 @@
 ---
 title: Polling Fallback
+menu_order: 20
 ---
 
 # Polling Fallback
@@ -14,7 +15,7 @@ Each poll calls the board's `poll()` action. The server compares a fingerprint o
 - returns just the columns whose cards changed (a card joined, left, moved within the column, or its order was updated), which the page morphs in place;
 - asks for a full board render when the board's setup changed (a column added, removed, reordered, or edited, or an automation badge changed).
 
-Polls only read, so they don't count against the board's [rate limit](Advanced#rate-limits), however short the interval.
+Polls only read, so they don't count against the board's [rate limit](../advanced.md#rate-limits), however short the interval.
 
 ## When it pauses
 
@@ -39,4 +40,4 @@ It polls at once when the tab is shown again.
 
 A shorter interval shows other people's changes sooner, at the cost of one request per open board per interval. With `poll_interval` at `0` and no Echo, the header says "Not updating automatically" and the board only changes on reload. `realtime.enabled` at `false` turns off both polling and Echo.
 
-Polling is also the fallback for live boards: when the Echo connection drops, the board polls until it reconnects. See [Broadcasting with Echo](Realtime-Broadcasting).
+Polling is also the fallback for live boards: when the Echo connection drops, the board polls until it reconnects. See [Broadcasting with Echo](broadcasting.md).

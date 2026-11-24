@@ -1,12 +1,13 @@
 ---
 title: Editing the Board
+menu_order: 50
 ---
 
 # Editing the Board
 
 Staff with `kanbanBoard.update` can change a board's columns and card widgets on the board itself. **Edit board** in the header turns edit mode on; **Done editing** turns it off. Changes save as you make them.
 
-Every change goes through the engine's services (`KanbanColumnService` for columns), so the rules match the ecommerce admin and the REST API, the engine's validation messages show on the fields, and other open boards pick up the change as a board config change. Board-native editing works without the ecommerce admin installed. See [Usage](Usage#board-settings-the-board-and-the-admin) for what stays in the admin.
+Every change goes through the engine's services (`KanbanColumnService` for columns), so the rules match the ecommerce admin and the REST API, the engine's validation messages show on the fields, and other open boards pick up the change as a board config change. Board-native editing works without the ecommerce admin installed. See [Usage](../usage.md#board-settings-the-board-and-the-admin) for what stays in the admin.
 
 In edit mode cards don't drag, and each column header gets a toolbar:
 
@@ -15,7 +16,7 @@ In edit mode cards don't drag, and each column header gets a toolbar:
 | Move left / Move right | Moves the column one place. Focus stays on the button, so you can press it again. The first column's "left" and the last column's "right" are disabled. |
 | Edit column | Opens the column editor |
 | Card widgets | Opens the widget picker for this column |
-| Automations | Opens the [automations panel](Usage-Automations) for this column |
+| Automations | Opens the [automations panel](automations.md) for this column |
 | Remove column | Asks before removing the column |
 
 The widget picker needs `kanbanBoard.update` to open, edit, and save, however it is opened. The header adds **Default card widgets** (the widget picker for the board default) and, when the ecommerce admin is installed, **Advanced settings**, which opens the admin's edit screen for the board (details, routing rules, columns, and automations).
@@ -32,7 +33,7 @@ The column editor ("Edit column: Packing") has:
 | --- | --- |
 | Label | Use the sub-status name |
 | Color | Use the sub-status color (`#RRGGBB`) |
-| Icon | Use the sub-status icon. An icon name such as `o-truck`. |
+| Icon | Use the sub-status icon. An icon name: a livewire-ui-components 3.0 registry (Lucide) icon such as `truck`, or a Heroicon such as `o-truck`. A name in both sets renders the registry icon; a name that doesn't resolve shows no icon. |
 | WIP limit | Have no limit. Otherwise the most cards the column may hold, at least 1. |
 
 The color is only drawn as the column's top border. Column text never sits on it, so any color stays readable.
@@ -74,4 +75,4 @@ The widget picker opens from a column's **Card widgets** button (that column's l
 
 **Save widgets** stores the list through the engine, which validates the settings and shows its messages on the fields. Remove every widget from a column's list to make the column use the board default again.
 
-To add your own widgets, see [Card Widgets](Extending-Card-Widgets).
+To add your own widgets, see [Card Widgets](../extending/card-widgets.md).

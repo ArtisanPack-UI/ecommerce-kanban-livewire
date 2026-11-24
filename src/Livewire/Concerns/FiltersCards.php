@@ -17,9 +17,9 @@ use ArtisanPackUI\Ecommerce\Kanban\KanbanCardFilters;
 use ArtisanPackUI\Ecommerce\Kanban\KanbanCardTags;
 use ArtisanPackUI\Ecommerce\Models\Customer;
 use ArtisanPackUI\Ecommerce\Models\Order;
-use ArtisanPackUI\Ecommerce\Models\OrderBoardAssignment;
 use ArtisanPackUI\Ecommerce\Models\OrderItem;
 use ArtisanPackUI\Ecommerce\Models\Product;
+use ArtisanPackUI\EcommerceKanbanLivewire\Queries\VisibleCards;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\FilterControls;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\Statuses;
 use Illuminate\Database\Eloquent\Builder;
@@ -184,34 +184,79 @@ trait FiltersCards
     public array $productOptions = [];
 
     /**
-     * The filters as the engine reads them.
+     * The text typed into the customer filter; the combobox sets it after
+     * its debounce and {@see self::updatedCustomerSearch()} searches. Not in
+     * the query string. Mixed, like the filters: anything that isn't text is
+     * searched as empty.
+     *
+     * @since 2.0.0
+     *
+     * @var mixed
+     */
+    public mixed $customerSearch = '';
+
+    /**
+     * The text typed into the product filter; see {@see self::$customerSearch}.
+     *
+     * @since 2.0.0
+     *
+     * @var mixed
+     */
+    public mixed $productSearch = '';
+
+    /**
+     * The filters read in this request, with the filter values they were
+     * read from, so {@see self::cardFilters()} runs the filter-controls hook
+     * once per render rather than for every caller.
+     *
+     * @since 2.0.0
+     *
+     * @var array{key: string, filters: KanbanCardFilters}|null
+     */
+    private ?array $filtersMemo = null;
+
+    /**
+     * Searches customers as the customer filter's text changes.
+     *
+     * @since 2.0.0
+     *
+     * @return void
+     */
+    public function updatedCustomerSearch(): void
+    {
+        $this->searchCustomers( $this->customerSearch );
+    }
+
+    /**
+     * Searches products as the product filter's text changes.
+     *
+     * @since 2.0.0
+     *
+     * @return void
+     */
+    public function updatedProductSearch(): void
+    {
+        $this->searchProducts( $this->productSearch );
+    }
+
+    /**
+     * The filters as the engine reads them. Read once per request for the
+     * same filter values.
      *
      * @since 1.0.0
+     * @since 2.0.0 Memoized while the filter values don't change.
      *
      * @return KanbanCardFilters
      */
     public function cardFilters(): KanbanCardFilters
     {
-        $controls = array_column( FilterControls::for( $this->board ), null, 'key' );
-        $extra    = [];
+        $key = md5( serialize( [ $this->boardId, $this->search, $this->customerId, $this->tags, $this->productIds, $this->placedFrom, $this->placedTo, $this->stale, $this->paymentStatus, $this->fulfillmentStatus, $this->extraFilters ] ) );
 
-        foreach ( is_array( $this->extraFilters ) ? $this->extraFilters : [] as $key => $value ) {
-            if ( isset( $controls[ $key ] ) && is_scalar( $value ) && '' !== (string) $value ) {
-                $extra[ $key ] = (string) $value;
-            }
+        if ( $key !== ( $this->filtersMemo['key'] ?? null ) ) {
+            $this->filtersMemo = [ 'key' => $key, 'filters' => $this->readCardFilters() ];
         }
 
-        return KanbanCardFilters::fromArray( [
-            'search'             => is_scalar( $this->search ) ? (string) $this->search : null,
-            'customer_id'        => $this->customerId,
-            'tags'               => $this->tags,
-            'product_ids'        => $this->productIds,
-            'placed_from'        => self::dateValue( $this->placedFrom ),
-            'placed_to'          => self::dateValue( $this->placedTo ),
-            'stale'              => filter_var( $this->stale, FILTER_VALIDATE_BOOLEAN ),
-            'payment_status'     => $this->paymentStatus,
-            'fulfillment_status' => $this->fulfillmentStatus,
-        ] + $extra );
+        return $this->filtersMemo['filters'];
     }
 
     /**
@@ -230,6 +275,28 @@ trait FiltersCards
             null !== $filters->customerId,
             [] !== $filters->tags,
             [] !== $filters->productIds,
+            null !== $filters->placedFrom || null !== $filters->placedTo,
+            null !== $filters->movedBefore,
+            [] !== $filters->paymentStatus,
+            [] !== $filters->fulfillmentStatus,
+        ] ) ) + count( $filters->extra );
+    }
+
+    /**
+     * How many of the filters behind "More filters" are set: the placed
+     * date range, "Stale cards only", the payment and fulfillment statuses,
+     * and the satellites' controls. The filter bar opens that row by itself
+     * when any is.
+     *
+     * @since 2.0.0
+     *
+     * @return int
+     */
+    public function moreFilterCount(): int
+    {
+        $filters = $this->cardFilters();
+
+        return count( array_filter( [
             null !== $filters->placedFrom || null !== $filters->placedTo,
             null !== $filters->movedBefore,
             [] !== $filters->paymentStatus,
@@ -333,15 +400,38 @@ trait FiltersCards
     }
 
     /**
-     * Loads the tag filter's options from the board's cards.
+     * Loads the tag filter's options from the board's cards: the tags of the
+     * most recent {@see KanbanCardTags::MAX_ORDERS} orders with a visible
+     * card ({@see VisibleCards}), read through `ap.ecommerce.kanban.orderTags`
+     * like the engine's {@see KanbanCardTags}, so a hidden card's tags are
+     * never offered.
      *
      * @since 1.0.0
+     * @since 2.0.0 Leaves out the tags of cards the card query hides.
      *
      * @return void
      */
     protected function loadTagOptions(): void
     {
-        $this->tagOptions = array_map( static fn ( string $tag ): array => [ 'id' => $tag, 'name' => $tag ], app( KanbanCardTags::class )->forBoard( $this->board ) );
+        $tags   = [];
+        $orders = $this->boardOrders()->latest( 'id' )->limit( KanbanCardTags::MAX_ORDERS )->get();
+
+        foreach ( $orders as $order ) {
+            $orderTags = applyFilters( 'ap.ecommerce.kanban.orderTags', (array) ( $order->meta['tags'] ?? [] ), $order );
+
+            foreach ( is_array( $orderTags ) ? $orderTags : [] as $tag ) {
+                $tag = is_scalar( $tag ) ? trim( (string) $tag ) : '';
+
+                if ( '' !== $tag ) {
+                    $tags[ $tag ] = true;
+                }
+            }
+        }
+
+        $tags = array_map( 'strval', array_keys( $tags ) );
+        natcasesort( $tags );
+
+        $this->tagOptions = array_map( static fn ( string $tag ): array => [ 'id' => $tag, 'name' => $tag ], array_slice( array_values( $tags ), 0, KanbanCardTags::MAX_TAGS ) );
     }
 
     /**
@@ -363,6 +453,7 @@ trait FiltersCards
 
         return [
             'activeFilters'      => $this->activeFilterCount(),
+            'moreFilters'        => $this->moreFilterCount(),
             'paymentOptions'     => Statuses::options( 'payment' ),
             'fulfillmentOptions' => Statuses::options( 'fulfillment' ),
             'extraControls'      => FilterControls::for( $this->board ),
@@ -384,10 +475,42 @@ trait FiltersCards
     }
 
     /**
+     * Reads the filters from the filter bar's values.
+     *
+     * @since 2.0.0
+     *
+     * @return KanbanCardFilters
+     */
+    private function readCardFilters(): KanbanCardFilters
+    {
+        $controls = array_column( FilterControls::for( $this->board ), null, 'key' );
+        $extra    = [];
+
+        foreach ( is_array( $this->extraFilters ) ? $this->extraFilters : [] as $key => $value ) {
+            if ( isset( $controls[ $key ] ) && is_scalar( $value ) && '' !== (string) $value ) {
+                $extra[ $key ] = (string) $value;
+            }
+        }
+
+        return KanbanCardFilters::fromArray( [
+            'search'             => is_scalar( $this->search ) ? (string) $this->search : null,
+            'customer_id'        => $this->customerId,
+            'tags'               => $this->tags,
+            'product_ids'        => $this->productIds,
+            'placed_from'        => self::dateValue( $this->placedFrom ),
+            'placed_to'          => self::dateValue( $this->placedTo ),
+            'stale'              => filter_var( $this->stale, FILTER_VALIDATE_BOOLEAN ),
+            'payment_status'     => $this->paymentStatus,
+            'fulfillment_status' => $this->fulfillmentStatus,
+        ] + $extra );
+    }
+
+    /**
      * Customers with an order on this board: the only ones the customer
      * filter offers, including for an id typed into the URL.
      *
      * @since 1.0.0
+     * @since 2.0.0 Only customers of visible cards ({@see self::boardOrders()}).
      *
      * @return Builder<Customer>
      */
@@ -401,6 +524,7 @@ trait FiltersCards
      * offers, including for ids typed into the URL.
      *
      * @since 1.0.0
+     * @since 2.0.0 Only products of visible cards ({@see self::boardOrders()}).
      *
      * @return Builder<Product>
      */
@@ -410,15 +534,18 @@ trait FiltersCards
     }
 
     /**
-     * Orders with an active card on this board.
+     * Orders with an active card on this board that the
+     * `ap.ecommerce.kanban.cardQuery` filter leaves visible
+     * ({@see VisibleCards}).
      *
      * @since 1.0.0
+     * @since 2.0.0 Leaves out orders whose card the card query hides.
      *
      * @return Builder<Order>
      */
     private function boardOrders(): Builder
     {
-        return Order::query()->whereIn( 'id', OrderBoardAssignment::query()->active()->where( 'board_id', $this->boardId )->select( 'order_id' ) );
+        return Order::query()->whereIn( 'id', VisibleCards::orderIds( $this->board ) );
     }
 
     /**

@@ -48,7 +48,7 @@ function filterBoard(): array
  */
 function shownCards( $component ): array
 {
-    preg_match_all( '/Order ([A-Z]-\d)<\/p>/', $component->html(), $matches );
+    preg_match_all( '/<span class="ec-kb-card-number">([A-Z]-\d)<\/span>/', $component->html(), $matches );
 
     return $matches[1];
 }
@@ -243,7 +243,7 @@ it( 'keeps the customer and product options server-side', function ( string $pro
     Livewire::test( Board::class, [ 'board' => $board ] )->set( $property, [ [ 'id' => 1, 'name' => 'Spoofed' ] ] );
 } )->with( [ 'customerOptions', 'productOptions' ] )->throws( CannotUpdateLockedPropertyException::class );
 
-it( 'labels the date inputs, hides the filters toggle on wide screens, and replaces the tags control when its options change', function (): void {
+it( 'labels the date inputs, keeps the filters button below md, and replaces the tags control when its options change', function (): void {
     [ $board ] = filterBoard();
 
     $component = Livewire::test( Board::class, [ 'board' => $board ] );
@@ -252,9 +252,142 @@ it( 'labels the date inputs, hides the filters toggle on wide screens, and repla
 
     $tagsKey = static fn ( string $html ): string => preg_match( '/wire:key="(ec-kb-filters-tags-[0-9a-f]{32})"/', $html, $matches ) ? $matches[1] : '';
 
-    expect( $after )->toContain( 'aria-label="Placed from"' )
-        ->and( $after )->toContain( 'aria-label="Placed to"' )
-        ->and( $after )->toMatch( '/<div class="md:hidden">\s*(<!--\[if BLOCK\]><!\[endif\]-->)?\s*<button[^>]*data-ec-kb-filters-toggle/' )
+    expect( $after )->toMatch( '/<label[^>]*for="ec-kb-filters-placed-from-control"[^>]*>Placed from/' )
+        ->and( $after )->toMatch( '/<label[^>]*for="ec-kb-filters-placed-to-control"[^>]*>Placed to/' )
+        ->and( $after )->toMatch( '/<span class="ec-kb-below-md[^"]*">\s*(<!--\[if BLOCK\]><!\[endif\]-->)?\s*<button[^>]*data-ec-kb-filters-toggle/' )
         ->and( $tagsKey( $before ) )->not->toBe( '' )
         ->and( $tagsKey( $after ) )->not->toBe( $tagsKey( $before ) );
+} );
+
+it( 'keeps search, customer, tags and products in view and puts the rest behind More filters', function (): void {
+    [ $board ] = filterBoard();
+
+    $html = Livewire::test( Board::class, [ 'board' => $board ] )->call( 'loadBoard', [] )->html();
+    $bar  = (string) strstr( (string) strstr( $html, 'data-ec-kb-filters="ec-kb-filters"' ), 'data-ec-kb-filters-drawer', true );
+    $more = (string) strstr( $bar, 'data-ec-kb-filters-extra' );
+    $row  = (string) strstr( $bar, 'data-ec-kb-filters-extra', true );
+
+    expect( $html )->toMatch( '/role="search"\s+aria-label="Filter orders"\s+data-ec-kb-filters="ec-kb-filters"/' )
+        ->and( $row )->toContain( 'data-ec-kb-filter="search"' )
+        ->and( $row )->toContain( 'data-ec-kb-filter="customer"' )
+        ->and( $row )->toContain( 'data-ec-kb-filter="tags"' )
+        ->and( $row )->toContain( 'data-ec-kb-filter="products"' )
+        ->and( $row )->not->toContain( 'data-ec-kb-filter="placed-from"' )
+        ->and( $more )->toContain( 'data-ec-kb-filter="placed-from"' )
+        ->and( $more )->toContain( 'data-ec-kb-filter="payment"' )
+        ->and( $more )->toContain( 'data-ec-kb-filter="fulfillment"' )
+        ->and( $more )->toContain( 'data-ec-kb-filter="stale"' )
+        ->and( $html )->toMatch( '/id="ec-kb-filters-more"[^>]*role="group"[^>]*aria-label="More filters"\s+hidden/' )
+        ->and( $html )->toMatch( '/aria-controls="ec-kb-filters-more"\s+aria-expanded="false"/' )
+        ->and( $html )->not->toContain( 'data-ec-kb-filters-footer' );
+} );
+
+it( 'opens More filters by itself and counts them when one of them is set', function (): void {
+    [ $board ] = filterBoard();
+
+    $component = Livewire::withQueryParams( [ 'stale' => '1', 'payment' => [ 'paid' ] ] )
+        ->test( Board::class, [ 'board' => $board ] )
+        ->call( 'loadBoard', [] );
+    $html      = $component->html();
+
+    expect( $component->instance()->moreFilterCount() )->toBe( 2 )
+        ->and( $html )->toMatch( '/aria-controls="ec-kb-filters-more"\s+aria-expanded="true"/' )
+        ->and( $html )->not->toMatch( '/id="ec-kb-filters-more"[^>]*aria-label="More filters"\s+hidden/' )
+        ->and( $html )->toContain( '<span class="ec-kb-filter-count" aria-hidden="true">2</span>' )
+        ->and( $html )->toContain( '2 filters active' );
+
+    // The search sits in view, so it doesn't count towards More filters.
+    expect( $component->set( 'stale', false )->set( 'paymentStatus', [] )->set( 'search', 'w' )->instance()->moreFilterCount() )->toBe( 0 );
+} );
+
+it( 'says how many orders show and offers Clear filters while filters are on', function (): void {
+    [ $board ] = filterBoard();
+
+    $component = Livewire::test( Board::class, [ 'board' => $board ] )
+        ->call( 'loadBoard', [] )
+        ->set( 'tags', [ 'wholesale' ] );
+
+    $component->assertSeeHtml( 'data-ec-kb-filters-footer' )
+        ->assertSee( '2 of 3 orders shown' )
+        ->assertSeeHtml( 'data-ec-kb-clear-filters' )
+        ->assertSeeHtml( 'data-ec-kb-toolbar-clear-filters' )
+        ->assertSee( 'Show 2 orders' )
+        ->call( 'clearFilters' )
+        ->assertDontSeeHtml( 'data-ec-kb-filters-footer' )
+        ->assertDontSeeHtml( 'data-ec-kb-toolbar-clear-filters' );
+} );
+
+it( 'puts the fields in an end-side drawer below md, with Clear filters and Show N orders', function (): void {
+    [ $board ] = filterBoard();
+
+    $html = Livewire::test( Board::class, [ 'board' => $board ] )
+        ->call( 'loadBoard', [] )
+        ->set( 'stale', true )
+        ->html();
+
+    expect( $html )->toMatch( '/data-ec-kb-filters-drawer[^>]*x-data="apuiDrawer\(/' )
+        ->and( $html )->toContain( 'x-on:ec-kb-open-filters.window="open = true"' )
+        ->and( $html )->toMatch( '/class="apui-drawer ec-kb-filters-drawer"[^>]*data-side="end"/s' )
+        ->and( $html )->toContain( 'data-ec-kb-drawer-clear-filters' )
+        ->and( $html )->toMatch( '/x-on:click="open = false"[^>]*data-ec-kb-show-orders/' )
+        ->and( $html )->toContain( 'data-ec-kb-filters="ec-kb-filters-drawer"' )
+        ->and( $html )->toContain( 'id="ec-kb-filters-drawer-placed-from-control"' )
+        ->and( $html )->toContain( '<span class="ec-kb-filter-count" aria-hidden="true" data-ec-kb-filter-count>1</span>' );
+} );
+
+it( 'searches customers and products as their comboboxes\' text changes', function (): void {
+    [ $board, $columns ] = filterBoard();
+    $customer            = Customer::factory()->create( [ 'first_name' => 'Grace', 'last_name' => 'Hopper', 'email' => 'grace@example.test' ] );
+    $shirt               = Product::factory()->create( [ 'name' => 'Tour shirt', 'sku' => 'SHIRT-1' ] );
+
+    OrderItem::factory()->create( [ 'order_id' => addCard( $columns[0], [ 'customer_id' => $customer->id ] )->order_id, 'product_id' => $shirt->id ] );
+
+    $component = Livewire::test( Board::class, [ 'board' => $board ] )
+        ->set( 'customerSearch', 'hopp' )
+        ->assertSet( 'customerOptions', [ [ 'id' => $customer->id, 'name' => 'Grace Hopper (grace@example.test)' ] ] )
+        ->set( 'productSearch', 'shirt' )
+        ->assertSet( 'productOptions', [ [ 'id' => $shirt->id, 'name' => 'Tour shirt (SHIRT-1)' ] ] );
+
+    expect( $component->html() )->toContain( 'customerSearch' )
+        ->and( $component->html() )->toContain( 'productSearch' )
+        ->and( ArtisanPackUI\EcommerceKanbanLivewire\Http\Middleware\ThrottleKanbanMutations::READ_PROPERTIES )->toContain( 'customerSearch', 'productSearch' );
+} );
+
+it( 'sends the status options and satellite select options in the design system\'s value and label shape', function (): void {
+    [ $board ] = filterBoard();
+    addFilter( FilterControls::FILTER, fn ( array $controls ): array => [
+        ...$controls,
+        [ 'key' => 'channel', 'label' => 'Sales channel', 'type' => 'select', 'options' => [ [ 'id' => 'web', 'name' => 'Online store' ] ] ],
+    ] );
+
+    Livewire::test( Board::class, [ 'board' => $board ] )
+        ->call( 'loadBoard', [] )
+        ->assertSee( 'Sales channel' )
+        ->assertSeeHtml( 'value="web"' )
+        ->assertSee( 'Online store' );
+} );
+
+it( 'accepts satellite select options given in the design system\'s value and label shape', function (): void {
+    [ $board ] = filterBoard();
+    addFilter( FilterControls::FILTER, fn ( array $controls ): array => [
+        ...$controls,
+        [ 'key' => 'channel', 'label' => 'Sales channel', 'type' => 'select', 'options' => [ [ 'value' => 'pos', 'label' => 'Point of sale' ], [ 'value' => [ 'bad' ], 'label' => 'Dropped' ] ] ],
+    ] );
+
+    Livewire::test( Board::class, [ 'board' => $board ] )
+        ->call( 'loadBoard', [] )
+        ->assertSee( 'Sales channel' )
+        ->assertSeeHtml( 'value="pos"' )
+        ->assertSee( 'Point of sale' )
+        ->assertDontSee( 'Dropped' );
+} );
+
+it( 'searches as empty when the combobox search text is not a string', function (): void {
+    [ $board ] = filterBoard();
+
+    Livewire::test( Board::class, [ 'board' => $board ] )
+        ->set( 'customerSearch', [ 'not', 'text' ] )
+        ->assertOk()
+        ->set( 'productSearch', [ 'x' => 1 ] )
+        ->assertOk();
 } );

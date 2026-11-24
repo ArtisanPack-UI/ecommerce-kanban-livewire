@@ -21,6 +21,7 @@ use ArtisanPackUI\Ecommerce\Models\Order;
 use ArtisanPackUI\Ecommerce\Models\OrderBoardAssignment;
 use ArtisanPackUI\Ecommerce\Services\KanbanRoutingService;
 use ArtisanPackUI\EcommerceKanbanLivewire\Livewire\Concerns\AuthorizesKanban;
+use ArtisanPackUI\EcommerceKanbanLivewire\Queries\VisibleCards;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\Authorization;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\CardActions;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\CardDetailPresenter;
@@ -43,7 +44,9 @@ use Livewire\Component;
  * The board renders this component once. It loads nothing until a card is
  * opened (the card's "Open" action, or `?card={order}` on the board URL,
  * which keeps an open card linkable). Opening needs `order.view`, and the
- * order must be on the board.
+ * order must be on the board with a card the `ap.ecommerce.kanban.cardQuery`
+ * filter leaves visible. Like the board, a switched-off board is a 404 for
+ * anyone who can't edit it.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceKanbanLivewire
@@ -126,6 +129,7 @@ class CardDetail extends Component
      * Mounts the slide-out, opening the card named in the URL.
      *
      * @since 1.0.0
+     * @since 2.0.0 A switched-off board is a 404 for anyone who can't edit it.
      *
      * @param  int  $boardId  The board's id.
      *
@@ -137,6 +141,8 @@ class CardDetail extends Component
 
         $this->authorizeKanban( 'kanbanBoard.view', $this->board() );
 
+        abort_unless( Authorization::canOpenBoard( auth()->user(), $this->board() ), 404 );
+
         if ( null !== $this->orderId ) {
             $this->show( $this->orderId );
         }
@@ -146,12 +152,15 @@ class CardDetail extends Component
      * Re-checks access to the board on every update.
      *
      * @since 1.0.0
+     * @since 2.0.0 A switched-off board is a 404 for anyone who can't edit it.
      *
      * @return void
      */
     public function hydrate(): void
     {
         $this->authorizeKanban( 'kanbanBoard.view', $this->board() );
+
+        abort_unless( Authorization::canOpenBoard( auth()->user(), $this->board() ), 404 );
     }
 
     /**
@@ -227,9 +236,12 @@ class CardDetail extends Component
     }
 
     /**
-     * Puts the open order on the chosen board.
+     * Puts the open order on the chosen board. A column that isn't on that
+     * board is refused rather than swapped for the entry column, and an
+     * order already on it is reported rather than "added" again.
      *
      * @since 1.0.0
+     * @since 2.0.0 Refuses a column from another board; reports an order already on the board.
      *
      * @return void
      */
@@ -251,6 +263,22 @@ class CardDetail extends Component
         $this->authorizeKanban( 'kanbanBoard.update', $target );
 
         $column = is_numeric( $this->addBoardColumnId ) ? KanbanColumn::query()->where( 'board_id', $target->id )->find( (int) $this->addBoardColumnId ) : null;
+
+        if ( is_numeric( $this->addBoardColumnId ) && null === $column ) {
+            $this->addError( 'addBoardColumnId', __( 'Choose a column on that board.' ) );
+
+            return;
+        }
+
+        if ( OrderBoardAssignment::query()->active()->where( 'board_id', $target->id )->where( 'order_id', $order->id )->exists() ) {
+            $this->addBoardId       = '';
+            $this->addBoardColumnId = '';
+
+            $this->info( __( 'Order :number is already on :board.', [ 'number' => $order->order_number, 'board' => $target->name ] ) );
+
+            return;
+        }
+
         $routes = app( KanbanRoutingService::class );
         $label  = $column?->displayLabel() ?? $routes->entryColumn( $target, $order )?->displayLabel() ?? '';
         $actor  = auth()->id();
@@ -258,7 +286,7 @@ class CardDetail extends Component
         try {
             $routes->assign( $order, $target, $column, is_numeric( $actor ) ? (int) $actor : null );
         } catch ( EcommerceException $exception ) {
-            $this->error( e( MoveErrors::message( MoveErrors::code( $exception ), $label ) ) );
+            $this->error( MoveErrors::message( MoveErrors::code( $exception ), $label ) );
 
             return;
         }
@@ -266,7 +294,7 @@ class CardDetail extends Component
         $this->addBoardId       = '';
         $this->addBoardColumnId = '';
 
-        $this->success( e( __( 'Order :number added to :board.', [ 'number' => $order->order_number, 'board' => $target->name ] ) ) );
+        $this->success( __( 'Order :number added to :board.', [ 'number' => $order->order_number, 'board' => $target->name ] ) );
     }
 
     /**
@@ -443,10 +471,11 @@ class CardDetail extends Component
     }
 
     /**
-     * The order, when it is on the board and the user may view it; toasts
-     * why not otherwise.
+     * The order, when it has a visible card on the board ({@see VisibleCards})
+     * and the user may view it; toasts why not otherwise.
      *
      * @since 1.0.0
+     * @since 2.0.0 A card the `ap.ecommerce.kanban.cardQuery` filter hides counts as not on the board.
      *
      * @param  int   $orderId  The order.
      * @param  bool  $notify   Toast when the order can't be shown.
@@ -456,11 +485,11 @@ class CardDetail extends Component
     private function loadOrder( int $orderId, bool $notify = true ): ?Order
     {
         $order   = Order::query()->with( 'items.product' )->find( $orderId );
-        $onBoard = null !== $order && OrderBoardAssignment::query()->active()->where( 'board_id', $this->boardId )->where( 'order_id', $order->id )->exists();
+        $onBoard = null !== $order && null !== VisibleCards::assignment( $this->board(), (int) $order->id );
 
         if ( ! $onBoard ) {
             if ( $notify ) {
-                $this->error( e( __( 'This order is not on this board.' ) ) );
+                $this->error( __( 'This order is not on this board.' ) );
             }
 
             return null;
@@ -468,7 +497,7 @@ class CardDetail extends Component
 
         if ( ! Authorization::allows( auth()->user(), 'order.view', $order ) ) {
             if ( $notify ) {
-                $this->error( e( __( 'You are not allowed to view this order.' ) ) );
+                $this->error( __( 'You are not allowed to view this order.' ) );
             }
 
             return null;

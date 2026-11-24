@@ -17,10 +17,11 @@ use ArtisanPackUI\Ecommerce\Exceptions\EcommerceException;
 use ArtisanPackUI\Ecommerce\Kanban\KanbanCardPlacement;
 use ArtisanPackUI\Ecommerce\Models\KanbanColumn;
 use ArtisanPackUI\Ecommerce\Models\Order;
-use ArtisanPackUI\Ecommerce\Models\OrderBoardAssignment;
 use ArtisanPackUI\Ecommerce\Services\KanbanBoardService;
 use ArtisanPackUI\EcommerceKanbanLivewire\Queries\ColumnCardsQuery;
+use ArtisanPackUI\EcommerceKanbanLivewire\Queries\VisibleCards;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\CardActions;
+use ArtisanPackUI\EcommerceKanbanLivewire\Support\CardPresenter;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\Hooks;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\MoveErrors;
 use ArtisanPackUI\EcommerceKanbanLivewire\Support\Statuses;
@@ -232,7 +233,7 @@ trait MovesCards
         $column = $this->cardColumn( $orderId );
 
         if ( null === $column ) {
-            $this->error( e( MoveErrors::message( 'not-on-board', '' ) ) );
+            $this->error( MoveErrors::message( 'not-on-board', '' ) );
 
             return;
         }
@@ -333,6 +334,14 @@ trait MovesCards
             return [ 'moveColumns' => [], 'moveCards' => [], 'moveCardsTruncated' => false, 'moveNumber' => null ];
         }
 
+        // The card may have been hidden since the dialog opened.
+        if ( null === VisibleCards::assignment( $this->board, $this->moveOrderId ) ) {
+            $this->moveDialog  = false;
+            $this->moveOrderId = null;
+
+            return [ 'moveColumns' => [], 'moveCards' => [], 'moveCardsTruncated' => false, 'moveNumber' => null ];
+        }
+
         $current = $this->cardColumn( $this->moveOrderId );
         $counts  = [] === $counts ? ColumnCardsQuery::counts( $this->board, $this->columns ) : $counts;
         $options = [];
@@ -358,7 +367,7 @@ trait MovesCards
             // One more than shown, to tell whether the list was cut short.
             foreach ( ColumnCardsQuery::cards( $target, self::MOVE_AFTER_LIMIT + 2 ) as $card ) {
                 if ( (int) $card->order_id !== $this->moveOrderId ) {
-                    $cards[] = [ 'id' => (int) $card->order_id, 'name' => __( 'Order :number', [ 'number' => $card->order->order_number ] ) ];
+                    $cards[] = [ 'id' => (int) $card->order_id, 'name' => __( 'Order :number · :customer', [ 'number' => $card->order->order_number, 'customer' => CardPresenter::customerName( $card->order ) ] ) ];
                 }
             }
         }
@@ -384,6 +393,13 @@ trait MovesCards
             return [ 'pending' => null ];
         }
 
+        // The card may have been hidden since the confirmation opened.
+        if ( null === VisibleCards::assignment( $this->board, (int) $this->pendingMove['order_id'] ) ) {
+            $this->pendingMove = null;
+
+            return [ 'pending' => null ];
+        }
+
         $column = $this->columns->firstWhere( 'id', (int) $this->pendingMove['column_id'] );
 
         return [
@@ -396,9 +412,12 @@ trait MovesCards
     }
 
     /**
-     * Runs a move through the engine.
+     * Runs a move through the engine. An order without a visible card on
+     * this board is refused before anything else, so the exit-column
+     * confirmation never names an order the user can't see.
      *
      * @since 1.0.0
+     * @since 2.0.0 Refuses an order that isn't visibly on the board before confirming.
      *
      * @param  int                       $orderId     The card's order.
      * @param  int                       $toColumnId  Target column.
@@ -425,6 +444,11 @@ trait MovesCards
         }
 
         $current = $this->cardColumn( $orderId );
+
+        // Refuse before the exit-column confirmation, which names the order.
+        if ( null === $current ) {
+            return $this->refuse( 'not-on-board', $column, $order );
+        }
 
         if ( ! $confirmed && in_array( $column->substatus?->system_status, Statuses::EXIT, true ) && (int) $current?->id !== (int) $column->id ) {
             $this->pendingMove    = [ 'order_id' => $orderId, 'column_id' => (int) $column->id, 'placement' => $placement?->toArray() ];
@@ -492,8 +516,7 @@ trait MovesCards
     {
         doAction( Hooks::CARD_MOVE_FAILED, $code, $order, $column, $this->board, auth()->user() );
 
-        // The toast renders its title as HTML; column labels are admin-entered.
-        $this->error( e( MoveErrors::message( $code, $column?->displayLabel() ?? '' ) ) );
+        $this->error( MoveErrors::message( $code, $column?->displayLabel() ?? '' ) );
         $this->skipRender();
 
         return self::REJECTED;
@@ -501,9 +524,11 @@ trait MovesCards
 
     /**
      * The column `$orderId`'s card is in on this board, or null when the
-     * order isn't on it.
+     * order isn't on it or the `ap.ecommerce.kanban.cardQuery` filter hides
+     * its card ({@see VisibleCards}).
      *
      * @since 1.0.0
+     * @since 2.0.0 A card the card query hides counts as not on the board.
      *
      * @param  int  $orderId  Order.
      *
@@ -511,11 +536,7 @@ trait MovesCards
      */
     private function cardColumn( int $orderId ): ?KanbanColumn
     {
-        $substatusId = OrderBoardAssignment::query()
-            ->active()
-            ->where( 'board_id', $this->boardId )
-            ->where( 'order_id', $orderId )
-            ->value( 'substatus_id' );
+        $substatusId = VisibleCards::assignment( $this->board, $orderId )?->substatus_id;
 
         return null === $substatusId ? null : $this->columns->firstWhere( 'substatus_id', (int) $substatusId );
     }

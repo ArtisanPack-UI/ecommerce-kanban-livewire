@@ -1,10 +1,11 @@
 ---
 title: Localization
+menu_order: 55
 ---
 
 # Localization
 
-Every staff-facing string on the board goes through Laravel's translation functions, including the drag-and-drop instructions and announcements. The package ships JSON catalogues for four languages.
+Every staff-facing string on the board goes through Laravel's translation functions, including the drag-and-drop instructions and announcements. The package ships JSON catalogues for nine languages.
 
 ## Shipped languages
 
@@ -14,8 +15,13 @@ Every staff-facing string on the board goes through Laravel's translation functi
 | Spanish | `lang/es.json` |
 | French | `lang/fr.json` |
 | German | `lang/de.json` |
+| Brazilian Portuguese | `lang/pt_BR.json` |
+| Japanese | `lang/ja.json` |
+| Simplified Chinese | `lang/zh_CN.json` |
+| Italian | `lang/it.json` |
+| Arabic | `lang/ar.json` |
 
-The catalogues are loaded with `loadJsonTranslationsFrom()`, so strings are keyed by their English text. The board follows the application locale (`app()->getLocale()`), and the standalone layout's `<html lang>` follows it too.
+The catalogues are loaded with `loadJsonTranslationsFrom()`, so strings are keyed by their English text. They load in the service provider's `register()`, so the board's strings (and your overrides) are translated even when another provider calls `__()` while it boots. The board follows the application locale (`app()->getLocale()`), and the standalone layout's `<html lang>` and `dir` follow it too.
 
 ## Overriding strings
 
@@ -25,7 +31,7 @@ Publish the catalogues:
 php artisan vendor:publish --tag=ecommerce-kanban-lang
 ```
 
-They are copied to `lang/vendor/ecommerce-kanban/`. The package loads that directory as well as its own, so you can change individual strings there.
+They are copied to `lang/vendor/ecommerce-kanban/`. The package loads that directory as well as its own, so you can change individual strings there. An override there applies from the start of the request, including during other providers' `boot()`.
 
 Every package's JSON catalogue loads into one shared namespace. When you override a string the engine or another ArtisanPack UI package also uses (such as "Cancel" or "Save"), override it the same way for every package that uses it.
 
@@ -49,7 +55,7 @@ Counts use `trans_choice()` with a singular and a plural segment:
 trans_choice( ':count card|:count cards', $count, [ 'count' => $count ] );
 ```
 
-Translations keep the same number of `|` segments and the same `:placeholders` as the key. Laravel picks the segment by the locale's plural rules: in French, 0 is singular; in English, Spanish, and German it is plural.
+Translations keep the same `:placeholders` as the key, and the segments the locale's plural rules need. Laravel picks the segment by those rules: in French and Brazilian Portuguese, 0 is singular; in English, Spanish, German, and Italian it is plural. Japanese and Chinese have one form, so their catalogues keep a single segment. Arabic has six (zero, one, two, few, many, other), so its catalogue has six segments.
 
 ## Engine strings
 
@@ -57,7 +63,11 @@ Order, payment, and fulfillment status names are in this package's catalogues. W
 
 ## Right-to-left languages
 
-The standalone layout does not set `dir`. For a right-to-left locale, render the board in a layout of your own that sets `dir="rtl"` on `<html>`. See [Layouts](Installation-Layouts).
+The standalone layout sets `dir="rtl"` on `<html>` for right-to-left locales (Arabic, Hebrew, Persian, Urdu, and others), and the board's styles and the design system's directional icons mirror with it. Columns read right to left, and "Move left" and "Move right" in edit mode follow the visual direction.
+
+The board also sets `dir="rtl"` on its own root for those locales (`KanbanStyles::textDirection()`), so its columns, mirrored icons, "Move left" / "Move right" labels, and keyboard drag direction stay right in any layout. Its dialogs and drawers render at the end of the page, outside the board, and follow the page's direction, so a layout of your own, or an admin layout, should still set `dir="rtl"` on `<html>` for those locales. See [Layouts](installation/layouts.md).
+
+Known issue: in right-to-left, dragging a column header with a pointer in edit mode drops it at the start of the board (a `livewire-drag-and-drop` issue). The keyboard and the "Move left" / "Move right" buttons work.
 
 ## Translation lint
 
